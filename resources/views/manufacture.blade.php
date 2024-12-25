@@ -1,8 +1,87 @@
 @extends('layouts.app')
 
 @section('content')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
+    /* สไตล์ของปุ่มสลับ */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 70px;
+    height: 30px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ff4d4d; /* สีแดงเมื่อปิด */
+    transition: 0.4s;
+    border-radius: 30px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 24px;
+    width: 24px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+/* ข้อความ "เปิด" และ "ปิด" */
+.text-on,
+.text-off {
+    position: absolute;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 30px;
+    color: white;
+    transition: 0.4s;
+    pointer-events: none;
+}
+
+.text-on {
+    left: 10px;
+    opacity: 0;
+}
+
+.text-off {
+    right: 10px;
+    opacity: 1;
+}
+
+/* เมื่อ Checkbox ถูกเปิด */
+input:checked + .slider {
+    background-color: #40bf40; /* สีเขียวเมื่อเปิด */
+}
+
+input:checked + .slider:before {
+    transform: translateX(40px); /* ขยับวงกลมไปทางขวา */
+}
+
+/* ข้อความเมื่อเปิด */
+input:checked + .slider .text-on {
+    opacity: 1;
+}
+
+input:checked + .slider .text-off {
+    opacity: 0;
+}
+
     .text-so-white {
     color: white !important;
 }
@@ -197,6 +276,127 @@
 });
 
          </script>
+
+         <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const addMoreEmpContainer = document.getElementById("addmoreemp");
+    const addEmpButton = document.getElementById("addempname");
+    const removeEmpButton = document.getElementById("removeempmore");
+
+    // ฟังก์ชันสำหรับสร้างฟิลด์ใหม่
+    const createNewRow = () => {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `
+            <div class="col-md-6 text-center">
+                <b style="font-size:16px;">ชื่อ : </b>
+                <input type="text" name="ue_name[]" class="form-control text-center" data-toggle="tooltip" title="กรอกชื่อ" style="width:70%;" placeholder="กรอกชื่อ" required>
+                <input type="hidden" name="ue_line[]" value="">
+                <input type="hidden" name="ue_status[]" value="1">
+                <input type="hidden" name="ue_empno[]" value="0">
+            </div>
+            <div class="col-md-6 text-center">
+                <b style="font-size:16px;">หมายเหตุ : </b>
+                <input type="text" name="ue_remark[]" class="form-control text-center" data-toggle="tooltip" title="หมายเหตุ" style="width:50%;" maxlength="50" placeholder="หมายเหตุ">
+            </div>
+        `;
+        return row;
+    };
+
+    // เพิ่มฟิลด์ใหม่เมื่อกดปุ่ม "+"
+    addEmpButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        const newRow = createNewRow();
+        addMoreEmpContainer.appendChild(newRow);
+    });
+
+    // ลบฟิลด์ทีละอันจากด้านล่าง และเหลือขั้นต่ำ 1 แถว
+    removeEmpButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        const rows = addMoreEmpContainer.querySelectorAll(".row");
+        if (rows.length > 1) {
+            addMoreEmpContainer.removeChild(rows[rows.length - 1]); // ลบแถวสุดท้าย
+        } else {
+            // ใช้ SweetAlert2 เพื่อแสดงข้อความเตือน
+            Swal.fire({
+                icon: 'warning',
+                title: 'ไม่สามารถลบได้',
+                text: 'ต้องมีอย่างน้อย 1 รายการ',
+                confirmButtonText: 'ตกลง',
+            });
+        }
+    });
+});
+
+
+
+            </script>
+            <script>
+document.addEventListener("DOMContentLoaded", function () {
+    const addEmpGroupButton = document.getElementById("addempgroup");
+    const empGroupContainer = document.getElementById("empgroupadded");
+    const removeGroupButton = document.getElementById("removegroup");
+
+    // ฟังก์ชันสำหรับสร้างช่อง Input
+    const createNewInputRow = () => {
+        const inputRow = document.createElement("div");
+        inputRow.className = "group-row";
+        inputRow.style.marginBottom = "10px";
+        inputRow.innerHTML = `
+            <input type="text" class="form-control text-center emp-input" placeholder="ลากชื่อมาที่นี่" style="display:inline-block; width:45%;" readonly>
+            <span>-</span>
+            <input type="text" class="form-control text-center emp-input" placeholder="ลากชื่อมาที่นี่" style="display:inline-block; width:45%;" readonly>
+        `;
+        return inputRow;
+    };
+
+    // เพิ่ม Input เมื่อกดปุ่ม +
+    addEmpGroupButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        const newRow = createNewInputRow();
+        empGroupContainer.appendChild(newRow);
+    });
+
+    // ลบทีละแถวเมื่อกดปุ่ม "ทำใหม่"
+    removeGroupButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        const rows = empGroupContainer.querySelectorAll(".group-row");
+        if (rows.length > 1) {
+            empGroupContainer.removeChild(rows[rows.length - 1]); // ลบแถวสุดท้าย
+        } else {
+            // แสดง SweetAlert2 เมื่อเหลือ 1 แถว
+            Swal.fire({
+                icon: 'warning',
+                title: 'ไม่สามารถลบได้',
+                text: 'ต้องมีอย่างน้อย 1 รายการ',
+                confirmButtonText: 'ตกลง',
+            });
+        }
+    });
+
+    // รองรับการ Drag-and-Drop
+    const empList = document.getElementById("emplist");
+    empList.addEventListener("dragstart", function (e) {
+        if (e.target.tagName === "SPAN") {
+            e.dataTransfer.setData("text", e.target.textContent.trim());
+        }
+    });
+
+    empGroupContainer.addEventListener("dragover", function (e) {
+        e.preventDefault();
+    });
+
+    empGroupContainer.addEventListener("drop", function (e) {
+        e.preventDefault();
+        const droppedText = e.dataTransfer.getData("text");
+        if (e.target.classList.contains("emp-input")) {
+            e.target.value = droppedText;
+        }
+    });
+});
+
+
+                </script>
          
                   
                 <p> 
@@ -427,6 +627,7 @@
                         <h4><b><u>เพิ่มข้อมูลพนักงาน</u></b></h4>
                         <a href="#" class="btn btn-warning btn-sm fa fa-plus" id="addempname" role="button"></a>
                         <a href="#" id="removeempmore" class="btn btn-info btn-sm fa fa-remove" role="button"></a>
+
                     </div>
                     <div id="addmoreemp">
                         <div class="row">
@@ -508,7 +709,9 @@
                         <div class="col-md-1">
                             <br>
                             <br>
-                            <a class="btn btn-default btn-sm" style="font-size:13px;" id="addempgroup" href="#" role="button"><span class="glyphicon glyphicon-plus"></span></a>
+                            <a class="btn btn-success btn-sm" style="background-color: #20c997; border-color: #20c997; color: #fff; font-size:13px;" id="addempgroup" href="#" role="button">
+    <span class="glyphicon glyphicon-plus"></span>
+</a>
                         </div>
                         <form id="formgroupemp" class="form-inline form-sm mt-0" method="post">
                             <div class="col-md-6">
@@ -516,8 +719,9 @@
                                     <h4><b><u>กลุ่ม</u></b><br></h4>
                                 </div>
                                 <div class="text-right">
-                                    <button id="removegroup" class="btn btn-warning btn-sm " type="button" name="button"><span class="fas fa-redo-alt"></span>&nbsp;ทำใหม่</button>
-                                </div>
+                                <button id="removegroup" class="btn btn-warning btn-sm" type="button" name="button">
+        <span class="fas fa-redo-alt"></span>&nbsp;ทำใหม่
+    </button>                                </div>
                             </div>
                         </div>
                         <div class="text-center">
@@ -539,7 +743,14 @@
                                             <td class="text-center"></td>
                                             <td class="text-center"> </td>
                                             <td class="text-center">
-                                                <input data-id="" class="toggle-egstatus" type="checkbox" netliva-switch data-active-text="เปิด" data-passive-text="ปิด" data-active-color="#40bf40" data-passive-color="#ff4d4d" >
+                                            <label class="switch">
+    <input type="checkbox" class="toggle-egstatus">
+    <span class="slider">
+        <span class="text-on">เปิด</span>
+        <span class="text-off">ปิด</span>
+    </span>
+</label>
+
                                             </td>
                                         </tr>
                                 </tbody>
