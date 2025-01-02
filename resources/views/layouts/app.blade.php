@@ -15,6 +15,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
     <!-- Tell the browser to be responsive to screen width -->
     <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <style type="text/css">
 
@@ -107,12 +108,9 @@ scratch. This page gets rid of all links and provides the needed markup only.
 <title>{{ config('websetting.webtitle') }} | Ver. 2.0.1</title>
 
 <!-- Style -->
-<link rel="stylesheet" href="{{ asset('css/index.css') }}">
 
 <!-- Bootstrap -->
 <link rel="stylesheet" href="{{ asset('AdminLTE-master/bower_components/bootstrap/dist/css/bootstrap.css') }}">
-<link rel="stylesheet" type="text/css" href="{{ asset('css/bootstrap-toggle.min.css') }}">
-<link rel="stylesheet" type="text/css" href="{{ asset('css/bootstrap-switch.css') }}">
 
 <!-- Font Awesome -->
 <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
@@ -248,7 +246,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
     <!-- Data Table -->
     <script src="{{ asset('js/jquery.dataTables.min.js')}}"></script>
     <script src="{{ asset('js/dataTables.jqueryui.min.js')}}"></script>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
         <script type="text/javascript">
             @if (env('APP_ENV') !== 'production') 

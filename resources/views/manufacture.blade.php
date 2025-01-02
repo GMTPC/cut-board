@@ -2,6 +2,8 @@
 
 @section('content')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <style>
     /* สไตล์ของปุ่มสลับ */
@@ -41,6 +43,10 @@
     transition: 0.4s;
     border-radius: 50%;
 }
+.is-invalid {
+    border: 2px solid red;
+}
+
 
 /* ข้อความ "เปิด" และ "ปิด" */
 .text-on,
@@ -276,128 +282,148 @@ input:checked + .slider .text-off {
 });
 
          </script>
+<script>
+$('#deletempform').on('submit', function (e) {
+    e.preventDefault(); // ป้องกันการรีเฟรชหน้า
 
-         <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const addMoreEmpContainer = document.getElementById("addmoreemp");
-    const addEmpButton = document.getElementById("addempname");
-    const removeEmpButton = document.getElementById("removeempmore");
+    var id = $('#delete_empid').val(); // ดึง ID จาก hidden input
+    console.log('ID to delete:', id); // ตรวจสอบว่า ID ถูกต้องหรือไม่
 
-    // ฟังก์ชันสำหรับสร้างฟิลด์ใหม่
-    const createNewRow = () => {
-        const row = document.createElement("div");
-        row.className = "row";
-        row.innerHTML = `
+    // ส่งคำขอ AJAX
+    $.ajax({
+        type: "DELETE",
+        url: `/deleteemp/${id}`, // URL พร้อม ID
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') // CSRF Token
+        },
+        success: function (response) {
+            console.log('Server Response:', response); // ตรวจสอบ Response
+            if (response.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ลบข้อมูลแล้ว',
+                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+                window.setTimeout(function () {
+                    location.reload(); // รีเฟรชหน้า
+                }, 1200);
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ลบข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: true
+                });
+            }
+        },
+        error: function (xhr, status, error) {
+            console.error('Error:', xhr.responseText);
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด!',
+                html: '<small style="color:red;">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</small>',
+                showConfirmButton: true
+            });
+        }
+    });
+});
+
+
+
+    </script>
+        
+          
+
+<script>
+document.getElementById('addempname').addEventListener('click', function (e) {
+    e.preventDefault();
+
+    const newRow = `
+        <div class="row">
             <div class="col-md-6 text-center">
                 <b style="font-size:16px;">ชื่อ : </b>
                 <input type="text" name="ue_name[]" class="form-control text-center" data-toggle="tooltip" title="กรอกชื่อ" style="width:70%;" placeholder="กรอกชื่อ" required>
-                <input type="hidden" name="ue_line[]" value="">
-                <input type="hidden" name="ue_status[]" value="1">
-                <input type="hidden" name="ue_empno[]" value="0">
             </div>
             <div class="col-md-6 text-center">
                 <b style="font-size:16px;">หมายเหตุ : </b>
                 <input type="text" name="ue_remark[]" class="form-control text-center" data-toggle="tooltip" title="หมายเหตุ" style="width:50%;" maxlength="50" placeholder="หมายเหตุ">
             </div>
-        `;
-        return row;
-    };
+        </div>`;
+    document.getElementById('addmoreemp').insertAdjacentHTML('beforeend', newRow);
+});
+    </script>
 
-    // เพิ่มฟิลด์ใหม่เมื่อกดปุ่ม "+"
-    addEmpButton.addEventListener("click", function (e) {
-        e.preventDefault();
-        const newRow = createNewRow();
-        addMoreEmpContainer.appendChild(newRow);
-    });
 
-    // ลบฟิลด์ทีละอันจากด้านล่าง และเหลือขั้นต่ำ 1 แถว
-    removeEmpButton.addEventListener("click", function (e) {
-        e.preventDefault();
-        const rows = addMoreEmpContainer.querySelectorAll(".row");
-        if (rows.length > 1) {
-            addMoreEmpContainer.removeChild(rows[rows.length - 1]); // ลบแถวสุดท้าย
-        } else {
-            // ใช้ SweetAlert2 เพื่อแสดงข้อความเตือน
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('formemployee');
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault(); // ป้องกันการรีเฟรชหน้า
+
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response Data:', data);
+
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกข้อมูลแล้ว',
+                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+
+                // ตั้งเวลาให้รีเฟรชหน้าหลังจาก 1.3 วินาที
+                window.setTimeout(function () {
+                    location.reload();
+                }, 1300);
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: true
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
             Swal.fire({
-                icon: 'warning',
-                title: 'ไม่สามารถลบได้',
-                text: 'ต้องมีอย่างน้อย 1 รายการ',
-                confirmButtonText: 'ตกลง',
+                icon: 'error',
+                title: 'ข้อผิดพลาด!',
+                html: '<small style="color:red;">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</small>',
+                showConfirmButton: true
             });
-        }
+        });
     });
 });
 
 
 
-            </script>
-            <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const addEmpGroupButton = document.getElementById("addempgroup");
-    const empGroupContainer = document.getElementById("empgroupadded");
-    const removeGroupButton = document.getElementById("removegroup");
 
-    // ฟังก์ชันสำหรับสร้างช่อง Input
-    const createNewInputRow = () => {
-        const inputRow = document.createElement("div");
-        inputRow.className = "group-row";
-        inputRow.style.marginBottom = "10px";
-        inputRow.innerHTML = `
-            <input type="text" class="form-control text-center emp-input" placeholder="ลากชื่อมาที่นี่" style="display:inline-block; width:45%;" readonly>
-            <span>-</span>
-            <input type="text" class="form-control text-center emp-input" placeholder="ลากชื่อมาที่นี่" style="display:inline-block; width:45%;" readonly>
-        `;
-        return inputRow;
-    };
-
-    // เพิ่ม Input เมื่อกดปุ่ม +
-    addEmpGroupButton.addEventListener("click", function (e) {
-        e.preventDefault();
-        const newRow = createNewInputRow();
-        empGroupContainer.appendChild(newRow);
-    });
-
-    // ลบทีละแถวเมื่อกดปุ่ม "ทำใหม่"
-    removeGroupButton.addEventListener("click", function (e) {
-        e.preventDefault();
-        const rows = empGroupContainer.querySelectorAll(".group-row");
-        if (rows.length > 1) {
-            empGroupContainer.removeChild(rows[rows.length - 1]); // ลบแถวสุดท้าย
-        } else {
-            // แสดง SweetAlert2 เมื่อเหลือ 1 แถว
-            Swal.fire({
-                icon: 'warning',
-                title: 'ไม่สามารถลบได้',
-                text: 'ต้องมีอย่างน้อย 1 รายการ',
-                confirmButtonText: 'ตกลง',
-            });
-        }
-    });
-
-    // รองรับการ Drag-and-Drop
-    const empList = document.getElementById("emplist");
-    empList.addEventListener("dragstart", function (e) {
-        if (e.target.tagName === "SPAN") {
-            e.dataTransfer.setData("text", e.target.textContent.trim());
-        }
-    });
-
-    empGroupContainer.addEventListener("dragover", function (e) {
-        e.preventDefault();
-    });
-
-    empGroupContainer.addEventListener("drop", function (e) {
-        e.preventDefault();
-        const droppedText = e.dataTransfer.getData("text");
-        if (e.target.classList.contains("emp-input")) {
-            e.target.value = droppedText;
-        }
-    });
-});
+    </script>
 
 
-                </script>
-         
+
                   
                 <p> 
                     <h4>
@@ -613,7 +639,7 @@ document.addEventListener("DOMContentLoaded", function () {
     </div>
 <!-- จบ process modal เลือกไลน์ผลิต -->
 <!-- ข้อมูลพนักงาน -->
-    <div class="modal fade" id="inputemnoti" tabindex="-1" role="dialog" aria-labelledby="DeleteEmp" aria-hidden="true">
+<div class="modal fade" id="inputemnoti" tabindex="-1" role="dialog" aria-labelledby="DeleteEmp" aria-hidden="true" data-backdrop="static" data-keyboard="false">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -622,33 +648,36 @@ document.addEventListener("DOMContentLoaded", function () {
                     </button>
                     <h3 class="modal-title" id="DeletelEmp"><b>ข้อมูลพนักงาน</b></h3>
                 </div>
-                <form id="formemployee" class="form-inline md-form form-sm mt-0" method="post">
-                    <div class="container">
-                        <h4><b><u>เพิ่มข้อมูลพนักงาน</u></b></h4>
-                        <a href="#" class="btn btn-warning btn-sm fa fa-plus" id="addempname" role="button"></a>
-                        <a href="#" id="removeempmore" class="btn btn-info btn-sm fa fa-remove" role="button"></a>
+                <form id="formemployee" class="form-inline md-form form-sm mt-0" method="POST" action="{{ route('save-employees', ['line' => request()->route('line')]) }}">
+    @csrf
+    <div class="container">
+        <h4><b><u>เพิ่มข้อมูลพนักงาน</u></b></h4>
+        <a href="#" class="btn btn-warning btn-sm fa fa-plus" id="addempname" role="button"></a>
+        <a href="#" id="removeempmore" class="btn btn-info btn-sm fa fa-remove" role="button"></a>
+    </div>
+    <div id="addmoreemp">
+        <div class="row">
+            <div class="col-md-6 text-center">
+                <b style="font-size:16px;">ชื่อ : </b>
+                <input type="text" name="ue_name[]" class="form-control text-center" data-toggle="tooltip" title="กรอกชื่อ" style="width:70%;" placeholder="กรอกชื่อ" required>
+                <input type="hidden" name="ue_remark[]" value="">
+            </div>
+            <div class="col-md-6 text-center">
+                <b style="font-size:16px;">หมายเหตุ : </b>
+                <input type="text" name="ue_remark[]" class="form-control text-center" data-toggle="tooltip" title="หมายเหตุ" style="width:50%;" maxlength="50" placeholder="หมายเหตุ">
+            </div>
+        </div>
+    </div>
+    <br>
+    <div class="text-center">
+    <button class="btn btn-success btn-md" id="saveEmployeesButton" type="submit">
+    บันทึกข้อมูล <i class="fas fa-user-plus"></i>
+</button>
 
-                    </div>
-                    <div id="addmoreemp">
-                        <div class="row">
-                            <div class="col-md-6 text-center">
-                                <b style="font-size:16px;">ชื่อ : </b><input type="text" name="ue_name[]" class="form-control text-center" data-toggle="tooltip" title="กรอกชื่อ" style="width:70%;" placeholder="กรอกชื่อ" required>
-                                <input type="hidden" name="ue_line[]" value="">
-                                <input type="hidden" name="ue_status[]" value="1">
-                                <input type="hidden" name="ue_empno[]" value="0">
-                            </div>
-                            <div class="col-md-6 text-center">
-                                <b style="font-size:16px;">หมายเหตุ : </b><input type="text" name="ue_remark[]" class="form-control text-center" data-toggle="tooltip" title="หมายเหตุ" style="width:50%;" maxlength="50" placeholder="หมายเหตุ">
-                            </div>
-                        </div>
-                    </div>
+    </div>
+</form>
 
-                    <br>
-                    <div class="text-center">
-                        <button class="btn btn-success btn-md" type="submit" name="button">บักทึกข้อมูล <i class="fas fa-user-plus"></i></button>
-                    </div>
-                </form>
-                <div class="container-fluid">
+<div class="container-fluid">
                     <h4><b><u>รายชื่อพนักงาน</u></b></h4>
                     <div class="table-responsive">
                         <table class="table table-striped table-bordered display" id="emptable">
@@ -662,16 +691,31 @@ document.addEventListener("DOMContentLoaded", function () {
                                 </tr>
                             </thead>
                             <tbody>
-                              
-                                    <tr>
-                                        <td class="text-center"></td>
-                                        <td class="text-center"></td>
-                                        <td class="text-center"></td>
-                                        <td class="text-center">
-                                            <a href="#" class="btn btn-danger btn-sm fa fa-trash deleteemp" data-toggle="tooltip" title="ลบข้อมูล" style="font-size:15px;"></a>
-                                        </td>
-                                        <td style="width:1px;opacity:0;"></td>
-                                    </tr>
+    @forelse($employees as $employee)
+        <tr>
+            <td class="text-center">{{ $loop->iteration }}</td> <!-- ลำดับ -->
+            <td class="text-center">{{ $employee->name }}</td> <!-- ชื่อพนักงาน -->
+            <td class="text-center">{{ $employee->note }}</td> <!-- หมายเหตุ -->
+            <td class="text-center">
+                <a href="#" 
+                   class="btn btn-danger btn-sm fa fa-trash deleteemp" 
+                   data-id="{{ $employee->id }}" 
+                   data-name="{{ $employee->name }}" 
+                   data-toggle="modal" 
+                   data-target="#notideleteemp" 
+                   title="ลบข้อมูล" 
+                   style="font-size:15px;">
+                </a>
+            </td>
+            <td style="width:1px;opacity:0;"></td>
+        </tr>
+    @empty
+        <tr>
+            <td colspan="5" class="text-center">ไม่มีข้อมูลพนักงาน</td>
+        </tr>
+    @endforelse
+</tbody>
+
                             </tbody>
                         </table>
                     </div>
@@ -765,28 +809,28 @@ document.addEventListener("DOMContentLoaded", function () {
         </div>
 
         <div class="modal fade" id="notideleteemp" tabindex="-1" role="dialog" aria-labelledby="DeleteEmp" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="DeletelEmp">ลบข้อมูลพนักงาน</h3>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <form id="deletempform">
-                        <div class="modal-body">
-
-                            <input type="hidden" name="id" id="delete_empid">
-                            <h4 style="color:red;">คุณต้องการลบข้อมูลพนักงานหรือไม่</h4>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
-                            <button type="submit" class="btn btn-danger">ลบข้อมูล</button>'
-                        </div>
-                    </form>
-                </div>
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="DeletelEmp">ลบข้อมูลพนักงาน</h3>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
+            <form id="deletempform">
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="delete_empid"> <!-- Input เก็บ ID -->
+                    <h4 style="color:red;">คุณต้องการลบข้อมูลพนักงานหรือไม่?</h4>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
+                    <button type="submit" class="btn btn-danger">ลบข้อมูล</button> <!-- ปุ่มเดิม -->
+                </div>
+            </form>
         </div>
+    </div>
+</div>
+
 
 <!-- จบ process modal ของจัดกลุ่มพนักงาน -->
 <!-- รายการงานคัดบอร์ดที่ผ่านมา -->

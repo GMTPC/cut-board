@@ -92,20 +92,52 @@ public function employeesaveline1(Request $request)
 
 
     // ฟังก์ชันสำหรับลบข้อมูลพนักงาน
+    
+    public function saveEmployees(Request $request)
+    {
+        $line = $request->query('line'); // รับค่าจาก query string
+    
+        try {
+            // บันทึกข้อมูลพนักงาน
+            if ($request->has('ue_name')) {
+                foreach ($request->input('ue_name') as $index => $name) {
+                    Employee::create([
+                        'name' => $name,
+                        'note' => $request->input("ue_remark.{$index}") ?? null,
+                        'line' => $line,
+                    ]);
+                }
+            }
+    
+            // ส่งสถานะสำเร็จกลับไป
+            return response()->json([
+                'status' => 'success',
+                'message' => 'บันทึกข้อมูลพนักงานสำเร็จแล้ว!'
+            ]);
+        } catch (\Exception $e) {
+            // ส่งสถานะข้อผิดพลาดกลับไป
+            return response()->json([
+                'status' => 'error',
+                'message' => 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage()
+            ]);
+        }
+        
+
+    }
+    
     public function deleteEmployee($id)
     {
-        $employee = Employee::findOrFail($id);
-        $employee->delete();
+        try {
+            $employee = Employee::findOrFail($id);
+            $employee->delete();
     
-        return response()->json(['message' => 'Employee deleted successfully']);
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
-    public function showEmployees()
-    {
-        // ดึงข้อมูลเฉพาะพนักงานที่อยู่ใน Line 3
-        $employees = Employee::where('line', '3')->get();
     
-        // ส่งข้อมูลไปยัง View
-        return view('employees.show', compact('employees'));
-    } 
+
+    }
     
-}
+     

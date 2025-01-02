@@ -1,0 +1,434 @@
+
+@font-face {
+    font-family: 'THSarabunNew';
+    font-style: normal;
+    font-weight: normal;
+    src: url('/public/fonts/THSarabunNew.ttf') }} format('truetype');
+}
+@font-face {
+    font-family: 'code128';
+    font-style: normal;
+    font-weight: normal;
+    src: url('/fonts/code128.ttf') }} format('truetype');
+}
+.section-background{
+    background: url('img/89457.jpg') no-repeat center center fixed;
+
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+}
+#cover {
+    background: url("http://www.aveva.com/Images/ajax-loader.gif") no-repeat scroll center center #FFF;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+}
+.preloader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background-image: url('/img/Spinner-1s-200px.gif');
+    background-repeat: no-repeat;
+    background-color: #FFF;
+    background-position: center;
+}
+
+.set-clear-link{
+    width:5%;
+}
+.img-logo-top{
+    width: 107%;
+}
+.button-report{
+    width: 96px;
+}
+.select-choice{
+    border-style: solid;
+    border: 3px;
+    border-radius: 3;
+}
+.header-size{
+    font-size: 80em;
+}
+
+.card-shadow:hover{
+    transform: scale(1.1);
+    -ms-transform: scale(1.1); /* IE 9 */
+    -webkit-transform: scale(1.04); /* Safari 3-8 */
+    box-shadow: 3px 3px 3px #a6a6a6;
+}
+.card-title{
+    color: black;
+}
+.modal-login {
+    color: #636363;
+    width: 350px;
+}
+.modal-login .modal-content {
+    padding: 20px;
+    border-radius: 5px;
+    border: none;
+}
+.modal-login .modal-header {
+    border-bottom: none;
+    position: relative;
+    justify-content: center;
+}
+.modal-login h4 {
+    text-align: center;
+    font-size: 26px;
+}
+.modal-login  .form-group {
+    position: relative;
+}
+.modal-login i {
+    position: absolute;
+    left: 13px;
+    top: 11px;
+    font-size: 18px;
+}
+.modal-login .form-control {
+    padding-left: 40px;
+}
+.modal-login .form-control:focus {
+    border-color: #00ce81;
+}
+.modal-login .form-control, .modal-login .btn {
+    min-height: 40px;
+    border-radius: 3px;
+}
+.modal-login .hint-text {
+    text-align: center;
+    padding-top: 10px;
+}
+.modal-login .close {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+}
+.modal-login .btn {
+    background: #00ce81;
+    border: none;
+    line-height: normal;
+}
+.modal-login .btn:hover, .modal-login .btn:focus {
+    background: #00bf78;
+}
+.modal-login .modal-footer {
+    background: #ecf0f1;
+    border-color: #dee4e7;
+    text-align: center;
+    margin: 0 -20px -20px;
+    border-radius: 5px;
+    font-size: 13px;
+    justify-content: center;
+}
+.modal-login .modal-footer a {
+    color: #999;
+}
+.trigger-btn {
+    display: inline-block;
+    margin: 100px auto;
+}
+.card-background{
+    background-color: #FFFFFF;
+}
+.card-title-white{
+    color: black;
+}
+.card-text-white{
+    color: black;
+}
+.text-table-so{
+    font-size: 12px;
+}
+.active-pink-2 input[type=text]:focus:not([readonly]) {
+    border-bottom: 1px solid #f48fb1;
+    box-shadow: 0 1px 0 0 #f48fb1;
+}
+.active-pink input[type=text] {
+    border-bottom: 1px solid #f48fb1;
+    box-shadow: 0 1px 0 0 #f48fb1;
+}
+.active-purple-2 input[type=text]:focus:not([readonly]) {
+    border-bottom: 1px solid #ce93d8;
+    box-shadow: 0 1px 0 0 #ce93d8;
+}
+.active-purple input[type=text] {
+    border-bottom: 1px solid #ce93d8;
+    box-shadow: 0 1px 0 0 #ce93d8;
+}
+.active-cyan-2 input[type=text]:focus:not([readonly]) {
+    border-bottom: 1px solid #4dd0e1;
+    box-shadow: 0 1px 0 0 #4dd0e1;
+}
+.active-cyan input[type=text] {
+    border-bottom: 1px solid #4dd0e1;
+    box-shadow: 0 1px 0 0 #4dd0e1;
+}
+.active-cyan .fa, .active-cyan-2 .fa {
+    color: #4dd0e1;
+}
+.active-purple .fa, .active-purple-2 .fa {
+    color: #ce93d8;
+}
+.active-pink .fa, .active-pink-2 .fa {
+    color: #f48fb1;
+}
+
+input.empty {
+    font-family: FontAwesome;
+    font-style: normal;
+    font-weight: normal;
+    text-decoration: inherit;
+}
+.text-so-white{
+    color:#FFFFFF;
+}
+.tab-size-md{
+    width:40%;
+}
+.tab-size-sm{
+    width:20%;
+}
+.tab-size-xs{
+    width:30%;
+}
+.tab-size-lg{
+    width:70%;
+}
+.tab-size-mn{
+    width:10%;
+}
+.tab-size-50{
+    width:60%
+}
+@media screen and (max-width: 897px) {
+    .header-select {
+        font-size: 1.5em;
+    }
+}
+.icon-size{
+    font-size:60px;
+}
+.margin-select{
+    margin-right: 20px;
+}
+.text-white{
+    color:#ffffff;
+}
+
+.table-output{
+    width:87%;
+    height: 20%;
+}
+.table-output, .table-output th, .table-output td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
+.table-output th, .table-output td {
+    padding: 5px;
+    text-align: center;
+}
+
+.table-output th{
+    width: 25%;
+}
+.tb-sky{
+    background-color: #00b0f0;
+}
+.tb-purple{
+    background-color: #7030a0;
+}
+
+.table-output td[class="noline1"] , .table-output td[class="noline2"] {
+    border-bottom: none;
+    border: none;
+}
+.wip-fix-fontsize-output{
+    font-size: 16px;
+    font-style: Bold;
+}
+
+.fix-row-center {
+    margin-right: -15px;
+    margin-left: -15px;
+}
+.fix-grid-center{
+    position: relative;
+    min-height: 1px;
+    padding-right: 15px;
+    padding-left: 15px;
+}
+
+@media (min-width: 992px) {
+    .fix-grid-left {
+        float: left;
+        margin-left: 20px;
+    }
+    .fix-grid-right {
+        float: right;
+        margin-right: 20px;
+    }
+    .fix-grid-center {
+        width: 50%;
+    }
+}
+
+@media print {
+
+    .fix-grid-left {
+        float: left;
+        margin-left: 20px;
+    }
+    .fix-grid-right {
+        float: right;
+        margin-right: 20px;
+    }
+    .fix-grid-center {
+        width: 50%;
+    }
+
+}
+
+.dataTables_filter input {
+    border-style: hidden hidden groove hidden;
+    width: 300px;
+    height: 40px;
+    outline: none;
+    box-sizing: border-box;
+    padding-left: 10px;
+    padding-right: 40px;
+}
+.dataTables_length select {
+    border-style: hidden hidden inset hidden;
+    width: 110px;
+    height: 40px;
+    outline: none;
+    box-sizing: border-box;
+    padding-left: 10px;
+    padding-right: 40px;
+}
+.bg-peru{
+    background-color: #CD853F !important;
+}
+.bg-darksalmon{
+    background-color: #E9967A !important;
+}
+.bg-darkteal{
+    background-color: #008080 !important;
+}
+.bg-tomato{
+    background-color: #FF6347 !important;
+}
+.border {
+    display: inline-block;
+    width: 70px;
+    height: 70px;
+    margin: 6px;
+}
+.panel-black{
+    border-color: #2b2b2b;
+}
+hr.hr-style-name {
+    overflow: visible; /* For IE */
+    padding: 0;
+    border: none;
+    border-top: 1px dashed;
+    color: #333;
+    padding-top: 15px;
+    text-align: left;
+}
+hr.hr-style-date {
+    overflow: visible; /* For IE */
+    padding: 0;
+    border: none;
+    border-top: 1px dashed;
+    color: #333;
+    text-align: left;
+}
+hr.hr-style-date:after {
+    content: "วันที่";
+    font-size: 14px;
+    display: inline-block;
+    position: relative;
+    top: -1.3em;
+    padding: 0 0.25em;
+    background: white;
+}
+.font-table-report-14{
+    font-size:14px;
+}
+.font-table-report-13{
+    font-size:13px;
+}
+input[readonly].input_qty{
+    color:red;
+}
+.fix-bottom-footer{
+    z-index: -100;
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    text-align: center;
+}
+.size-a4{
+    width: 21cm;
+    height: 29.7cm;
+}
+.none-pading{
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.none-pading-report{
+    padding-left: 0px;
+    padding-right: 0px;
+
+}
+.table-output tr td.underlineheader u {
+    color:#FFFFFF;
+}
+.table-output tr td.underlineheader h2 {
+    height: 0px;
+}
+.text-csv-end {
+    color:red;
+}
+.font14 {
+    font-size: 14px;
+}
+.font12 {
+    font-size: 12px;
+}
+.container{
+    margin-top:20px;
+}
+.image-preview-input {
+    position: relative;
+	overflow: hidden;
+	margin: 0px;
+    color: #333;
+    background-color: #fff;
+    border-color: #ccc;
+}
+.image-preview-input input[type=file] {
+	position: absolute;
+	top: 0;
+	right: 0;
+	margin: 0;
+	padding: 0;
+	font-size: 20px;
+	cursor: pointer;
+	opacity: 0;
+	filter: alpha(opacity=0);
+}
+.image-preview-input-title {
+    margin-left:2px;
+}

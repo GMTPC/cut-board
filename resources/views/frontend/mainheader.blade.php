@@ -30,7 +30,7 @@
                     @else
 
                         <li>
-                            <a id="conmodecheck" href="#">Connection Mode : Onlinne<b id="conmode"></b> </a>
+                            <a id="conmodecheck" href="#">Connection Mode : <b id="conmode"></b> </a>
                         </li>
                         <li>
                             <a class="hidden-xs">User : {{ Auth::user()->name }} </a>

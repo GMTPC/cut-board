@@ -17,17 +17,25 @@ class MainmenuController extends Controller
     
     public function manufacture($line = null)
 {
-    // ดึงข้อมูลกลุ่มเฉพาะไลน์ที่เลือก
+    // ดึงข้อมูลพนักงานเฉพาะไลน์ หรือทั้งหมดถ้า $line เป็น null
+    $employees = Employee::when($line, function ($query, $line) {
+        return $query->where('line', $line);
+    })->get();
+
+    // กรณีมีการระบุ line
     if ($line) {
         $groups = GroupQC::where('line', $line)->pluck('group'); // ดึงเฉพาะชื่อกลุ่ม
         $lineheader = 'Line ' . $line; // ตั้งชื่อหัวข้อ
-        return view('manufacture', compact('groups', 'lineheader', 'line'));
     } else {
+        // กรณีไม่มีการระบุ line
         $groups = GroupQC::pluck('group'); // ดึงกลุ่มทั้งหมด
         $lineheader = 'All Lines'; // ตั้งชื่อหัวข้อ
-        return view('manufacture', compact('groups', 'lineheader'));
     }
+
+    // ส่งข้อมูลไปยัง view
+    return view('manufacture', compact('groups', 'lineheader', 'employees', 'line'));
 }
+
 public function workgroup(Request $request)
 {
     // ตรวจสอบว่าค่า line และ group ถูกส่งมาหรือไม่

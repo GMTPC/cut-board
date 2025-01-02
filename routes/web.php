@@ -64,5 +64,7 @@ Route::post('/employees/save-multiple', [EmployeeController::class, 'saveMultipl
 Route::get('/warehousebp', [MainmenuController::class, 'warehousebp'])->name('warehouse.bp');
 Route::post('/workprocess', [MainmenuController::class, 'workgroup'])->name('workgroup.start');
 Route::get('/production/datawip/L{line}/{id}', [MainmenuController::class, 'datawip'])->name('datawip');
+Route::post('/save-employees', [EmployeeController::class, 'saveEmployees'])->name('save-employees');
+Route::delete('/deleteemp/{id}', [EmployeeController::class, 'deleteEmployee']);
 
 require __DIR__.'/auth.php';
