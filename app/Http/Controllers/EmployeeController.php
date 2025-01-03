@@ -125,15 +125,16 @@ public function employeesaveline1(Request $request)
 
     }
     
-    public function deleteEmployee($id)
+    public function delete($id)
     {
         try {
-            $employee = Employee::findOrFail($id);
-            $employee->delete();
-    
-            return response()->json(['success' => true]);
+            $employee = Employee::findOrFail($id); // ค้นหาพนักงานตาม ID
+            $employee->delete(); // ลบข้อมูลพนักงาน
+
+            return response()->json(['message' => 'ลบข้อมูลสำเร็จ'], 200);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+            \Log::error('ลบข้อมูลไม่สำเร็จ: ' . $e->getMessage()); // Log ข้อผิดพลาด
+            return response()->json(['message' => 'ลบข้อมูลไม่สำเร็จ', 'error' => $e->getMessage()], 500);
         }
     }
     

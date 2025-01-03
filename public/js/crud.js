@@ -5,62 +5,60 @@ $.ajaxSetup({
         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
     }
 });
-// $(document).ready(function(){
+$(document).ready(function(){
 
-//     $('#insertbarcode').on('submit', function(e){
-//         e.preventDefault();
+    $('#insertbarcode').on('submit', function(e){
+        e.preventDefault();
+        $.ajax({
+            type: "POST",
+           url: path+"/cutstockstore",
+          data: $('#insertbarcode').serialize(),
+           success: function(){
+               Swal.fire({
+                   icon: 'success',
+                   title: 'สแกนบาร์โค้ดสำเร็จ',
+                   html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                   showConfirmButton: false,
+                   timer: 1000
+                })
+                 $("#fg_code").val('');
+               window.setTimeout(function(){
+                    $.get({url:path+'/cutstocktable/'+getdi_key_se,
+                    beforeSend: function(){
+                      $('#tablecuts').html('<td></td><td><h3>กำลังโหลดข้อมูล...</h3></td><td></td>');
+                       },
+                      success:function( data ) {
+                            $('#tablecuts').html(data);
+                       },
+                       complete:function(data){
+                      },
+                  });
+                    $.get({url:path+'/cutstockhidden/'+getdi_key_se,
+                 beforeSend: function(){
+                        $('#btnsubfg').button('loading');
+                   },
+                   success:function( data ) {
+                        $('#hiddenfginput').html(data);
+                       $('#btnsubfg').button('reset');
+                   },
+                    complete:function(data){
 
-//         $.ajax({
-//             type: "POST",
-//             url: path+"/cutstockstore",
-//             data: $('#insertbarcode').serialize(),
-//             success: function(){
-//                 Swal.fire({
-//                     icon: 'success',
-//                     title: 'สแกนบาร์โค้ดสำเร็จ',
-//                     html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
-//                     showConfirmButton: false,
-//                     timer: 1000
-//                 })
-//                 $("#fg_code").val('');
-//                 window.setTimeout(function(){
-//                     $.get({url:path+'/cutstocktable/'+getdi_key_se,
-//                     beforeSend: function(){
-//                         $('#tablecuts').html('<td></td><td><h3>กำลังโหลดข้อมูล...</h3></td><td></td>');
-//                         },
-//                         success:function( data ) {
-
-//                             $('#tablecuts').html(data);
-//                         },
-//                         complete:function(data){
-//                         },
-//                     });
-//                     $.get({url:path+'/cutstockhidden/'+getdi_key_se,
-//                     beforeSend: function(){
-//                         $('#btnsubfg').button('loading');
-//                     },
-//                     success:function( data ) {
-//                         $('#hiddenfginput').html(data);
-//                         $('#btnsubfg').button('reset');
-//                     },
-//                     complete:function(data){
-
-//                     },
-//                 });
-//                 } ,1350);
-//             },error:function(){
-//                 Swal.fire({
-//                     icon: 'error',
-//                     title: 'บันทึกข้อมูลไม่สำเร็จ',
-//                     html: '<small style="color:red;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
-//                     showConfirmButton: false,
-//                     timer: 3000
-//                 })
+                   },
+                });
+               } ,1350);
+           },error:function(){
+                Swal.fire({
+                   icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: false,
+                    timer: 3000
+               })
                 
-//             }
-//         });
-//     });
-// });
+            }
+        });
+    });
+ });
 
 $(document).ready(function(){
     $('#insertbarcode').on('submit',function(e){

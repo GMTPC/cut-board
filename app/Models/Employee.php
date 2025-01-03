@@ -8,5 +8,5 @@ class Employee extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'note', 'line'];
+    protected $fillable = ['name', 'note', 'line']; // ฟิลด์ที่อนุญาตให้แก้ไข
 }

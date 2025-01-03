@@ -283,22 +283,38 @@ input:checked + .slider .text-off {
 
          </script>
 <script>
-$('#deletempform').on('submit', function (e) {
-    e.preventDefault(); // ป้องกันการรีเฟรชหน้า
+   $(document).ready(function () {
+    // กำหนดค่า ID และชื่อพนักงานใน Modal
+    $(document).on('click', '.deleteemp', function () {
+        var id = $(this).data('id'); // รับค่า ID จากปุ่มลบ
+        var name = $(this).data('name'); // รับชื่อพนักงานจากปุ่มลบ
 
-    var id = $('#delete_empid').val(); // ดึง ID จาก hidden input
-    console.log('ID to delete:', id); // ตรวจสอบว่า ID ถูกต้องหรือไม่
+        $('#delete_empid').val(id); // ตั้งค่า ID ใน hidden input
+        $('#delete_empname').text(name); // แสดงชื่อในข้อความยืนยัน
+    });
 
-    // ส่งคำขอ AJAX
-    $.ajax({
-        type: "DELETE",
-        url: `/deleteemp/${id}`, // URL พร้อม ID
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') // CSRF Token
-        },
-        success: function (response) {
-            console.log('Server Response:', response); // ตรวจสอบ Response
-            if (response.success) {
+    // ฟังก์ชันลบข้อมูลพนักงาน
+    $('#deletempform').on('submit', function (e) {
+        e.preventDefault();
+
+        var id = $('#delete_empid').val();
+        console.log("ID ที่จะลบ:", id); // ตรวจสอบ ID
+
+        if (!id) {
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: 'ไม่พบข้อมูลพนักงานที่จะลบ!',
+            });
+            return;
+        }
+
+        $.ajax({
+            type: "DELETE",
+            url: "/deleteemp/" + id,
+            data: { _token: "{{ csrf_token() }}" }, // CSRF Token
+            success: function (response) {
+                console.log("ลบสำเร็จ:", response); // Debug Response
                 Swal.fire({
                     icon: 'success',
                     title: 'ลบข้อมูลแล้ว',
@@ -307,32 +323,23 @@ $('#deletempform').on('submit', function (e) {
                     timer: 1500
                 });
                 window.setTimeout(function () {
-                    location.reload(); // รีเฟรชหน้า
+                    location.reload();
                 }, 1200);
-            } else {
+            },
+            error: function (xhr) {
+                console.error("ข้อผิดพลาด:", xhr.responseText); // Debug Error
                 Swal.fire({
                     icon: 'error',
                     title: 'ลบข้อมูลไม่สำเร็จ',
                     html: '<small style="color:red;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
-                    showConfirmButton: true
+                    showConfirmButton: true,
                 });
             }
-        },
-        error: function (xhr, status, error) {
-            console.error('Error:', xhr.responseText);
-            Swal.fire({
-                icon: 'error',
-                title: 'เกิดข้อผิดพลาด!',
-                html: '<small style="color:red;">ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้</small>',
-                showConfirmButton: true
-            });
-        }
+        });
     });
 });
 
-
-
-    </script>
+</script>
         
           
 
@@ -422,8 +429,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
     </script>
 
+<script>
+    function allowDrop(event) {
+        event.preventDefault(); // อนุญาตให้ปล่อยข้อมูลในพื้นที่นี้
+    }
 
+    function drag(event) {
+        // ดึงชื่อพนักงานจาก data-name
+        const employeeName = event.target.getAttribute('data-name');
+        if (employeeName) {
+            event.dataTransfer.setData("text", employeeName); // ส่งชื่อพนักงานไปยัง drop
+        }
+    }
 
+    function drop(event) {
+        event.preventDefault();
+        // ดึงข้อมูลชื่อพนักงานจาก dataTransfer
+        const employeeName = event.dataTransfer.getData("text");
+
+        // ตรวจสอบว่ามีชื่อหรือไม่ก่อนใส่ในช่อง
+        if (employeeName) {
+            if (event.target.value) {
+                event.target.value += `, ${employeeName}`; // ถ้ามีชื่ออยู่แล้วให้เพิ่มต่อท้าย
+            } else {
+                event.target.value = employeeName; // ถ้ายังไม่มีชื่อ ให้ใส่ชื่อแรก
+            }
+        }
+    }
+</script>
                   
                 <p> 
                     <h4>
@@ -697,15 +730,16 @@ document.addEventListener('DOMContentLoaded', function () {
             <td class="text-center">{{ $employee->name }}</td> <!-- ชื่อพนักงาน -->
             <td class="text-center">{{ $employee->note }}</td> <!-- หมายเหตุ -->
             <td class="text-center">
-                <a href="#" 
-                   class="btn btn-danger btn-sm fa fa-trash deleteemp" 
-                   data-id="{{ $employee->id }}" 
-                   data-name="{{ $employee->name }}" 
-                   data-toggle="modal" 
-                   data-target="#notideleteemp" 
-                   title="ลบข้อมูล" 
-                   style="font-size:15px;">
-                </a>
+            <a href="#" 
+   class="btn btn-danger btn-sm fa fa-trash deleteemp" 
+   data-id="{{ $employee->id }}" 
+   data-name="{{ $employee->name }}" 
+   data-toggle="modal" 
+   data-target="#notideleteemp" 
+   title="ลบข้อมูล" 
+   style="font-size:15px;">
+</a>
+
             </td>
             <td style="width:1px;opacity:0;"></td>
         </tr>
@@ -741,21 +775,39 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="container-fluid">
                     <div class="col-md-5">
                         <div class="text-center">
-                            <h4><b><u>รายชื่อพนักงาน</u></b></h4>
-                            <div class="panel panel-default">
-                                <div id="emplist" class="panel-body">
-                                    <e style="cursor:move;">
-                                        <span style="background-color:;font-size:16px;" class="badge"></span>
-                                    </e> </div>
-                                </div>
+                        <h4 class="text-center"><b><u>รายชื่อพนักงาน</u></b></h4>
+<div class="panel panel-default">
+    <!-- รายชื่อพนักงาน -->
+    <div id="emplist" class="panel-body" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: start; padding: 10px;">
+        @foreach($employees as $employee)
+            @php
+                // สุ่มสีพื้นหลัง
+                $randomColor = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
+            @endphp
+            <div 
+                style="background-color: {{ $randomColor }}; color: white; font-size: 14px; padding: 5px 10px; border-radius: 3px; border: 1px solid #ddd; box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2); cursor: grab;"
+                draggable="true"
+                ondragstart="drag(event)"
+                data-name="{{ $employee->name }}" 
+                id="employee-{{ $loop->index }}">
+                {{ $employee->name }}
+            </div>
+        @endforeach
+    </div>
+</div>
                             </div>
                         </div>
                         <div class="col-md-1">
                             <br>
                             <br>
-                            <a class="btn btn-success btn-sm" style="background-color: #20c997; border-color: #20c997; color: #fff; font-size:13px;" id="addempgroup" href="#" role="button">
+                            <a class="btn btn-success btn-sm" 
+    style="background-color: #00b5ad; border-color: #00b5ad; color: #fff; font-size:13px;" 
+    id="addempgroup" 
+    href="#" 
+    role="button">
     <span class="glyphicon glyphicon-plus"></span>
 </a>
+
                         </div>
                         <form id="formgroupemp" class="form-inline form-sm mt-0" method="post">
                             <div class="col-md-6">
@@ -820,16 +872,17 @@ document.addEventListener('DOMContentLoaded', function () {
             <form id="deletempform">
                 <div class="modal-body">
                     <input type="hidden" name="id" id="delete_empid"> <!-- Input เก็บ ID -->
-                    <h4 style="color:red;">คุณต้องการลบข้อมูลพนักงานหรือไม่?</h4>
+                    <h4 style="color:red;">คุณต้องการลบข้อมูล <span id="delete_empname"></span> หรือไม่?</h4>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
-                    <button type="submit" class="btn btn-danger">ลบข้อมูล</button> <!-- ปุ่มเดิม -->
+                    <button type="submit" class="btn btn-danger">ลบข้อมูล</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
 
 
 <!-- จบ process modal ของจัดกลุ่มพนักงาน -->
