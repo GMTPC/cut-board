@@ -780,12 +780,8 @@ document.addEventListener('DOMContentLoaded', function () {
     <!-- รายชื่อพนักงาน -->
     <div id="emplist" class="panel-body" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: start; padding: 10px;">
         @foreach($employees as $employee)
-            @php
-                // สุ่มสีพื้นหลัง
-                $randomColor = sprintf('#%06X', mt_rand(0, 0xFFFFFF));
-            @endphp
             <div 
-                style="background-color: {{ $randomColor }}; color: white; font-size: 14px; padding: 5px 10px; border-radius: 3px; border: 1px solid #ddd; box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2); cursor: grab;"
+                style="color: black; font-size: 14px; padding: 5px 10px; border-radius: 3px; border: 1px solid #ddd; box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2); cursor: grab;"
                 draggable="true"
                 ondragstart="drag(event)"
                 data-name="{{ $employee->name }}" 
@@ -795,6 +791,7 @@ document.addEventListener('DOMContentLoaded', function () {
         @endforeach
     </div>
 </div>
+
                             </div>
                         </div>
                         <div class="col-md-1">
