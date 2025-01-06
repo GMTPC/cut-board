@@ -4,6 +4,8 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/notif/0.1.0/notif.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/notif/0.1.0/notif.min.js"></script>
 
 <style>
     /* สไตล์ของปุ่มสลับ */
@@ -199,6 +201,7 @@ input:checked + .slider .text-off {
     outline: none; /* ลบเส้นขอบ Focus ดั้งเดิม */
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25); /* เพิ่มเงา Focus */
 }
+
 
 
 
@@ -457,7 +460,120 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 </script>
-                  
+
+<script>
+$(document).ready(function () {
+    $('#formgroupemp').on('submit', function (e) {
+        e.preventDefault(); // ป้องกันการรีเฟรชหน้า
+
+        // ตรวจสอบข้อมูลในฟอร์ม (หากมี input ว่าง)
+        var isValid = true;
+        $('input[name="eg_emp1[]"], input[name="eg_emp2[]"]').each(function () {
+            if ($(this).val().trim() === '') {
+                isValid = false;
+            }
+        });
+
+        if (!isValid) {
+            Swal.fire({
+                icon: 'error',
+                title: 'กรุณากรอกข้อมูลให้ครบถ้วน',
+                html: '<small style="color:red;">มีช่องข้อมูลที่ยังว่างอยู่</small>',
+                showConfirmButton: true
+            });
+            return; // หยุดการส่งฟอร์ม
+        }
+
+        // ส่งข้อมูลผ่าน AJAX
+        $.ajax({
+            type: 'POST',
+            url: $(this).attr('action'), // ใช้ URL ที่กำหนดใน action ของฟอร์ม
+            data: $(this).serialize(), // แปลงข้อมูลในฟอร์มเป็นรูปแบบ URL Encoded
+            success: function (response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกเรียบร้อย',
+                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+
+                setTimeout(function () {
+                    location.reload(); // รีเฟรชหน้า
+                }, 1350);
+            },
+            error: function (xhr, status, error) {
+                var errorMessage = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'เกิดข้อผิดพลาดในการบันทึก';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">' + errorMessage + '</small>',
+                    showConfirmButton: true
+                });
+
+                console.error(xhr.responseText); // สำหรับ Debugging
+            }
+        });
+    });
+
+    // ปุ่มทำใหม่ (รีเซ็ตฟอร์ม)
+    $('#removegroup').on('click', function () {
+        $('#formgroupemp')[0].reset(); // รีเซ็ตค่าทั้งหมดในฟอร์ม
+        $('#empgroupadded').empty(); // ล้างข้อมูลใน #empgroupadded (ถ้ามีการเพิ่ม input ไดนามิก)
+    });
+});
+
+    </script>
+<script>
+    $(document).ready(function() {
+    $('#empgrouptable').on('change', '.toggle-egstatus', function() {
+        var status = $(this).prop('checked') ? 1 : 0; // ตรวจสอบว่าเปิดหรือปิด
+        var id = $(this).data('id'); // รับ ID ของ GroupEmp
+
+        $.ajax({
+            type: "POST",
+            url: "/egstatus/toggle", // URL ที่เชื่อมไปยัง Backend
+            data: {
+                _token: $('meta[name="csrf-token"]').attr('content'), // CSRF Token
+                id: id,
+                status: status
+            },
+            success: function(response) {
+                if (response.success) {
+                    notif({
+                        msg: "<b>" + (status === 1 
+                            ? "เปิดการใช้งาน " + response.emp1 + " - " + response.emp2 + " แล้ว"
+                            : "ปิดการใช้งาน " + response.emp1 + " - " + response.emp2 + " แล้ว") + "</b>",
+                        type: status === 1 ? "success" : "warning"
+                    });
+                } else {
+                    notif({
+                        msg: "<b>" + response.message + "</b>",
+                        type: "error"
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(xhr.responseText); // Log ข้อผิดพลาด
+                notif({
+                    msg: "<b>เกิดข้อผิดพลาดในการเชื่อมต่อ</b>",
+                    type: "error"
+                });
+            }
+        });
+    });
+});
+
+
+
+    </script>
+
+
+
+
+
+
+
                 <p> 
                     <h4>
                     เงื่อนไข <br>
@@ -806,7 +922,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </a>
 
                         </div>
-                        <form id="formgroupemp" class="form-inline form-sm mt-0" method="post">
+                        <form id="formgroupemp" class="form-inline form-sm mt-0" method="post" action="{{ route('saveEmpGroup', ['line' => $line]) }}">
+    @csrf 
                             <div class="col-md-6">
                                 <div id="empgroupadded" class="text-center">
                                     <h4><b><u>กลุ่ม</u></b><br></h4>
@@ -818,38 +935,49 @@ document.addEventListener('DOMContentLoaded', function () {
                             </div>
                         </div>
                         <div class="text-center">
-                            <button class="btn btn-success fas fa-save" type="submit" name="button">  บันทึก</button>
+                            <button class="btn btn-success fas fa-save" type="submit" name="button">บันทึก</button>
                         </div>
-                    </form>
-                    <div class="container-fluid">
-                        <div class="table-responsive">
-                            <table id="empgrouptable" class="table table-striped table-bordered display">
-                                <thead>
-                                    <tr>
-                                        <th class="text-center">#</th>
-                                        <th class="text-center">กลุ่ม</th>
-                                        <th class="text-center">สถานะเปิดใช้งาน</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                        <tr>
-                                            <td class="text-center"></td>
-                                            <td class="text-center"> </td>
-                                            <td class="text-center">
-                                            <label class="switch">
-    <input type="checkbox" class="toggle-egstatus">
-    <span class="slider">
-        <span class="text-on">เปิด</span>
-        <span class="text-off">ปิด</span>
-    </span>
-</label>
+                    </form> 
 
-                                            </td>
-                                        </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <div class="container-fluid">
+    <div class="table-responsive">
+    <table id="empgrouptable" class="table table-striped table-bordered display">
+    <thead class="thead-dark">
+        <tr>
+            <th class="text-center align-middle">#</th>
+            <th class="text-center align-middle">กลุ่ม</th>
+            <th class="text-center align-middle">สถานะเปิดใช้งาน</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach ($groupemps as $index => $groupemp)
+            <tr>
+                <td class="text-center align-middle">{{ $index + 1 }}</td>
+                <td class="text-center align-middle">{{ $groupemp->emp1 }} - {{ $groupemp->emp2 }}</td>
+                <td class="text-center align-middle">
+                    <label class="switch">
+                    <input 
+    type="checkbox" 
+    class="toggle-egstatus" 
+    data-id="{{ $groupemp->id }}" 
+    data-emp1="{{ $groupemp->emp1 }}" 
+    data-emp2="{{ $groupemp->emp2 }}"
+    {{ $groupemp->status ? 'checked' : '' }}>
+
+                        <span class="slider">
+                            <span class="text-on">เปิด</span>
+                            <span class="text-off">ปิด</span>
+                        </span>
+                    </label>
+                </td>
+            </tr>
+        @endforeach
+    </tbody>
+</table>
+
+    </div>
+</div>
+
                     <div class="modal-footer">
                         <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
                     </div>

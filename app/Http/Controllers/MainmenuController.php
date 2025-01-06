@@ -7,6 +7,7 @@ use App\Models\GroupQC;
 use Illuminate\Support\Facades\DB; // นำเข้า DB class
 use App\Models\WorkprocessQC; // ตรวจสอบว่าโมเดลนี้มีอยู่
 use App\Models\Employee;
+use App\Models\GroupEmp; // Import Model GroupEmp
 
 class MainmenuController extends Controller
 {
@@ -16,25 +17,37 @@ class MainmenuController extends Controller
     }
     
     public function manufacture($line = null)
-{
-    // ดึงข้อมูลพนักงานเฉพาะไลน์ หรือทั้งหมดถ้า $line เป็น null
-    $employees = Employee::when($line, function ($query, $line) {
-        return $query->where('line', $line);
-    })->get();
-
-    // กรณีมีการระบุ line
-    if ($line) {
-        $groups = GroupQC::where('line', $line)->pluck('group'); // ดึงเฉพาะชื่อกลุ่ม
-        $lineheader = 'Line ' . $line; // ตั้งชื่อหัวข้อ
-    } else {
-        // กรณีไม่มีการระบุ line
-        $groups = GroupQC::pluck('group'); // ดึงกลุ่มทั้งหมด
-        $lineheader = 'All Lines'; // ตั้งชื่อหัวข้อ
+    {
+        // ดึงข้อมูลพนักงานเฉพาะไลน์ หรือทั้งหมดถ้า $line เป็น null
+        $employees = Employee::when($line, function ($query, $line) {
+            return $query->where('line', $line);
+        })->get();
+    
+        // ดึงข้อมูล GroupQC
+        $groups = GroupQC::when($line, function ($query, $line) {
+            return $query->where('line', $line);
+        })->pluck('group'); // ดึงเฉพาะชื่อกลุ่ม
+    
+        // ตั้งชื่อหัวข้อ
+        $lineheader = $line ? 'Line ' . $line : 'All Lines';
+    
+        // ดึงข้อมูล GroupEmp เฉพาะไลน์ที่ระบุ
+        $groupemps = GroupEmp::when($line, function ($query, $line) {
+            return $query->where('line', $line);
+        })->get();
+    
+        // ตรวจสอบว่ามีข้อมูลหรือไม่
+        if ($groupemps->isEmpty() && $groups->isEmpty() && $employees->isEmpty()) {
+            // หากไม่มีข้อมูลเลย อาจต้องส่งข้อความแจ้งเตือนไปยัง View
+            $message = 'ไม่พบข้อมูลสำหรับ ' . ($line ? 'Line ' . $line : 'ทุก Line');
+        } else {
+            $message = null; // ไม่มีข้อความแจ้งเตือน
+        }
+    
+        // ส่งข้อมูลไปยัง view
+        return view('manufacture', compact('groups', 'groupemps', 'lineheader', 'employees', 'line', 'message'));
     }
-
-    // ส่งข้อมูลไปยัง view
-    return view('manufacture', compact('groups', 'lineheader', 'employees', 'line'));
-}
+    
 
 public function workgroup(Request $request)
 {
@@ -81,26 +94,8 @@ public function datawip($line, $id)
     ]);
 }
 
-    public function manufacture2()
-    {
-        $groupLines = DB::table('groupQC')
-        ->where('line', '2') // เงื่อนไขสำหรับ line 1
-        ->get();
-        $employees = Employee::where('line', '2')->get(); // แสดงเฉพาะพนักงานในไลน์ 3
-
-        return view('manufacture2', compact('groupLines','employees')); // ส่งตัวแปร $groupLines ไปยัง View
-    }
-    public function manufacture3()
-    {
-        // ดึงข้อมูลเฉพาะไลน์ 3
-        $groupLines = DB::table('groupQC')
-            ->where('line', '3')
-            ->get();
     
-        $employees = Employee::where('line', '3')->get(); // แสดงเฉพาะพนักงานในไลน์ 3
-    
-        return view('manufacture3', compact('groupLines', 'employees'));
-    }
+   
 
     public function startWork(Request $request)
 {
@@ -126,31 +121,6 @@ public function datawip($line, $id)
     
 
 
-    public function line3cut()
-{
-    // ดึงข้อมูลทั้งหมดจากตาราง groupQC
-    $groupLines = GroupQC::all();
+    
 
-    // ดึงข้อมูลล่าสุดจากตาราง WorkProcessQC
-    $latestWork = WorkProcessQC::orderBy('created_at', 'desc')->first();
-
-    // ส่งข้อมูลไปยัง View
-    return view('L3cut', compact('groupLines', 'latestWork'));
-}
-
-public function warehousenk()
-{
-   
-    return view('warehouseNK');
-}
-public function warehouseby()
-{
-   
-    return view('warehouseBY');
-}
-public function warehousebp()
-{
-   
-    return view('warehouseBP');
-}
 }

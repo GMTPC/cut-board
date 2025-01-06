@@ -32,6 +32,10 @@ Route::middleware('auth')->group(function () {
 
 });
 Route::get('/manufacture/L{line}', [MainmenuController::class, 'manufacture'])->name('manufacture');
+Route::post('/save-emp-group/{line}', [EmployeeController::class, 'saveEmpGroup'])->name('saveEmpGroup');
+
+Route::post('/egstatus/toggle', [EmployeeController::class, 'toggleStatus'])->name('toggleStatus');
+
 
 Route::post('/workprocess/start', [MainmenuController::class, 'startWork'])->name('workprocess.start');
 Route::get('/linecut', [MainmenuController::class, 'line3cut'])->name('line3cut');

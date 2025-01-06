@@ -14,8 +14,7 @@ class GroupQC extends Model
 
     // ระบุคอลัมน์ที่สามารถบันทึกลงฐานข้อมูลได้
     protected $fillable = [
-        'group',
-        'line',
-        'date',
+        'group',    // ชื่อกลุ่ม
+        'line',     // ไลน์งาน
     ];
 }

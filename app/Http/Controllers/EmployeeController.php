@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Models\GroupEmp; // Import Model GroupEmp
 
 class EmployeeController extends Controller
 {
@@ -137,8 +138,80 @@ public function employeesaveline1(Request $request)
             return response()->json(['message' => 'ลบข้อมูลไม่สำเร็จ', 'error' => $e->getMessage()], 500);
         }
     }
+    public function saveEmpGroup(Request $request, $line)
+    {
+        try {
+            // รับข้อมูลจากฟอร์ม
+            $emp1List = $request->input('eg_emp1'); // ชื่อพนักงานคนที่ 1
+            $emp2List = $request->input('eg_emp2'); // ชื่อพนักงานคนที่ 2
+    
+            // ตรวจสอบข้อมูล
+            if (empty($emp1List) || empty($emp2List) || count($emp1List) !== count($emp2List)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ข้อมูลพนักงานไม่ครบถ้วน'
+                ], 400);
+            }
+    
+            $date = now();
+    
+            // วนลูปเพื่อบันทึกข้อมูล
+            foreach ($emp1List as $index => $emp1) {
+                GroupEmp::create([
+                    'emp1' => $emp1,
+                    'emp2' => $emp2List[$index],
+                    'line' => $line,
+                    'date' => $date,
+                ]);
+            }
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'บันทึกข้อมูลสำเร็จ'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function toggleStatus(Request $request)
+    {
+        try {
+            // ค้นหา GroupEmp ตาม ID
+            $groupEmp = GroupEmp::findOrFail($request->id);
+    
+            // อัปเดตสถานะ
+            $groupEmp->update(['status' => $request->status]);
+    
+            return response()->json([
+                'success' => true,
+                'message' => $request->status == 1
+                    ? "เปิดการใช้งาน {$groupEmp->emp1} - {$groupEmp->emp2} แล้ว"
+                    : "ปิดการใช้งาน {$groupEmp->emp1} - {$groupEmp->emp2} แล้ว",
+                'emp1' => $groupEmp->emp1,
+                'emp2' => $groupEmp->emp2,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    
+    
+    }
+    
+    
+    
+    
     
 
-    }
+
+
+    
     
      
