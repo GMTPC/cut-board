@@ -90,6 +90,17 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
         ],
+        'sqlsrv_bplus' => [
+        'driver' => 'sqlsrv',
+        'host' => env('DB_BPLUS_HOST', '127.0.0.1'),
+        'port' => env('DB_BPLUS_PORT', '1433'),
+        'database' => env('DB_BPLUS_DATABASE', 'your_database_name'),
+        'username' => env('DB_BPLUS_USERNAME', 'your_username'),
+        'password' => env('DB_BPLUS_PASSWORD', 'your_password'),
+        'charset' => 'utf8',
+        'prefix' => '',
+        'prefix_indexes' => true,
+    ],
 
     ],
 

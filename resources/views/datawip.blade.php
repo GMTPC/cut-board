@@ -2,6 +2,10 @@
 
 @section('content')
 <!--<meta HTTP-EQUIV="Refresh"  CONTENT="3600">-->
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
 .btn-custom {
     background-color: #4CAF92; /* สีเขียวสด */
@@ -52,7 +56,178 @@
 .panel-body {
     padding: 15px;
 }
+.btn-sm i {
+        font-size: 16px; /* ขนาดของไอคอน */
+        margin-right: 5px; /* ระยะห่างระหว่างไอคอนกับข้อความ */
+    }
+
+    .btn-warning {
+        background-color: #f0ad4e;
+        border: none;
+    }
+
+    .btn-warning:hover {
+        background-color: #ec971f;
+    }
+
+    .btn-info {
+        background-color: #5bc0de;
+        border: none;
+    }
+
+    .btn-info:hover {
+        background-color: #31b0d5;
+    }
+
+    .btn-danger {
+        background-color: #d9534f;
+        border: none;
+    }
+
+    .btn-danger:hover {
+        background-color: #c9302c;
+    }
+
     </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // ดึง URL ของ Route
+        const line = 'L2'; // ตัวอย่าง line ที่ต้องการ
+        const url = `/getemp/${line}`; // แก้ไข URL ตาม Route
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const select = document.querySelector('select[name="wip_empgroup_id"]');
+                // ล้างข้อมูลใน select
+                select.innerHTML = '<option value="0">เลือกผู้คัด</option>';
+                // เติมข้อมูลจาก API
+                data.forEach(group => {
+                    const option = document.createElement('option');
+                    option.value = group.id;
+                    option.textContent = `${group.emp1} - ${group.emp2}`;
+                    select.appendChild(option);
+                });
+            })
+            .catch(error => console.error('Error fetching data:', error));
+    });
+</script>
+<script>
+    document.getElementById('subline1').addEventListener('click', function (e) {
+        e.preventDefault(); // ป้องกันการรีเฟรชหน้า
+
+        // ดึงค่าจากฟอร์ม
+        const wipBarcode = document.getElementById('wip_barcode').value;
+
+        // ส่งข้อมูลด้วย AJAX
+        fetch('/insert-wip', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') // ต้องเพิ่ม CSRF Token
+            },
+            body: JSON.stringify({
+                wip_barcode: wipBarcode,
+                wip_amount: 1, // ใส่ค่าที่ต้องการส่ง เช่น จำนวน
+                wip_empgroup_id: 1, // ตัวอย่างข้อมูล
+                pe_type_code: 'PE123', // ตัวอย่างข้อมูล
+                wp_working_id: 1, // ตัวอย่างข้อมูล
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                alert(data.message); // แสดงข้อความตอบกลับ
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    });
+</script>
+<!-- เชื่อมต่อ jQuery และ SweetAlert2 -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+$(document).ready(function() {
+    $('#insertwipline1').on('submit', function(e) {
+        e.preventDefault();
+
+        $.ajax({
+            type: "POST",
+            url: "{{ url('/insert-wip/line') }}/" + "{{ $line }}" + "/" + "{{ $work_id }}",
+            data: $('#insertwipline1').serialize(),
+            success: function(response) {
+                if (response.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: response.title,
+                        html: '<small style="color:green;">' + response.message + '</small>',
+                        showConfirmButton: false,
+                        timer: 1000
+                    });
+                    window.setTimeout(function() {
+                        location.reload();
+                    }, 800);
+                }
+            },
+            error: function(xhr) {
+                let response = xhr.responseJSON;
+
+                // กรณีไม่พบข้อมูล work process
+                if (response.message === 'ไม่พบข้อมูลกระบวนการทำงานสำหรับ work_id นี้') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ไม่พบข้อมูล',
+                        html: '<small style="color:red;">ไม่พบข้อมูลกระบวนการทำงานสำหรับ work_id นี้</small>',
+                        showConfirmButton: true
+                    });
+                }
+                // กรณี line ไม่ตรงกับ work_id
+                else if (response.message === 'Line ไม่ตรงกับ work_id') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ไลน์ไม่ตรงกัน',
+                        html: '<small style="color:red;">Line ใน URL: ' + response.line_from_url + '<br>Line ในฐานข้อมูล: ' + response.line_from_db + '</small>',
+                        showConfirmButton: true
+                    });
+                }
+                // กรณี Barcode ซ้ำ
+                else if (response.message === 'บาร์โค้ดซ้ำในระบบ กรุณาตรวจสอบอีกครั้ง') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'บันทึกข้อมูลไม่สำเร็จ',
+                        html: '<small style="color:red;">บาร์โค้ดซ้ำในระบบ กรุณาตรวจสอบอีกครั้ง</small>',
+                        showConfirmButton: true
+                    });
+                }
+                // กรณี Barcode ไม่ถูกต้อง
+                else if (response.message === 'สาเหตุอาจจะมาจากชนิดที่ไม่เหมือนกัน บาร์โค้ดซ้ำ ยังไม่เลือกผู้คัด หรือ รูปแบบไม่ถูกต้อง') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'บันทึกข้อมูลไม่สำเร็จ',
+                        html: '<small style="color:red;">สาเหตุอาจจะมาจากชนิดที่ไม่เหมือนกัน บาร์โค้ดซ้ำ ยังไม่เลือกผู้คัด หรือ รูปแบบไม่ถูกต้อง</small>',
+                        showConfirmButton: true
+                    });
+                }
+                // กรณีเกิด Error อื่น ๆ
+                else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        html: '<small style="color:red;">มีบางอย่างผิดพลาด กรุณาลองใหม่อีกครั้ง</small>',
+                        showConfirmButton: true
+                    });
+                }
+            }
+        });
+    });
+});
+</script>
+
+
 
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
@@ -106,8 +281,8 @@
     <div class="panel-body" style="padding: 0;">
         <div class="row text-center">
             <div class="col-md-3 col-xs-3">
-                <h4>จำนวนแผ่นเข้า</h4>
-                <h4>0</h4>
+            <h4>จำนวนแผ่นเข้า</h4>
+            <h4>{{ $totalWipAmount ?? '0' }}</h4>
             </div>
             <div class="col-md-3 col-xs-3">
                 <h4>จำนวนแผ่นออก</h4>
@@ -115,7 +290,7 @@
             </div>
             <div class="col-md-3 col-xs-3">
                 <h4>คงค้าง (HD)</h4>
-                <h4>0</h4>
+                <h4>{{ $totalWipAmount ?? '0' }}</h4>
             </div>
             <div class="col-md-3 col-xs-3">
                 <h4>เสีย (NG)</h4>
@@ -126,54 +301,98 @@
 </div>
 
 <div class="row">
+    <!-- ข้อมูลเข้า (WIP) -->
     <div class="col-md-6">
         <div class="panel panel-gmt">
-            <div class="panel-heading text-center" style="font-size:18px;">ข้อมูลเข้า (WIP)</div>
+            <div class="panel-heading text-center" style="font-size:18px;">
+                ข้อมูลเข้า (WIP)
+            </div>
             <div class="panel-body">
-                <form id="insertwipline1" class="form-inline text-center" enctype="multipart/form-data" method="post">
-                    <select name="wip_empgroup_id" class="form-control">
-                        <option value="0">เลือกผู้คัด</option>
+                <!-- ฟอร์มสำหรับเพิ่มข้อมูล -->
+                <form id="insertwipline1" class="form-inline text-center" action="{{ url('/insert-wip/line/' . $line . '/' . $work_id) }}" method="POST">
+                    @csrf
+                    <select name="wip_empgroup_id" class="form-control" required>
+                        <option value="">เลือกผู้คัด</option>
+                        @foreach ($empGroups as $group)
+                            <option value="{{ $group->id }}">{{ $group->emp1 }} - {{ $group->emp2 }}</option>
+                        @endforeach
                     </select>
                     <input id="wip_barcode" name="wip_barcode" type="text" class="form-control text-center" 
-                           placeholder="สแกนบาร์โค้ดยิงรับเข้า WIP" autofocus>
+                           placeholder="สแกนบาร์โค้ดยิงรับเข้า WIP" minlength="24" required autofocus>
+                    <input type="hidden" name="pe_type_code" value="TYPECODE">
+                    <input type="hidden" name="wp_working_id" value="{{ $work_id }}">
+                    <input type="hidden" name="wip_amount" value="10">
                     <button id="subline1" type="submit" class="btn btn-default">
                         <i class="fa fa-barcode"></i>
                     </button>
                 </form>
+
+                <!-- ตารางข้อมูล -->
                 <table id="myTableCode" class="table table-bordered text-center">
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th>บาร์โค้ด</th>
-                            <th>ผู้คัด</th>
-                            <th><i class="fa fa-cog"></i></th>
+                            <th style="width: 5%;">#</th>
+                            <th style="width: 50%;">บาร์โค้ด</th>
+                            <th style="width: 25%;">ผู้คัด</th>
+                            <th style="width: 20%;"><i class="fa fa-cog"></i></th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
+    @forelse ($wipBarcodes as $index => $barcode)
+        <tr>
+            <td>{{ $index + 1 }}</td>
+            <td style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                {{ $barcode->wip_barcode }}
+            </td>
+            <td>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; height: 100%;">
+        <span>{{ $barcode->groupEmp->emp1 }} - {{ $barcode->groupEmp->emp2 }}</span>
+        <!-- ไอคอนแก้ไข -->
+        <a href="javascript:void(0);" class="btn btn-black btn-xs" title="แก้ไขข้อมูล" 
+           style="padding: 5px 10px; font-size: 12px; background-color: black; color: white; border-color: black;">
+            <i class="fa fa-pencil-square-o"></i>
+        </a>
+    </div>
+</td>
 
-                        </tr>
-                    </tbody>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>บาร์โค้ด</th>
-                            <th>ผู้คัด</th>
-                            <th><i class="fa fa-cog"></i></th>
-                        </tr>
-                    </thead>
+            <td>
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                    <!-- ปุ่มแก้ไข -->
+                    <a href="javascript:void(0);" class="btn btn-warning btn-xs" title="แก้ไขข้อมูล" style="padding: 5px 10px; font-size: 12px;">
+                        <i class="fa fa-pencil-square-o"></i>
+                    </a>
+
+                    <!-- ปุ่มแก้ไขจำนวน -->
+                    <a href="javascript:void(0);" class="btn btn-info btn-xs" title="แก้ไขจำนวน" style="padding: 5px 10px; font-size: 12px;">
+                        <i class="fa fa-sort-numeric-asc"></i>
+                    </a>
+
+                    <!-- ปุ่มลบ -->
+                    <a href="javascript:void(0);" onclick="confirmDelete()" class="btn btn-danger btn-xs" title="ลบข้อมูล" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">
+                        <i class="fa fa-trash"></i>
+                    </a>
+                </div>
+            </td>
+        </tr>
+    @empty
+        <tr>
+            <td colspan="4">ไม่มีข้อมูล</td>
+        </tr>
+    @endforelse
+</tbody>
+
+
                 </table>
             </div>
         </div>
     </div>
 
+    <!-- ข้อมูลออก (FG) -->
     <div class="col-md-6">
         <div class="panel panel-gmt">
-            <div class="panel-heading text-center" style="font-size:18px;">ข้อมูลออก (FG)</div>
+            <div class="panel-heading text-center" style="font-size:18px;">
+                ข้อมูลออก (FG)
+            </div>
             <div class="panel-body">
                 <div class="text-center">
                     <button class="btn btn-warning">
@@ -192,26 +411,20 @@
                     </thead>
                     <tbody>
                         <tr>
-                        <td></td>
+                            <td></td>
+                            <td></td>
                             <td></td>
                             <td></td>
                             <td></td>
                         </tr>
                     </tbody>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>LOT FG</th>
-                            <th>จำนวน</th>
-                            <th>OUT FG CODE</th>
-                            <th><i class="fa fa-cog"></i></th>
-                        </tr>
-                    </thead>
                 </table>
             </div>
         </div>
     </div>
 </div>
+
+
 
   
 
@@ -230,7 +443,16 @@
 });
  </script>
 
-                                   
+@if ($errors->any())
+    <div class="alert alert-danger">
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+                                 
                                        
             {{-- <div id="detail" class="tab-pane fade">
                 <div class="container-fluid">

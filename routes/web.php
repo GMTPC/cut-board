@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use  App\Http\Controllers\MainmenuController;
 use App\Http\Controllers\UserSettingsController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\WipController;
 
 
 /*
@@ -37,7 +38,6 @@ Route::post('/save-emp-group/{line}', [EmployeeController::class, 'saveEmpGroup'
 Route::post('/egstatus/toggle', [EmployeeController::class, 'toggleStatus'])->name('toggleStatus');
 
 
-Route::post('/workprocess/start', [MainmenuController::class, 'startWork'])->name('workprocess.start');
 Route::get('/linecut', [MainmenuController::class, 'line3cut'])->name('line3cut');
 Route::middleware('auth')->group(function () {
     Route::get('/settings', [UserSettingsController::class, 'edit'])->name('settings.edit');
@@ -70,5 +70,9 @@ Route::post('/workprocess', [MainmenuController::class, 'workgroup'])->name('wor
 Route::get('/production/datawip/L{line}/{id}', [MainmenuController::class, 'datawip'])->name('datawip');
 Route::post('/save-employees', [EmployeeController::class, 'saveEmployees'])->name('save-employees');
 Route::delete('/deleteemp/{id}', [EmployeeController::class, 'delete'])->name('delete.employee');
+
+
+Route::get('/getemp/{line}', [EmployeeController::class, 'getEmpGroups'])->name('line.getEmpGroups');
+Route::post('/insert-wip/line/{line}/{work_id}', [WipController::class, 'insertWip']);
 
 require __DIR__.'/auth.php';

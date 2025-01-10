@@ -201,7 +201,17 @@ public function employeesaveline1(Request $request)
             ], 500);
         }
     }
-    
+    public function getEmpGroups($line)
+    {
+        // ดึงข้อมูลเฉพาะ line และ status = 1
+        $empGroups = GroupEmp::where('line', $line)
+            ->where('status', 1)
+            ->get();
+
+        // ส่งข้อมูลไปยัง View
+        return view('datawip', compact('empGroups'));
+    }
+
     
     }
     

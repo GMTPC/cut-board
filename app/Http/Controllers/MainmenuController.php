@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB; // นำเข้า DB class
 use App\Models\WorkprocessQC; // ตรวจสอบว่าโมเดลนี้มีอยู่
 use App\Models\Employee;
 use App\Models\GroupEmp; // Import Model GroupEmp
+use App\Models\Wipbarcode;
 
 class MainmenuController extends Controller
 {
@@ -49,74 +50,95 @@ class MainmenuController extends Controller
     }
     
 
-public function workgroup(Request $request)
-{
-    // ตรวจสอบว่าค่า line และ group ถูกส่งมาหรือไม่
-    if (!$request->has('ww_line') || !$request->has('ww_group')) {
-        return back()->withErrors('Line and Group are required.');
+    public function workgroup(Request $request)
+    {
+        // ตรวจสอบค่าจาก Request
+        if (!$request->has('ww_line') || !$request->has('ww_group')) {
+            return back()->withErrors('Line and Group are required.');
+        }
+    
+        // ตรวจสอบว่าค่า ww_group มีหรือไม่
+        $group = $request->input('ww_group');
+        if (empty($group)) {
+            return back()->withErrors('Group is required.');
+        }
+    
+        // กำหนดวันที่ปัจจุบัน
+        $currentDate = now(); // เวลาปัจจุบันในไทย (Asia/Bangkok)
+        
+        // ตรวจสอบ Group และปรับวันที่ตามเงื่อนไข
+        if ($group === 'B') {
+            // กะกลางคืน: ตรวจสอบเวลา หากเวลาไม่เกิน 8 โมงเช้า ให้ลบ 1 วัน
+            if ($currentDate->hour < 8) {
+                $currentDate->subDay(); // ลบ 1 วัน
+            }
+        }
+        // หากเป็น Group A ให้ใช้วันที่ปัจจุบัน
+        $dateForWork = $currentDate->format('Y-m-d'); // แปลงวันที่ให้อยู่ในรูปแบบ Y-m-d
+    
+        // บันทึกข้อมูลลงในฐานข้อมูล
+        $workprocess = WorkProcessQC::create([
+            'line' => $request->input('ww_line'),
+            'group' => $group,
+            'date' => $dateForWork, // ใช้วันที่ที่ปรับตามเงื่อนไข
+            'status' => 'กำลังคัด',
+        ]);
+    
+        // ดึงค่า $line และ $id
+        $line = $request->input('ww_line');
+        $id = $workprocess->id;
+    
+        // เปลี่ยนเส้นทางไปยัง route 'datawip'
+        return redirect()->route('datawip', ['line' => $line, 'id' => $id]);
     }
+    
+    
 
-    // บันทึกข้อมูลลงในฐานข้อมูล
-    $workprocess = WorkProcessQC::create([
-        'line' => $request->input('ww_line'),
-        'group' => $request->input('ww_group'),
-        'date' => $request->input('ww_lot_date'),
-        'status' => 'กำลังคัด',
-    ]);
-
-    // ดึงค่า $line และ $id
-    $line = $request->input('ww_line');
-    $id = $workprocess->id;
-
-    // เปลี่ยนเส้นทางไปยัง route 'datawip'
-    return redirect()->route('datawip', ['line' => $line, 'id' => $id]);
-}
-
-public function datawip($line, $id)
-{
-    // ค้นหา WorkProcess ตาม id
-    $workprocess = WorkProcessQC::find($id);
-
-    // ตรวจสอบว่ามีข้อมูลหรือไม่
-    if (!$workprocess) {
-        abort(404, 'ไม่พบข้อมูล');
+    public function datawip($line, $id)
+    {
+        // ค้นหา WorkProcess ตาม id
+        $workprocess = WorkProcessQC::find($id);
+    
+        // ตรวจสอบว่ามีข้อมูลหรือไม่
+        if (!$workprocess) {
+            abort(404, 'ไม่พบข้อมูล');
+        }
+    
+        // ตรวจสอบว่า line ที่ส่งมาตรงกับ line ในฐานข้อมูลหรือไม่
+        if ($workprocess->line !== $line) {
+            abort(404, 'ข้อมูล Line ไม่ถูกต้อง');
+        }
+    
+        // ดึงข้อมูลผู้คัดเฉพาะ line และ status = 1
+        $empGroups = GroupEmp::where('line', $line)
+            ->where('status', 1)
+            ->get();
+    
+        // ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้อง
+        $wipBarcodes = Wipbarcode::with('groupEmp') // ดึงข้อมูลผู้คัดที่สัมพันธ์กัน
+            ->where('wip_working_id', $id)
+            ->get();
+    
+        // คำนวณผลรวมของ wip_amount ตามเงื่อนไข
+        $totalWipAmount = Wipbarcode::where('wip_working_id', $id)
+        ->sum('wip_amount'); // ลองคำนวณโดยไม่ใช้เงื่อนไข LIKE
+    
+        // ส่งข้อมูลไปยัง View
+        return view('datawip', [
+            'workprocess' => $workprocess,
+            'line' => $line,
+            'empGroups' => $empGroups,
+            'work_id' => $id, // เพิ่มการส่ง work_id ไปยัง View
+            'wipBarcodes' => $wipBarcodes, // เพิ่มข้อมูลบาร์โค้ดไปยัง View
+            'totalWipAmount' => $totalWipAmount, // ส่งผลรวมของ wip_amount ไปยัง View
+        ]);
     }
-
-    // ตรวจสอบว่า line ที่ส่งมาตรงกับ line ในฐานข้อมูลหรือไม่
-    if ($workprocess->line !== $line) {
-        abort(404, 'ข้อมูล Line ไม่ถูกต้อง');
-    }
-
-    // ส่งข้อมูลไปยัง View
-    return view('datawip', [
-        'workprocess' => $workprocess,
-        'line' => $line, // ส่ง line ไปด้วย
-    ]);
-}
-
+    
+    
     
    
 
-    public function startWork(Request $request)
-{
-    $validated = $request->validate([
-        'group' => 'required|string',
-        'line' => 'required|string',
-        'date' => 'required|date',
-    ]);
-
-    WorkProcessQC::create([
-        'group' => $validated['group'],
-        'line' => $validated['line'],
-        'date' => $validated['date'],
-        'status' => 'กำลังคัด',
-    ]);
-
-    // เก็บข้อความสำเร็จใน Session
-    return redirect()->route('line3cut')->with('success', 'เริ่มงานใหม่สำเร็จ!');
-    
-    }
-    
+  
 
     
 
