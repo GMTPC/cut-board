@@ -226,8 +226,22 @@ $(document).ready(function() {
     });
 });
 </script>
-
-
+<script>
+$(document).ready(function() {
+    $('.open-edit-modal').click(function() {
+        $('#editempwip').modal('show');  // เปิด Modal
+    });
+});
+    </script>
+<script>
+    $(document).ready(function() {
+        // เมื่อคลิกที่ปุ่ม open-ng-modal
+        $('.open-ng-modal').click(function() {
+            // เปิด Modal ที่มี id เป็น notiinputng
+            $('#notiinputng').modal('show');
+        });
+    });
+</script>
 
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
@@ -348,19 +362,26 @@ $(document).ready(function() {
     <div style="display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; height: 100%;">
         <span>{{ $barcode->groupEmp->emp1 }} - {{ $barcode->groupEmp->emp2 }}</span>
         <!-- ไอคอนแก้ไข -->
-        <a href="javascript:void(0);" class="btn btn-black btn-xs" title="แก้ไขข้อมูล" 
-           style="padding: 5px 10px; font-size: 12px; background-color: black; color: white; border-color: black;">
-            <i class="fa fa-pencil-square-o"></i>
-        </a>
+        <a href="javascript:void(0);" 
+   class="btn btn-black btn-xs open-edit-modal" 
+   title="แก้ไขข้อมูล"
+   style="padding: 5px 10px; font-size: 12px; background-color: black; color: white; border-color: black;">
+    <i class="fa fa-pencil-square-o"></i>
+</a>
+
     </div>
 </td>
 
             <td>
                 <div style="display: flex; gap: 8px; justify-content: center;">
                     <!-- ปุ่มแก้ไข -->
-                    <a href="javascript:void(0);" class="btn btn-warning btn-xs" title="แก้ไขข้อมูล" style="padding: 5px 10px; font-size: 12px;">
-                        <i class="fa fa-pencil-square-o"></i>
-                    </a>
+                    <a href="javascript:void(0);" 
+   class="btn btn-warning btn-xs open-ng-modal" 
+   title="แก้ไขข้อมูล" 
+   style="padding: 5px 10px; font-size: 12px;">
+   <i class="fa fa-pencil-square-o"></i>
+</a>
+
 
                     <!-- ปุ่มแก้ไขจำนวน -->
                     <a href="javascript:void(0);" class="btn btn-info btn-xs" title="แก้ไขจำนวน" style="padding: 5px 10px; font-size: 12px;">
@@ -442,7 +463,92 @@ $(document).ready(function() {
     }
 });
  </script>
+<script>
+$(document).ready(function() {
+    // ✅ ตั้งค่า CSRF Token สำหรับ AJAX
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
 
+    // ดักจับการ Submit Form
+    $('#editempwipform').submit(function(e) {
+        e.preventDefault();
+
+        let url = window.location.pathname;
+        let id = url.substring(url.lastIndexOf('/') + 1);
+
+        $.ajax({
+            url: '/update-empgroup/' + id,
+            type: 'POST',  // ✅ ใช้ POST แล้วแนบ _method=PUT
+            data: $(this).serialize() + '&_method=PUT',
+
+            // ✅ แสดง SweetAlert Loading ขณะบันทึก
+            beforeSend: function() {
+                Swal.fire({
+                    title: 'กรุณารอสักครู่...',
+                    html: '<small style="color:green;">ระบบกำลังทำการบันทึกข้อมูล</small>',
+                    allowOutsideClick: false,  // ไม่ให้คลิกปิด
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            },
+
+            success: function(response) {
+                if (response.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกเรียบร้อย',
+                        html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                        showConfirmButton: false,
+                        timer: 1500  // ✅ ปิดเองอัตโนมัติหลัง 1.5 วินาที
+                    });
+
+                    // ✅ รีเฟรชหน้าเว็บหลังแจ้งเตือน
+                    window.setTimeout(function() {
+                        location.reload();
+                    }, 1500);
+
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'บันทึกข้อมูลไม่สำเร็จ',
+                        html: `<small style="color:red;">${response.message}</small>`,
+                        showConfirmButton: true
+                    });
+                }
+            },
+
+            error: function(xhr) {
+                console.error('ข้อผิดพลาด:', xhr.responseText);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">กด OK เพื่อปิดหน้าต่าง</small>',
+                    showConfirmButton: true
+                });
+            }
+        });
+    });
+});
+</script>
+
+<script>
+$(document).ready(function() {
+    $('#wip_empgroup_id').on('change', function() {
+        let selectedOption = $(this).find('option:selected');
+        let emp1 = selectedOption.data('emp1');
+        let emp2 = selectedOption.data('emp2');
+
+        $('#emp1_old').val(emp1);
+        $('#emp2_old').val(emp2);
+    });
+});
+
+    </script>
 @if ($errors->any())
     <div class="alert alert-danger">
         <ul>
@@ -709,8 +815,8 @@ $(document).ready(function() {
                 <div class="modal-body">
                    
                     <div class="text-center">
-                        <h4><b>Barcode : <u id="showwipbarcode2"></u> </b></h4><br>
-                        <b style="font-size:17px;">จำนวนที่ต้องการแก้ไข : </b><input type='number' id='wipnewamount' class='text-center' name='wip_amount'>
+                    <h4><b>Barcode : <u><i id="empwipbarcode"></i></u></b></h4>
+                    <b style="font-size:17px;">จำนวนที่ต้องการแก้ไข : </b><input type='number' id='wipnewamount' class='text-center' name='wip_amount'>
                         <input type='hidden' id='wipbarcodechange' class='text-center' name='wip_barcode'>
                     </div>
                     {{-- <div class="text-center" id="editamountid">
@@ -729,7 +835,7 @@ $(document).ready(function() {
                     <span aria-hidden="true">&times;</span>
                 </button>
                 <h3 class="modal-title" id="InputNg"><b>เพิ่มข้อมูลของเสีย</b></h3>
-                <h4><b>Barcode : <i id="showbarcodewip"></i></b></h4>
+                <h4><b>Barcode : <i id="showbarcodewip">{{ $wipBarcodes->first()->wip_barcode ?? 'ไม่มีข้อมูล' }}</i></b></h4>
             </div>
             <div class="modal-body">
                 <div class="panel-body">
@@ -766,12 +872,16 @@ $(document).ready(function() {
                                             </tr>
                                             <tr>
                                                 <td class="text-left">
-                                                    <select name="amg_ng_id[]" data-size="2" class="btn btn-info btn-sm" data-live-search="true" style="font-size:16px;">
-                                                        <option value="">เลือกของเสีย</option>
-                                                        
-                                                            <option style="font-size:16px;" data-tokens="" value="">
-                                                            </option>
-                                                    </select>
+                                                <select name="amg_ng_id[]" data-size="2" class="btn btn-info btn-sm" data-live-search="true" style="font-size:16px;">
+    <option value="">เลือกของเสีย</option>
+    
+    @foreach($listNgAll as $ng)
+        <option style="font-size:16px;" data-tokens="{{ $ng->lng_name }}" value="{{ $ng->lng_id }}">
+            {{ $ng->lng_name }}
+        </option>
+    @endforeach
+</select>
+
                                                 </td>
                                                 <td class="text-left"><input type="number" value="" name="amg_amount[]" placeholder="จำนวน"/>
                                                     <input type="hidden" value="" name="amg_wip_id[]" id="inputng_idchild"></td>
@@ -954,34 +1064,73 @@ $(document).ready(function() {
 <div class="modal fade" id="editempwip" tabindex="-1" role="dialog" aria-labelledby="EditEnpWip" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
+            
+            <!-- ส่วนหัวของ Modal -->
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
-                <h3 class="modal-title" id="EditEnpWip"><b>แก้ไขข้อมูลผู้คัด </b></h3>
-                <h4><b>Barcode :<u><i id="empwipbarcode"></i></u></b></h4>
+                <h3 class="modal-title" id="EditEnpWip"><b>แก้ไขข้อมูลผู้คัด</b></h3>
+                <h4><b>Barcode : <u><i id="empwipbarcode">{{ $wipBarcodes->first()->wip_barcode ?? 'ไม่มีข้อมูล' }}</i></u></b></h4>
             </div>
+
+            <!-- ส่วนเนื้อหาหลักของ Modal -->
             <div class="container-fluid">
                 <form id="editempwipform">
+                    @csrf  <!-- ✅ เพิ่ม CSRF Token -->
+                    @method('PUT')  <!-- ✅ ระบุ Method ให้ Laravel รับรู้ -->
+
                     <div class="modal-body">
                         <div class="text-center">
-                            <select name="wip_empgroup_id" class="margin-select selectpicker show-tick form-control" aria-required="true" data-size="9" data-dropup-auto="true" data-live-search="true" data-style="btn-info btn-md text-white" data-width="fit" data-container="body" required>
+                            <!-- Dropdown แสดงผู้คัด -->
+                            <select name="wip_empgroup_id" 
+                                    id="wip_empgroup_id"
+                                    class="margin-select selectpicker show-tick form-control" 
+                                    aria-required="true" 
+                                    data-size="9" 
+                                    data-dropup-auto="true" 
+                                    data-live-search="true" 
+                                    data-style="btn-info btn-md text-white" 
+                                    data-width="fit" 
+                                    data-container="body" 
+                                    required>
+                                
+                                <!-- ตัวเลือกเริ่มต้น -->
                                 <option style="font-size:15px;" value="0">เลือกผู้คัด</option>
-                                    <option style="font-size:15px;" data-tokens="1" value="\">\</option>
+                                
+                                <!-- วนลูปแสดงรายชื่อผู้คัด -->
+                                @foreach ($empGroups as $group)
+                                    <option style="font-size:15px;" 
+                                            value="{{ $group->id }}" 
+                                            data-emp1="{{ $group->emp1 }}" 
+                                            data-emp2="{{ $group->emp2 }}">
+                                        {{ $group->emp1 }} - {{ $group->emp2 }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
+
+                        <!-- Hidden Input -->
                         <input type="hidden" name="id" id="empwipid">
                         <input type="hidden" name="wip_empgroup_id_old" id="empgropidwip">
+                        <input type="hidden" name="emp1_old" id="emp1_old">
+                        <input type="hidden" name="emp2_old" id="emp2_old">
                     </div>
+
+                    <!-- ปุ่มใน Modal -->
                     <div class="modal-footer">
                         <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
                         <button type="submit" class="btn btn-success">บันทึก</button>
                     </div>
                 </form>
             </div>
+
         </div>
     </div>
 </div>
+
+
+
 
 
 
@@ -1029,7 +1178,16 @@ $(document).ready(function() {
 
 <script type="text/javascript">
 
-var slectElement = '<td class="text-left"><select name="amg_ng_id[]" data-size="2" class="btn btn-info btn-sm" data-live-search="true" style="font-size:16px;"><option value="">เลือกของเสีย</option><option value=""></option></select></td>';
+var slectElement = '<td class="text-left">' +
+    '<select name="amg_ng_id[]" data-size="2" class="btn btn-info btn-sm" data-live-search="true" style="font-size:16px;">' +
+        '<option value="">เลือกของเสีย</option>' +
+        '@foreach($listNgAll as $ng)' +
+            '<option style="font-size:16px;" data-tokens="{{ $ng->lng_name }}" value="{{ $ng->lng_id }}">' +
+                '{{ $ng->lng_name }}' +
+            '</option>' +
+        '@endforeach' +
+    '</select>' +
+'</td>';
         var inputngid = '<input type="hidden" value="" name="amg_wip_id[]" id="inputng_idchild">';
         var inputElement = '<td class="text-left"><input type="number" value="" name="amg_amount[]" placeholder="จำนวน"/>'+inputngid+'</td>'
         var workid = '';

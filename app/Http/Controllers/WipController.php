@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Wipbarcode, WipProductDate, EmpInOut, ProductTypeEmp, WipWorktime, WorkProcessQC};
+use App\Models\{Wipbarcode, WipProductDate, EmpInOut, ProductTypeEmp, WipWorktime, WorkProcessQC,GroupEmp};
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
@@ -219,4 +219,45 @@ class WipController extends Controller
     {
         return Wipbarcode::where('wip_barcode', $barcode)->exists();
     }
+    public function updateEmpGroup(Request $request, $id)
+    {
+        try {
+            // ตรวจสอบข้อมูล
+            $request->validate([
+                'emp1_old' => 'required|string',
+                'emp2_old' => 'required|string',
+            ]);
+    
+            // ดึงชื่อผู้คัดใหม่จากฟอร์ม
+            $emp1_new = $request->input('emp1_old');
+            $emp2_new = $request->input('emp2_old');
+    
+            // ค้นหา ID จาก group_emp
+            $newGroupEmp = GroupEmp::where('emp1', $emp1_new)
+                                   ->where('emp2', $emp2_new)
+                                   ->first();
+    
+            // ✅ ค้นหา WIP Barcode ด้วย wip_id
+            $wipBarcode = Wipbarcode::where('wip_working_id', $id)->first();
+    
+            if (!$wipBarcode) {
+                return response()->json(['status' => 'error', 'message' => 'ไม่พบข้อมูล WIP Barcode']);
+            }
+    
+            if ($newGroupEmp) {
+                $wipBarcode->update([
+                    'wip_empgroup_id' => $newGroupEmp->id
+                ]);
+    
+                return response()->json(['status' => 'success', 'message' => 'อัปเดตข้อมูลสำเร็จ']);
+            }
+    
+            return response()->json(['status' => 'error', 'message' => 'ไม่พบข้อมูลของผู้คัด']);
+            
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+    
+   
 }

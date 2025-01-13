@@ -9,7 +9,7 @@ use App\Models\WorkprocessQC; // ตรวจสอบว่าโมเดล�
 use App\Models\Employee;
 use App\Models\GroupEmp; // Import Model GroupEmp
 use App\Models\Wipbarcode;
-
+use App\Models\Listngall;
 class MainmenuController extends Controller
 {
     public function mainmenu()
@@ -95,43 +95,44 @@ class MainmenuController extends Controller
     
 
     public function datawip($line, $id)
-    {
-        // ค้นหา WorkProcess ตาม id
-        $workprocess = WorkProcessQC::find($id);
+{
+    // ค้นหา WorkProcess ตาม id และ line ให้ตรงกัน
+    $workprocess = WorkProcessQC::where('id', $id)
+                                ->where('line', $line)
+                                ->first();
+
+    // ตรวจสอบว่ามีข้อมูลหรือไม่
+    if (!$workprocess) {
+        abort(404, 'ไม่พบข้อมูลหรือ Line ไม่ถูกต้อง');
+    }
+
+    // ดึงข้อมูลผู้คัดเฉพาะ line และ status = 1
+    $empGroups = GroupEmp::where('line', $line)
+                         ->where('status', 1)
+                         ->get();
+
+    // ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้องกับ workprocess โดยใช้ Relation
+    $wipBarcodes = $workprocess->wipBarcodes()->with('groupEmp')->get();
+
+    // คำนวณผลรวมของ wip_amount จาก Relation
+    $totalWipAmount = $workprocess->wipBarcodes()->sum('wip_amount');
+
+    // ✅ ดึงข้อมูลทั้งหมดจากตาราง listngall ที่มี lng_status = 1
+    $listNgAll = Listngall::where('lng_status', 1)->get();
+
+    // ส่งข้อมูลไปยัง View
+    return view('datawip', [
+        'workprocess'    => $workprocess,
+        'line'           => $line,
+        'empGroups'      => $empGroups,
+        'work_id'        => $id,
+        'wipBarcodes'    => $wipBarcodes,
+        'totalWipAmount' => $totalWipAmount,
+        'listNgAll'      => $listNgAll,  // ✅ ส่งข้อมูลไปยัง View
+    ]);
+}
+
     
-        // ตรวจสอบว่ามีข้อมูลหรือไม่
-        if (!$workprocess) {
-            abort(404, 'ไม่พบข้อมูล');
-        }
-    
-        // ตรวจสอบว่า line ที่ส่งมาตรงกับ line ในฐานข้อมูลหรือไม่
-        if ($workprocess->line !== $line) {
-            abort(404, 'ข้อมูล Line ไม่ถูกต้อง');
-        }
-    
-        // ดึงข้อมูลผู้คัดเฉพาะ line และ status = 1
-        $empGroups = GroupEmp::where('line', $line)
-            ->where('status', 1)
-            ->get();
-    
-        // ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้อง
-        $wipBarcodes = Wipbarcode::with('groupEmp') // ดึงข้อมูลผู้คัดที่สัมพันธ์กัน
-            ->where('wip_working_id', $id)
-            ->get();
-    
-        // คำนวณผลรวมของ wip_amount ตามเงื่อนไข
-        $totalWipAmount = Wipbarcode::where('wip_working_id', $id)
-        ->sum('wip_amount'); // ลองคำนวณโดยไม่ใช้เงื่อนไข LIKE
-    
-        // ส่งข้อมูลไปยัง View
-        return view('datawip', [
-            'workprocess' => $workprocess,
-            'line' => $line,
-            'empGroups' => $empGroups,
-            'work_id' => $id, // เพิ่มการส่ง work_id ไปยัง View
-            'wipBarcodes' => $wipBarcodes, // เพิ่มข้อมูลบาร์โค้ดไปยัง View
-            'totalWipAmount' => $totalWipAmount, // ส่งผลรวมของ wip_amount ไปยัง View
-        ]);
     }
     
     
@@ -145,4 +146,4 @@ class MainmenuController extends Controller
 
     
 
-}
+

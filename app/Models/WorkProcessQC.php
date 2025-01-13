@@ -4,11 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-
+use App\Models\Wipbarcode;
 class WorkProcessQC extends Model
 {
     use HasFactory;
 
-    protected $table = 'workprocess_qc'; // ชื่อตาราง
-    protected $fillable = ['line', 'group', 'date', 'status']; // ฟิลด์ที่อนุญาตให้แก้ไขได้
+    protected $table = 'workprocess_qc';
+    protected $fillable = ['line', 'group', 'date', 'status'];
+
+    // เชื่อมกับ Wipbarcode
+    public function wipBarcodes()
+    {
+        return $this->hasMany(Wipbarcode::class, 'wip_working_id', 'id');
+    }
 }
