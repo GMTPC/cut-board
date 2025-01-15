@@ -89,7 +89,53 @@
     }
 
     </style>
+<script>
+$(document).ready(function() {
+    // เพิ่ม CSRF Token สำหรับ Laravel
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
 
+    $('#inputngform').on('submit', function(e) {
+        e.preventDefault();
+
+        $.ajax({
+            type: "POST",
+            url: "{{ route('addng') }}",  // ✅ เปลี่ยน URL ให้ถูกต้อง
+            data: $(this).serialize(),
+            success: function(response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกข้อมูลแล้ว',
+                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+                window.setTimeout(function() {
+                    location.reload();
+                }, 1200);
+            },
+            error: function(xhr) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง</small>',
+                    showConfirmButton: true,
+                });
+            }
+        });
+    });
+
+    // ปุ่มทำใหม่ (Reset Form)
+    $('#removelistng').click(function() {
+        $('#wipline1awaste').find('input, select').val('');
+    });
+});
+
+
+    </script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // ดึง URL ของ Route
@@ -114,52 +160,47 @@
     });
 </script>
 <script>
-    document.getElementById('subline1').addEventListener('click', function (e) {
-        e.preventDefault(); // ป้องกันการรีเฟรชหน้า
-
-        // ดึงค่าจากฟอร์ม
-        const wipBarcode = document.getElementById('wip_barcode').value;
-
-        // ส่งข้อมูลด้วย AJAX
-        fetch('/insert-wip', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') // ต้องเพิ่ม CSRF Token
-            },
-            body: JSON.stringify({
-                wip_barcode: wipBarcode,
-                wip_amount: 1, // ใส่ค่าที่ต้องการส่ง เช่น จำนวน
-                wip_empgroup_id: 1, // ตัวอย่างข้อมูล
-                pe_type_code: 'PE123', // ตัวอย่างข้อมูล
-                wp_working_id: 1, // ตัวอย่างข้อมูล
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.message) {
-                alert(data.message); // แสดงข้อความตอบกลับ
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
-    });
-</script>
-<!-- เชื่อมต่อ jQuery และ SweetAlert2 -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
 $(document).ready(function() {
-    $('#insertwipline1').on('submit', function(e) {
+    console.log("JavaScript Loaded");
+
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
+
+    $('#subline1').on('click', function(e) {
         e.preventDefault();
+        console.log("Button Clicked");
+
+        const wipBarcode = $('#wip_barcode').val();
+        const empGroupId = $('select[name="wip_empgroup_id"]').val();
+
+        if (!wipBarcode || !empGroupId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'ข้อมูลไม่ครบถ้วน',
+                text: 'กรุณากรอกข้อมูลให้ครบถ้วน'
+            });
+            return;
+        }
+
+        let formData = new FormData();
+        formData.append('wip_barcode', wipBarcode);
+        formData.append('wip_amount', 1);
+        formData.append('wip_empgroup_id', empGroupId);
+        formData.append('pe_type_code', 'PE123');
+        formData.append('wp_working_id', "{{ $work_id }}");
 
         $.ajax({
             type: "POST",
-            url: "{{ url('/insert-wip/line') }}/" + "{{ $line }}" + "/" + "{{ $work_id }}",
-            data: $('#insertwipline1').serialize(),
+            url: "{{ url('/insert-barcode/line/' . $line . '/' . $work_id) }}",
+            data: formData,
+            processData: false,
+            contentType: false,
             success: function(response) {
+                console.log("Success:", response);
+
                 if (response.status === 'success') {
                     Swal.fire({
                         icon: 'success',
@@ -168,66 +209,39 @@ $(document).ready(function() {
                         showConfirmButton: false,
                         timer: 1000
                     });
-                    window.setTimeout(function() {
+                    setTimeout(function() {
                         location.reload();
                     }, 800);
                 }
             },
             error: function(xhr) {
-                let response = xhr.responseJSON;
+                console.error("Error:", xhr);
 
-                // กรณีไม่พบข้อมูล work process
-                if (response.message === 'ไม่พบข้อมูลกระบวนการทำงานสำหรับ work_id นี้') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'ไม่พบข้อมูล',
-                        html: '<small style="color:red;">ไม่พบข้อมูลกระบวนการทำงานสำหรับ work_id นี้</small>',
-                        showConfirmButton: true
-                    });
+                let response;
+                try {
+                    response = JSON.parse(xhr.responseText);
+                } catch (e) {
+                    response = { title: "เกิดข้อผิดพลาด", message: "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้" };
                 }
-                // กรณี line ไม่ตรงกับ work_id
-                else if (response.message === 'Line ไม่ตรงกับ work_id') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'ไลน์ไม่ตรงกัน',
-                        html: '<small style="color:red;">Line ใน URL: ' + response.line_from_url + '<br>Line ในฐานข้อมูล: ' + response.line_from_db + '</small>',
-                        showConfirmButton: true
-                    });
-                }
-                // กรณี Barcode ซ้ำ
-                else if (response.message === 'บาร์โค้ดซ้ำในระบบ กรุณาตรวจสอบอีกครั้ง') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'บันทึกข้อมูลไม่สำเร็จ',
-                        html: '<small style="color:red;">บาร์โค้ดซ้ำในระบบ กรุณาตรวจสอบอีกครั้ง</small>',
-                        showConfirmButton: true
-                    });
-                }
-                // กรณี Barcode ไม่ถูกต้อง
-                else if (response.message === 'สาเหตุอาจจะมาจากชนิดที่ไม่เหมือนกัน บาร์โค้ดซ้ำ ยังไม่เลือกผู้คัด หรือ รูปแบบไม่ถูกต้อง') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'บันทึกข้อมูลไม่สำเร็จ',
-                        html: '<small style="color:red;">สาเหตุอาจจะมาจากชนิดที่ไม่เหมือนกัน บาร์โค้ดซ้ำ ยังไม่เลือกผู้คัด หรือ รูปแบบไม่ถูกต้อง</small>',
-                        showConfirmButton: true
-                    });
-                }
-                // กรณีเกิด Error อื่น ๆ
-                else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'เกิดข้อผิดพลาด',
-                        html: '<small style="color:red;">มีบางอย่างผิดพลาด กรุณาลองใหม่อีกครั้ง</small>',
-                        showConfirmButton: true
-                    });
-                }
+
+                Swal.fire({
+                    icon: 'error',
+                    title: response.title,
+                    html: '<small style="color:red;">' + response.message + '</small>',
+                    showConfirmButton: true
+                });
             }
         });
     });
 });
+
 </script>
+
+
+
+
 <script>
-$(document).ready(function() {
+ $(document).ready(function() {
     $('.open-edit-modal').click(function() {
         $('#editempwip').modal('show');  // เปิด Modal
     });
@@ -274,6 +288,9 @@ $(document).ready(function() {
             <h4><b>กลุ่มที่คัด :</b> <b>{{ $workprocess->line ?? 'ไม่มีข้อมูล' }}{{ $workprocess->group ?? 'ไม่มีข้อมูล' }}</b></h4>
 <h4><b>วันที่เริ่ม :</b> <b>{{ $workprocess->date ? \Carbon\Carbon::parse($workprocess->date)->format('d-m-Y') : 'ไม่มีข้อมูล' }}</b></h4>
 <h4><b>สถานะ :</b> <b style="color: green;">{{ $workprocess->status ?? 'ไม่มีข้อมูล' }}</b></h4>
+@if ($wipBarcodes->count() > 0 && $productTypes->count() > 0)
+    <h4><b>ชนิดสินค้า :</b> <b>{{ $productTypes->first()->pe_type_name }}</b></h4>
+@endif
 
 
             </div>
@@ -304,25 +321,24 @@ $(document).ready(function() {
             </div>
             <div class="col-md-3 col-xs-3">
                 <h4>คงค้าง (HD)</h4>
-                <h4>{{ $totalWipAmount ?? '0' }}</h4>
+                <h4>{{ ($totalWipAmount ?? 0) - ($totalNgAmount ?? 0) }} </h4>
             </div>
             <div class="col-md-3 col-xs-3">
                 <h4>เสีย (NG)</h4>
-                <h4>0</h4>
+                <h4>{{ $totalNgAmount ?? 0 }}</h4>
+
             </div>
         </div>
     </div>
 </div>
 
 <div class="row">
-    <!-- ข้อมูลเข้า (WIP) -->
     <div class="col-md-6">
         <div class="panel panel-gmt">
             <div class="panel-heading text-center" style="font-size:18px;">
                 ข้อมูลเข้า (WIP)
             </div>
             <div class="panel-body">
-                <!-- ฟอร์มสำหรับเพิ่มข้อมูล -->
                 <form id="insertwipline1" class="form-inline text-center" action="{{ url('/insert-wip/line/' . $line . '/' . $work_id) }}" method="POST">
                     @csrf
                     <select name="wip_empgroup_id" class="form-control" required>
@@ -331,15 +347,15 @@ $(document).ready(function() {
                             <option value="{{ $group->id }}">{{ $group->emp1 }} - {{ $group->emp2 }}</option>
                         @endforeach
                     </select>
-                    <input id="wip_barcode" name="wip_barcode" type="text" class="form-control text-center" 
-                           placeholder="สแกนบาร์โค้ดยิงรับเข้า WIP" minlength="24" required autofocus>
+                    <input id="wip_barcode" name="wip_barcode" type="text" class="form-control text-center" placeholder="สแกนบาร์โค้ดยิงรับเข้า WIP" minlength="24" required autofocus>
                     <input type="hidden" name="pe_type_code" value="TYPECODE">
                     <input type="hidden" name="wp_working_id" value="{{ $work_id }}">
                     <input type="hidden" name="wip_amount" value="10">
-                    <button id="subline1" type="submit" class="btn btn-default">
-                        <i class="fa fa-barcode"></i>
-                    </button>
-                </form>
+                    <button id="subline1" type="button" class="" name="submit_fgcode">
+    <i style="font-size:30px;" class="fa fa-barcode"></i>
+</button>
+     </form>
+          
 
                 <!-- ตารางข้อมูล -->
                 <table id="myTableCode" class="table table-bordered text-center">
@@ -827,7 +843,7 @@ $(document).ready(function() {
         </div>
     </div>
 </div>
-<div class="modal fade"  id="notiinputng" tabindex="-1" role="dialog" aria-labelledby="DeleteBarcodeLine1" aria-hidden="true" >
+<div class="modal fade" id="notiinputng" tabindex="-1" role="dialog" aria-labelledby="DeleteBarcodeLine1" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -837,9 +853,10 @@ $(document).ready(function() {
                 <h3 class="modal-title" id="InputNg"><b>เพิ่มข้อมูลของเสีย</b></h3>
                 <h4><b>Barcode : <i id="showbarcodewip">{{ $wipBarcodes->first()->wip_barcode ?? 'ไม่มีข้อมูล' }}</i></b></h4>
             </div>
+
             <div class="modal-body">
                 <div class="panel-body">
-                    <h4><b>สรุปรายการของเสีย </b></h4>
+                    <h4><b>สรุปรายการของเสีย</b></h4>
                     <div class="table-responsive">
                         <table class="table table-hover table-striped table-bordered" id="listresultng">
                             <thead>
@@ -849,19 +866,22 @@ $(document).ready(function() {
                                     <th class="text-center" style="width:10%;"><i class="fa fa-cog"></i></th>
                                 </tr>
                             </thead>
-                            <tbody id="ng-data">
-
-                            </tbody>
+                            <tbody id="ng-data"></tbody>
                         </table>
                     </div>
+
                     <input class="inputng_id" type="hidden" name="inputng_id" id="inputng_id">
+
                     <div id="panel-ng" class="panel panel-gmt">
                         <div class="panel-heading text-center" style="font-size:18px;">เพิ่มข้อมูลของเสีย</div>
                         <div class="panel-body" style="padding-top: 0px;padding-left: 0px;">
                             <br>
                             <div class="text-center">
-                                <a class="btn btn-default btn-sm" style="font-size:13px;" id="addl1a" href="#" role="button"><span class="glyphicon glyphicon-plus"></span>&nbsp;เพิ่มของที่เสีย</a>
+                                <a class="btn btn-default btn-sm" style="font-size:13px;" id="addl1a" href="#" role="button">
+                                    <span class="glyphicon glyphicon-plus"></span>&nbsp;เพิ่มของที่เสีย
+                                </a>
                             </div>
+
                             <form id="inputngform" class="form-inline md-form form-sm mt-0">
                                 <div class="container-fluid">
                                     <div class="table-responsive">
@@ -872,44 +892,46 @@ $(document).ready(function() {
                                             </tr>
                                             <tr>
                                                 <td class="text-left">
-                                                <select name="amg_ng_id[]" data-size="2" class="btn btn-info btn-sm" data-live-search="true" style="font-size:16px;">
-    <option value="">เลือกของเสีย</option>
-    
-    @foreach($listNgAll as $ng)
-        <option style="font-size:16px;" data-tokens="{{ $ng->lng_name }}" value="{{ $ng->lng_id }}">
-            {{ $ng->lng_name }}
-        </option>
-    @endforeach
-</select>
-
+                                                    <select name="amg_ng_id[]" data-size="2" class="btn btn-info btn-sm" data-live-search="true" style="font-size:16px;">
+                                                        <option value="">เลือกของเสีย</option>
+                                                        @foreach($listNgAll as $ng)
+                                                            <option style="font-size:16px;" data-tokens="{{ $ng->lng_name }}" value="{{ $ng->lng_id }}">
+                                                                {{ $ng->lng_name }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
                                                 </td>
-                                                <td class="text-left"><input type="number" value="" name="amg_amount[]" placeholder="จำนวน"/>
-                                                    <input type="hidden" value="" name="amg_wip_id[]" id="inputng_idchild"></td>
-                                                </tr>
-                                            </table>
-                                            <div class="text-right">
-                                                <button id="removelistng" class="btn btn-warning btn-sm " type="button" name="button"><span class="fas fa-redo-alt"></span>&nbsp;ทำใหม่</button>
-                                            </div>
+                                                <td class="text-left">
+                                                    <input type="number" value="" name="amg_amount[]" placeholder="จำนวน" required />
+                                                    <input type="hidden" value="{{ $wipBarcodes->first()->wip_id ?? '' }}" name="amg_wip_id[]" id="inputng_idchild">
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <div class="text-right">
+                                            <button id="removelistng" class="btn btn-warning btn-sm" type="button" name="button">
+                                                <span class="fas fa-redo-alt"></span>&nbsp;ทำใหม่
+                                            </button>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div class="text-center">
-                                        {{-- <a href="#{" onClick="; return ;">
-
-                                        </a>  --}}
-                                        <button class="fas fa-save btn btn-success" type="submit"> บันทึก</button>
-                                    </div>
-                                </form>
-                            </div>
+                                <div class="text-center">
+                                    <button class="fas fa-save btn btn-success" type="submit"> บันทึก</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button id="ngmodalbtn" type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="ngmodalbtn" type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
             </div>
         </div>
     </div>
+</div>
+
 
     <div class="modal fade" id="deletengnoti" tabindex="-1" role="dialog" aria-labelledby="DeleteBarcodeLine1" aria-hidden="true">
         <div class="modal-dialog" role="document">

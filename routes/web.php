@@ -73,8 +73,9 @@ Route::delete('/deleteemp/{id}', [EmployeeController::class, 'delete'])->name('d
 
 
 Route::get('/getemp/{line}', [EmployeeController::class, 'getEmpGroups'])->name('line.getEmpGroups');
-Route::post('/insert-wip/line/{line}/{work_id}', [WipController::class, 'insertWip']);
 Route::get('/get-barcode/{line}/{id}', [WipController::class, 'getBarcode']);
 Route::put('/update-empgroup/{id}', [WipController::class, 'updateEmpGroup'])->name('update.empgroup');
+Route::post('/insert-barcode/line/{line}/{work_id}', [WipController::class, 'insertWip'])->name('insertWip');
+Route::post('/addng', [WipController::class, 'addng'])->name('addng');
 
 require __DIR__.'/auth.php';

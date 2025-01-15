@@ -18,4 +18,11 @@ public function workprocess()
 {
     return $this->belongsTo(WorkprocessQC::class, 'eio_working_id', 'id');
 }
+protected $fillable = [
+    'eio_emp_group',
+    'eio_working_id',
+    'eio_input_amount',
+    'eio_line',
+    'eio_division',
+];
 }

@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use App\Models\AmountNg;  // ✅ นำเข้า Model ที่ถูกต้อง
 use Illuminate\Http\Request;
 use App\Models\GroupQC;
 use Illuminate\Support\Facades\DB; // นำเข้า DB class
@@ -10,6 +10,8 @@ use App\Models\Employee;
 use App\Models\GroupEmp; // Import Model GroupEmp
 use App\Models\Wipbarcode;
 use App\Models\Listngall;
+use App\Models\ProductTypeEmp;
+
 class MainmenuController extends Controller
 {
     public function mainmenu()
@@ -94,44 +96,52 @@ class MainmenuController extends Controller
     
     
 
+
     public function datawip($line, $id)
-{
-    // ค้นหา WorkProcess ตาม id และ line ให้ตรงกัน
-    $workprocess = WorkProcessQC::where('id', $id)
-                                ->where('line', $line)
-                                ->first();
-
-    // ตรวจสอบว่ามีข้อมูลหรือไม่
-    if (!$workprocess) {
-        abort(404, 'ไม่พบข้อมูลหรือ Line ไม่ถูกต้อง');
+    {
+        // ค้นหา WorkProcess ตาม id และ line ให้ตรงกัน
+        $workprocess = WorkProcessQC::where('id', $id)
+                                    ->where('line', $line)
+                                    ->first();
+    
+        // ตรวจสอบว่ามีข้อมูลหรือไม่
+        if (!$workprocess) {
+            abort(404, 'ไม่พบข้อมูลหรือ Line ไม่ถูกต้อง');
+        }
+    
+        // ดึงข้อมูลผู้คัดเฉพาะ line และ status = 1
+        $empGroups = GroupEmp::where('line', $line)
+                             ->where('status', 1)
+                             ->get();
+    
+        // ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้องกับ workprocess โดยใช้ Relation
+        $wipBarcodes = $workprocess->wipBarcodes()->with('groupEmp')->get();
+    
+        // คำนวณผลรวมของ wip_amount จาก Relation
+        $totalWipAmount = $workprocess->wipBarcodes()->sum('wip_amount');
+    
+        // ✅ ดึงข้อมูลทั้งหมดจากตาราง listngall ที่มี lng_status = 1
+        $listNgAll = Listngall::where('lng_status', 1)->get();
+    
+        // ✅ ดึงข้อมูล ProductTypeEmp ที่ pe_working_id ตรงกับ $id
+        $productTypes = ProductTypeEmp::where('pe_working_id', $id)->get();
+    
+        // ✅ ดึงผลรวม amg_amount จาก AmountNg ที่ amg_wip_id ตรงกับ wip_id
+        $totalNgAmount = AmountNg::whereIn('amg_wip_id', $wipBarcodes->pluck('wip_id'))->sum('amg_amount');
+    
+        // ส่งข้อมูลไปยัง View
+        return view('datawip', [
+            'workprocess'    => $workprocess,
+            'line'           => $line,
+            'empGroups'      => $empGroups,
+            'work_id'        => $id,
+            'wipBarcodes'    => $wipBarcodes,
+            'totalWipAmount' => $totalWipAmount,
+            'listNgAll'      => $listNgAll,
+            'productTypes'   => $productTypes,
+            'totalNgAmount'  => $totalNgAmount
+        ]);
     }
-
-    // ดึงข้อมูลผู้คัดเฉพาะ line และ status = 1
-    $empGroups = GroupEmp::where('line', $line)
-                         ->where('status', 1)
-                         ->get();
-
-    // ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้องกับ workprocess โดยใช้ Relation
-    $wipBarcodes = $workprocess->wipBarcodes()->with('groupEmp')->get();
-
-    // คำนวณผลรวมของ wip_amount จาก Relation
-    $totalWipAmount = $workprocess->wipBarcodes()->sum('wip_amount');
-
-    // ✅ ดึงข้อมูลทั้งหมดจากตาราง listngall ที่มี lng_status = 1
-    $listNgAll = Listngall::where('lng_status', 1)->get();
-
-    // ส่งข้อมูลไปยัง View
-    return view('datawip', [
-        'workprocess'    => $workprocess,
-        'line'           => $line,
-        'empGroups'      => $empGroups,
-        'work_id'        => $id,
-        'wipBarcodes'    => $wipBarcodes,
-        'totalWipAmount' => $totalWipAmount,
-        'listNgAll'      => $listNgAll,  // ✅ ส่งข้อมูลไปยัง View
-    ]);
-}
-
     
     }
     

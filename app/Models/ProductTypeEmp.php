@@ -9,8 +9,19 @@ use App\Models\Wipbarcode;
 class ProductTypeEmp extends Model
 {
     use HasFactory;
+
+    protected $fillable = [
+        'pe_working_id',
+        'pe_type_code',
+        'pe_type_name',
+        'pe_index',
+        'created_at',
+        'updated_at',
+    ];
+
     public function wipBarcode()
-{
-    return $this->belongsTo(Wipbarcode::class, 'pe_working_id', 'wip_working_id');
+    {
+        return $this->belongsTo(Wipbarcode::class, 'pe_working_id', 'wip_working_id');
+    }
 }
-}
+
