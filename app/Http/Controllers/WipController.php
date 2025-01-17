@@ -179,11 +179,14 @@ class WipController extends Controller
         $input = $request->all();
     
         foreach ($input['amg_wip_id'] as $key => $wipId) {
-            AmountNg::create([
-                'amg_wip_id' => $wipId,
-                'amg_ng_id'  => $input['amg_ng_id'][$key],
-                'amg_amount' => $input['amg_amount'][$key],
-            ]);
+            // ตรวจสอบข้อมูลก่อนบันทึก
+            if (!empty($input['amg_ng_id'][$key]) && !empty($input['amg_amount'][$key])) {
+                AmountNg::create([
+                    'amg_wip_id' => $wipId,
+                    'amg_ng_id'  => $input['amg_ng_id'][$key],
+                    'amg_amount' => $input['amg_amount'][$key],
+                ]);
+            }
         }
     
         return response()->json([
@@ -191,4 +194,87 @@ class WipController extends Controller
             'message' => 'บันทึกข้อมูลสำเร็จ'
         ]);
     }
+    
+    
+    public function editwipamg(Request $request, $id)
+{
+    $edit = Wipbarcode::find($id);
+
+    if ($edit) {
+        // ✅ รับค่าจำนวนที่ต้องการแก้ไข
+        $wipAmount = $request->input('wip_amount');
+
+        // ✅ จัดรูปแบบให้ wip_amount เป็นเลข 3 หลัก (เช่น 76 => 076)
+        $formattedAmount = str_pad($wipAmount, 3, '0', STR_PAD_LEFT);
+
+        // ✅ แก้ไขสามตัวท้ายของ wip_barcode ให้ตรงกับ wip_amount
+        $wipBarcode = substr($edit->wip_barcode, 0, -3) . $formattedAmount;
+
+        // ✅ อัปเดตข้อมูล
+        $edit->wip_amount = $wipAmount;
+        $edit->wip_barcode = $wipBarcode;
+        $edit->save();
+
+        return response()->json(['success' => true, 'message' => 'บันทึกข้อมูลเรียบร้อยแล้ว']);
+    } else {
+        return response()->json(['success' => false, 'message' => 'ไม่พบข้อมูลที่ต้องการอัปเดต'], 404);
+    }
 }
+
+public function deleteWipLine1($work_id, $id)
+{
+    try {
+        $checkWip = Wipbarcode::where('wip_id', $id)->first();
+
+        if (!$checkWip) {
+            return response()->json(['success' => false, 'message' => 'ไม่พบข้อมูลบาร์โค้ด'], 404);
+        }
+
+        $empGroup = $checkWip->wip_empgroup_id;
+        $amount = $checkWip->wip_amount;
+
+        // ✅ กำหนดค่าเริ่มต้นให้ $eioOutput = 0
+        $eioOutput = 0;
+
+        // ค้นหาข้อมูลเข้า-ออกของพนักงาน
+        $eio = EmpInOut::where('eio_working_id', $work_id)
+                       ->where('eio_emp_group', $empGroup)
+                       ->first();
+
+        if ($eio) {
+            $eioId = $eio->id;
+            $eioInput = $eio->eio_input_amount;
+            $eioOutput = $eio->eio_output_amount;
+        }
+
+        // ลบข้อมูลบาร์โค้ด
+        $checkWip->delete();
+
+        // เช็คข้อมูลในกลุ่มพนักงาน
+        $checkEmpGroup = Wipbarcode::where('wip_working_id', $work_id)
+                                   ->where('wip_empgroup_id', $empGroup)
+                                   ->get();
+
+        if ($checkEmpGroup->isEmpty() && $eioOutput <= 0) {
+            // ถ้าไม่มีข้อมูลบาร์โค้ดในกลุ่มนี้ และไม่มีการเบิกจ่าย ให้ลบข้อมูลการเข้า-ออก
+            if ($eio) {
+                $eio->delete();
+            }
+        } else {
+            // ถ้ามีข้อมูล ให้ลดจำนวนสินค้าใน eio_input_amount
+            if ($eio) {
+                $eio->update(['eio_input_amount' => $eioInput - $amount]);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'ลบข้อมูลสำเร็จ'], 200);
+
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()], 500);
+    }
+}
+
+
+}
+
+

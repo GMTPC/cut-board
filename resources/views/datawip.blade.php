@@ -5,6 +5,8 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
 .btn-custom {
@@ -99,34 +101,36 @@ $(document).ready(function() {
     });
 
     $('#inputngform').on('submit', function(e) {
-        e.preventDefault();
+    e.preventDefault();
 
-        $.ajax({
-            type: "POST",
-            url: "{{ route('addng') }}",  // ✅ เปลี่ยน URL ให้ถูกต้อง
-            data: $(this).serialize(),
-            success: function(response) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'บันทึกข้อมูลแล้ว',
-                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
-                    showConfirmButton: false,
-                    timer: 1500
-                });
-                window.setTimeout(function() {
-                    location.reload();
-                }, 1200);
-            },
-            error: function(xhr) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'บันทึกข้อมูลไม่สำเร็จ',
-                    html: '<small style="color:red;">กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง</small>',
-                    showConfirmButton: true,
-                });
-            }
-        });
+    $.ajax({
+        type: "POST",
+        url: "{{ route('addng') }}",  // ✅ URL ไปยัง Route ที่บันทึกข้อมูล
+        data: $(this).serialize(),    // ✅ ส่งข้อมูลทั้งหมดใน Form
+        success: function(response) {
+            Swal.fire({
+                icon: 'success',
+                title: 'บันทึกข้อมูลแล้ว',
+                html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                showConfirmButton: false,
+                timer: 1500
+            });
+
+            window.setTimeout(function() {
+                location.reload();
+            }, 1200);
+        },
+        error: function(xhr) {
+            Swal.fire({
+                icon: 'error',
+                title: 'บันทึกข้อมูลไม่สำเร็จ',
+                html: '<small style="color:red;">กรุณาตรวจสอบข้อมูลและลองใหม่อีกครั้ง</small>',
+                showConfirmButton: true,
+            });
+        }
     });
+});
+
 
     // ปุ่มทำใหม่ (Reset Form)
     $('#removelistng').click(function() {
@@ -136,29 +140,12 @@ $(document).ready(function() {
 
 
     </script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // ดึง URL ของ Route
-        const line = 'L2'; // ตัวอย่าง line ที่ต้องการ
-        const url = `/getemp/${line}`; // แก้ไข URL ตาม Route
 
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                const select = document.querySelector('select[name="wip_empgroup_id"]');
-                // ล้างข้อมูลใน select
-                select.innerHTML = '<option value="0">เลือกผู้คัด</option>';
-                // เติมข้อมูลจาก API
-                data.forEach(group => {
-                    const option = document.createElement('option');
-                    option.value = group.id;
-                    option.textContent = `${group.emp1} - ${group.emp2}`;
-                    select.appendChild(option);
-                });
-            })
-            .catch(error => console.error('Error fetching data:', error));
-    });
+<script>
+    var listNgAll = @json($listNgAll);
 </script>
+
+
 <script>
 $(document).ready(function() {
     console.log("JavaScript Loaded");
@@ -247,6 +234,19 @@ $(document).ready(function() {
     });
 });
     </script>
+
+
+<script>
+$(document).ready(function() {
+    $('.open-delete-modal').click(function() {
+        $('#notideleteline1').show();
+    });
+});
+
+    </script>
+
+    
+
 <script>
     $(document).ready(function() {
         // เมื่อคลิกที่ปุ่ม open-ng-modal
@@ -257,6 +257,96 @@ $(document).ready(function() {
     });
 </script>
 
+<script>
+$(document).ready(function () {
+    $('.open-noti-amount').click(function () {
+        $('#notiamount').modal('show');  // เปิด Modal
+    });
+});
+</script>
+<script>
+$(document).ready(function() {
+    $('#editamountform').on('submit', function(e) {
+        e.preventDefault();
+
+        var id = $('#wipidamount').val();
+
+        $.ajax({
+            type: "POST",
+            url: "{{ url('/editwipamg') }}/" + id,
+            data: $(this).serialize() + '&_method=PUT',  // ส่งข้อมูลพร้อมระบุว่าเป็น PUT
+            success: function(response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกข้อมูลแล้ว',
+                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+                setTimeout(function() {
+                    location.reload();
+                }, 1300);
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง',
+                    showConfirmButton: true
+                });
+            }
+        });
+    });
+});
+
+</script>
+
+<script>
+$(document).ready(function() {
+    $('#deletfieldline1').on('submit', function(e) {
+        e.preventDefault();
+
+        var id = $('#delete_line1id').val();     // ID ที่ต้องการลบ
+        var workid = $('#workid').val();         // WORK ID ที่ต้องการใช้
+
+        if (!id || !workid) {
+            console.error("ID หรือ Work ID หายไป");
+            return;
+        }
+
+        $.ajax({
+            type: "POST",  // ✅ เปลี่ยนเป็น POST และใช้ _method: 'DELETE'
+            url: "/deleteline1wip/" + workid + "/" + id,
+            data: {
+                _method: 'DELETE',  // ✅ ระบุว่าเป็น DELETE
+                _token: $('input[name="_token"]').val()
+            },
+            success: function(response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ลบข้อมูลแล้ว',
+                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+                setTimeout(function() {
+                    location.reload();
+                }, 1300);
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ลบข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">กรุณาลองใหม่อีกครั้ง</small>',
+                    showConfirmButton: true
+                });
+            }
+        });
+    });
+});
+
+
+</script>
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
             <div class="panel-body">
@@ -388,28 +478,36 @@ $(document).ready(function() {
     </div>
 </td>
 
-            <td>
-                <div style="display: flex; gap: 8px; justify-content: center;">
-                    <!-- ปุ่มแก้ไข -->
-                    <a href="javascript:void(0);" 
-   class="btn btn-warning btn-xs open-ng-modal" 
-   title="แก้ไขข้อมูล" 
-   style="padding: 5px 10px; font-size: 12px;">
-   <i class="fa fa-pencil-square-o"></i>
+<td>
+    <div style="display: flex; gap: 5px; justify-content: center;">
+        <!-- ปุ่มแก้ไข -->
+        <a href="javascript:void(0);" 
+           class="btn btn-warning btn-xs open-ng-modal" 
+           title="แก้ไขข้อมูล" 
+           style="padding: 5px 10px; font-size: 12px; background-color: #f0ad4e; color: white; border-color: #f0ad4e;">
+           <i class="fa fa-pencil-square-o"></i>
+        </a>
+
+        <!-- ปุ่มแก้ไขจำนวน -->
+        <a href="javascript:void(0);" 
+           class="btn btn-info btn-xs open-noti-amount" 
+           title="แก้ไขจำนวน" 
+           style="padding: 5px 10px; font-size: 12px; background-color: #5bc0de; color: white; border-color: #5bc0de;">
+           <i class="fa fa-sort-numeric-asc"></i>
+        </a>
+
+        <!-- ปุ่มลบ -->
+        <a href="javascript:void(0);" 
+   class="btn btn-danger btn-xs open-delete-modal" 
+   title="ลบข้อมูล" 
+   style="padding: 5px 10px; font-size: 12px; background-color: #d9534f; color: white; border-color: #d9534f;"
+   data-toggle="modal" 
+   data-target="#notideleteline1">
+   <i class="fa fa-trash"></i>
 </a>
+    </div>
+</td>
 
-
-                    <!-- ปุ่มแก้ไขจำนวน -->
-                    <a href="javascript:void(0);" class="btn btn-info btn-xs" title="แก้ไขจำนวน" style="padding: 5px 10px; font-size: 12px;">
-                        <i class="fa fa-sort-numeric-asc"></i>
-                    </a>
-
-                    <!-- ปุ่มลบ -->
-                    <a href="javascript:void(0);" onclick="confirmDelete()" class="btn btn-danger btn-xs" title="ลบข้อมูล" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;">
-                        <i class="fa fa-trash"></i>
-                    </a>
-                </div>
-            </td>
         </tr>
     @empty
         <tr>
@@ -574,9 +672,20 @@ $(document).ready(function() {
         </ul>
     </div>
 @endif
-                                 
-                                       
-            {{-- <div id="detail" class="tab-pane fade">
+<script>
+$(document).ready(function () {
+    // เปิด Modal เมื่อคลิกปุ่ม
+    $('.open-noti-amount').click(function () {
+        $('#notiamount').fadeIn();  // เปิด Modal
+    });
+
+    
+</script>                      
+<script>
+    var listNgAll = @json($listNgAll);
+</script>
+                      
+              <div id="detail" class="tab-pane fade">
                 <div class="container-fluid">
                     <div class="table-responsive">
                         <table id="myTable" class="table table-hover bg-white text-center">
@@ -714,9 +823,9 @@ $(document).ready(function() {
                         </div>
                     </div>
                     <div class="text-center">
-                        {{-- <a id="csvsumbtn" class="btn btn-success" name="button"><b>บันทึก CSV  <i class="fas fa-file-download"></i></b></a> --}}
+                     <a id="csvsumbtn" class="btn btn-success" name="button"><b>บันทึก CSV  <i class="fas fa-file-download"></i></b></a> 
 
-                        {{-- <a href="" class="btn btn-success" name="button"><b>บันทึก CSV  <i class="fas fa-file-download"></i></b></a> 
+                         <a href="" class="btn btn-success" name="button"><b>บันทึก CSV  <i class="fas fa-file-download"></i></b></a> 
                         
                        
                     </div>
@@ -737,6 +846,7 @@ $(document).ready(function() {
 </div>
 </div>
 
+<!-- Modal ลบข้อมูลบาร์โค้ด -->
 <div class="modal fade" id="notideleteline1" tabindex="-1" role="dialog" aria-labelledby="DeleteBarcodeLine1" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -746,21 +856,33 @@ $(document).ready(function() {
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form id="deletfieldline1">
-                <div class="modal-body">
-        
+            <form id="deletfieldline1" method="POST">
+    {{ csrf_field() }}
+    {{ method_field('DELETE') }}
 
-                    <input type="hidden" name="id" id="delete_line1id">
-                    <h4 style="color:red;">คุณต้องการลบข้อมูลบาร์โค้ด <b style="color:red;"> <u id="barcodetarget"></u> </b>หรือไม่</h4>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
-                    <button type="submit" class="btn btn-danger">ลบบาร์โค้ด</button>
-                </div>
-            </form>
+    <input type="hidden" name="workid" id="workid" value="{{ $work_id }}">
+    <input type="hidden" name="id" id="delete_line1id" value="{{ $wipBarcodes->last()->wip_id ?? 0 }}">
+
+    <div class="modal-body">
+        <h4 style="color:red;">
+            คุณต้องการลบข้อมูลบาร์โค้ด 
+            <b style="color:red;"><u>{{ $wipBarcodes->last()->wip_barcode ?? '-' }}</u></b>
+            หรือไม่?
+        </h4>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
+        <button type="submit" class="btn btn-danger">ลบบาร์โค้ด</button>
+    </div>
+</form>
+
+
         </div>
     </div>
 </div>
+
+
 
 <div class="modal fade" id="outfg" tabindex="-1" role="dialog" aria-labelledby="OutFg" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
@@ -779,12 +901,12 @@ $(document).ready(function() {
                         <div class="panel-body" style="padding-top: 0px;padding-left: 0px;">
                             <br>
                             <div class="text-center">
-                                <input class="form-control text-center" type="number" name="brd_amount" max="{{ $amount }}" value="100" data-toggle="tooltip" title="กรอกจำนวน" placeholder="กรอกจำนวน" required>
+                                <input class="form-control text-center" type="number" name="brd_amount" max="" value="100" data-toggle="tooltip" title="กรอกจำนวน" placeholder="กรอกจำนวน" required>
                                 @include('frontend.selectbrand') 
                                 &nbsp;&nbsp;&nbsp;
                                 <select id="select_emp_id" name="brd_eg_id" class="margin-select selectpicker show-tick form-control" aria-required="true" data-size="9" data-dropup-auto="true" data-live-search="true" data-style="btn-warning btn-sm text-white" data-width="fit" data-container="body" required>
                                     <option value="0">เลือกผู้คัด</option>
-                                        <option style="font-size:15px;" data-tokens="1" value="{{ $empbywip->eg_id }}"></option>
+                                        <option style="font-size:15px;" data-tokens="1" value=""></option>
                                 </select>
                                 &nbsp;&nbsp;
                                 <input style="width:30%;" class="form-control text-center" name="brd_checker" type="text"  placeholder="ผู้ตรวจสอบ" required> <br>
@@ -794,7 +916,7 @@ $(document).ready(function() {
                                 <input style="width:30%;" class="form-control text-center" name="brd_remark" type="text" name="" placeholder="หมายเหตุ">
                             </div>
                             <input type="hidden" name="brd_working_id" value="">
-                            <input type="hidden" name="brd_lot" value="{{ $lotgenerator }}">
+                            <input type="hidden" name="brd_lot" value="">
                         </div>
                     </div>
                     <br>
@@ -817,6 +939,7 @@ $(document).ready(function() {
         </div>
     </div>
 </div>
+<!-- Modal แก้ไขจำนวน -->
 <div class="modal fade" id="notiamount" tabindex="-1" role="dialog" aria-labelledby="EditAmount" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -824,25 +947,45 @@ $(document).ready(function() {
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
-                <h3 class="modal-title" id="EditAmount"><b>แก้ไขจำนวน</b> <b id="showoutlot"></b> </h3>
+                <h3 class="modal-title" id="EditAmount"><b>แก้ไขจำนวน</b> <b id="showoutlot"></b></h3>
             </div>
-            <form id="editamountform" class="form-inline md-form form-sm mt-0 text-center">
-                <input id="wipidamount" type="hidden" name="wip_id">
-                <div class="modal-body">
-                   
-                    <div class="text-center">
-                    <h4><b>Barcode : <u><i id="empwipbarcode"></i></u></b></h4>
-                    <b style="font-size:17px;">จำนวนที่ต้องการแก้ไข : </b><input type='number' id='wipnewamount' class='text-center' name='wip_amount'>
-                        <input type='hidden' id='wipbarcodechange' class='text-center' name='wip_barcode'>
-                    </div>
-                    {{-- <div class="text-center" id="editamountid">
-                    </div> --}}
-                </div>
-              
-            </form>
+            <form id="editamountform" method="POST" action="{{ route('editwipamg', ['id' => $wipBarcodes->last()->wip_id ?? 0]) }}" class="form-inline md-form form-sm mt-0 text-center">
+    {{ csrf_field() }}
+    {{ method_field('PUT') }}
+    
+    <input id="wipidamount" type="hidden" name="wip_id" value="{{ $wipBarcodes->last()->wip_id ?? 0 }}">
+    
+    <div class="modal-body">
+        <!-- Barcode -->
+        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+            <h4 style="margin-right: 15px; width: 180px; text-align: right;"><b>Barcode :</b></h4>
+            <span style="font-size: 17px;"><u id="showwipbarcode2">{{ $wipBarcodes->last()->wip_barcode ?? '-' }}</u></span>
+        </div>
+
+        <!-- จำนวนที่ต้องการแก้ไข -->
+        <div style="display: flex; align-items: center; justify-content: center;">
+            <b style="font-size: 17px; margin-right: 15px; width: 180px; text-align: right;">จำนวนที่ต้องการแก้ไข :</b>
+            <input type="number" id="wipnewamount" class="text-center" name="wip_amount"
+                   value="{{ $totalWipAmount ?? '0' }}"
+                   style="width: 100px; text-align: center;">
+            <input type="hidden" id="wipbarcodechange" class="text-center" name="wip_barcode" value="{{ $wipBarcodes->last()->wip_barcode ?? '-' }}">
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
+        <button type="submit" class="btn btn-success">บันทึก</button>
+    </div>
+</form>
+
+
+
+
         </div>
     </div>
 </div>
+
+
 <div class="modal fade" id="notiinputng" tabindex="-1" role="dialog" aria-labelledby="DeleteBarcodeLine1" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">

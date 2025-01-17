@@ -117,31 +117,36 @@ class MainmenuController extends Controller
         // ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้องกับ workprocess โดยใช้ Relation
         $wipBarcodes = $workprocess->wipBarcodes()->with('groupEmp')->get();
     
+        // ✅ เพิ่มการดึงข้อมูล empgroup_id ล่าสุด
+        $currentEmpGroupId = $wipBarcodes->last() ? $wipBarcodes->last()->wip_empgroup_id : 0;
+    
         // คำนวณผลรวมของ wip_amount จาก Relation
         $totalWipAmount = $workprocess->wipBarcodes()->sum('wip_amount');
     
-        // ✅ ดึงข้อมูลทั้งหมดจากตาราง listngall ที่มี lng_status = 1
+        // ดึงข้อมูลทั้งหมดจากตาราง listngall ที่มี lng_status = 1
         $listNgAll = Listngall::where('lng_status', 1)->get();
     
-        // ✅ ดึงข้อมูล ProductTypeEmp ที่ pe_working_id ตรงกับ $id
+        // ดึงข้อมูล ProductTypeEmp ที่ pe_working_id ตรงกับ $id
         $productTypes = ProductTypeEmp::where('pe_working_id', $id)->get();
     
-        // ✅ ดึงผลรวม amg_amount จาก AmountNg ที่ amg_wip_id ตรงกับ wip_id
+        // ดึงผลรวม amg_amount จาก AmountNg ที่ amg_wip_id ตรงกับ wip_id
         $totalNgAmount = AmountNg::whereIn('amg_wip_id', $wipBarcodes->pluck('wip_id'))->sum('amg_amount');
     
         // ส่งข้อมูลไปยัง View
         return view('datawip', [
-            'workprocess'    => $workprocess,
-            'line'           => $line,
-            'empGroups'      => $empGroups,
-            'work_id'        => $id,
-            'wipBarcodes'    => $wipBarcodes,
-            'totalWipAmount' => $totalWipAmount,
-            'listNgAll'      => $listNgAll,
-            'productTypes'   => $productTypes,
-            'totalNgAmount'  => $totalNgAmount
+            'workprocess'      => $workprocess,
+            'line'             => $line,
+            'empGroups'        => $empGroups,
+            'work_id'          => $id,
+            'wipBarcodes'      => $wipBarcodes,
+            'totalWipAmount'   => $totalWipAmount,
+            'listNgAll'        => $listNgAll,
+            'productTypes'     => $productTypes,
+            'totalNgAmount'    => $totalNgAmount,
+            'currentEmpGroupId'=> $currentEmpGroupId   // ✅ ส่งตัวแปรไปที่ View
         ]);
     }
+    
     
     }
     
