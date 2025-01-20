@@ -1561,13 +1561,8 @@ $('#removeempmore').click(function() {
     $("#moreempid").remove();
 });
 
-$("#addl1a").on('click',function() {
-    var inputID = $('input[name="inputng_id"]').val()
-    var tr1 = '<tr>';
-    var tr2 = '</tr>';
-    $("#wipline1awaste").append(tr1+slectElement+inputElement+tr2);
-    $('input[name="amg_wip_id[]"]').val(inputID);
-});
+
+
 
 $(document).ready(function(){
     $('.inputng').on('click',function(){

@@ -127,73 +127,95 @@ class WipController extends Controller
     
     
     
+  
+    
+    
 
-    public function updateEmpGroup(Request $request, $id)
-    {
-        try {
-            // ตรวจสอบข้อมูล
-            $request->validate([
-                'emp1_old' => 'required|string',
-                'emp2_old' => 'required|string',
-            ]);
-    
-            // ดึงชื่อผู้คัดใหม่จากฟอร์ม
-            $emp1_new = $request->input('emp1_old');
-            $emp2_new = $request->input('emp2_old');
-    
-            // ค้นหา ID จาก group_emp
-            $newGroupEmp = GroupEmp::where('emp1', $emp1_new)
-                                   ->where('emp2', $emp2_new)
-                                   ->first();
-    
-            // ✅ ค้นหา WIP Barcode ด้วย wip_id
-            $wipBarcode = Wipbarcode::where('wip_working_id', $id)->first();
-    
-            if (!$wipBarcode) {
-                return response()->json(['status' => 'error', 'message' => 'ไม่พบข้อมูล WIP Barcode']);
-            }
-    
-            if ($newGroupEmp) {
-                $wipBarcode->update([
-                    'wip_empgroup_id' => $newGroupEmp->id
-                ]);
-    
-                return response()->json(['status' => 'success', 'message' => 'อัปเดตข้อมูลสำเร็จ']);
-            }
-    
-            return response()->json(['status' => 'error', 'message' => 'ไม่พบข้อมูลของผู้คัด']);
-            
-        } catch (\Exception $e) {
-            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
+
+
+public function updateEmpGroup(Request $request, $id)
+{
+    try {
+        $request->validate([
+            'wip_empgroup_id' => 'required|integer',
+        ]);
+
+        $wipBarcode = Wipbarcode::find($id);
+        if (!$wipBarcode) {
+            return response()->json(['status' => 'error', 'message' => 'ไม่พบข้อมูล WIP Barcode']);
         }
+
+        $wipBarcode->update(['wip_empgroup_id' => $request->wip_empgroup_id]);
+
+        return response()->json(['status' => 'success', 'message' => 'อัปเดตข้อมูลสำเร็จ']);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
     }
-    
+}
     public function addng(Request $request)
     {
-        $request->validate([
-            'amg_wip_id'    => 'required|array',
-            'amg_ng_id'     => 'required|array',
-            'amg_amount'    => 'required|array',
-        ]);
+        try {
+            // ✅ ตรวจสอบ Validation
+            $validatedData = $request->validate([
+                'amg_wip_id'    => 'required|array|min:1',
+                'amg_ng_id'     => 'required|array|min:1',
+                'amg_amount'    => 'required|array|min:1',
+            ], [
+                'amg_wip_id.required' => 'กรุณาระบุ WIP ID',
+                'amg_ng_id.required'  => 'กรุณาเลือกของเสีย',
+                'amg_amount.required' => 'กรุณากรอกจำนวนของเสีย',
+                'amg_wip_id.array'    => 'ข้อมูล WIP ID ต้องอยู่ในรูปแบบ array',
+                'amg_ng_id.array'     => 'ข้อมูลของเสียต้องอยู่ในรูปแบบ array',
+                'amg_amount.array'    => 'จำนวนต้องอยู่ในรูปแบบ array',
+                'amg_wip_id.min'      => 'กรุณาระบุอย่างน้อย 1 รายการ',
+                'amg_ng_id.min'       => 'กรุณาเลือกของเสียอย่างน้อย 1 รายการ',
+                'amg_amount.min'      => 'กรุณากรอกจำนวนของเสียอย่างน้อย 1 รายการ',
+            ]);
     
-        $input = $request->all();
+            // ✅ ตรวจสอบค่าทั้งหมดและบันทึก
+            foreach ($request->amg_wip_id as $key => $wipId) {
+                $ngId = $request->amg_ng_id[$key] ?? null;
+                $amount = $request->amg_amount[$key] ?? null;
     
-        foreach ($input['amg_wip_id'] as $key => $wipId) {
-            // ตรวจสอบข้อมูลก่อนบันทึก
-            if (!empty($input['amg_ng_id'][$key]) && !empty($input['amg_amount'][$key])) {
+                // ตรวจสอบว่าข้อมูลครบถ้วน
+                if (empty($wipId)) {
+                    throw new \Exception('ไม่พบ WIP ID ในรายการที่ ' . ($key + 1));
+                }
+    
+                if (empty($ngId)) {
+                    throw new \Exception('ไม่พบข้อมูล NG ID ในรายการที่ ' . ($key + 1));
+                }
+    
+                if (empty($amount)) {
+                    throw new \Exception('จำนวนของเสียว่างในรายการที่ ' . ($key + 1));
+                }
+    
+                // ✅ บันทึกข้อมูล
                 AmountNg::create([
                     'amg_wip_id' => $wipId,
-                    'amg_ng_id'  => $input['amg_ng_id'][$key],
-                    'amg_amount' => $input['amg_amount'][$key],
+                    'amg_ng_id'  => $ngId,
+                    'amg_amount' => $amount,
                 ]);
             }
-        }
     
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'บันทึกข้อมูลสำเร็จ'
-        ]);
+            // ✅ ส่ง Response สำเร็จ
+            return response()->json(['status' => 'success', 'message' => 'บันทึกข้อมูลสำเร็จ']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // กรณี Validation ผิดพลาด
+            return response()->json(['status' => 'error', 'message' => 'Validation Error: ' . implode(', ', $e->errors())], 422);
+        } catch (\Exception $e) {
+            // กรณีข้อผิดพลาดทั่วไป
+            return response()->json(['status' => 'error', 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()], 500);
+        }
     }
+    
+    
+
+    
+    
+    
+
+
     
     
     public function editwipamg(Request $request, $id)
