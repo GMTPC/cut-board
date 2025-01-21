@@ -108,8 +108,46 @@
         vertical-align: middle; /* จัดปุ่มให้อยู่แนวเดียวกับ input */
     }
     </style>
+ <script>
+$(document).ready(function () {
+    // เมื่อมีการเปลี่ยนแปลงใน Dropdown
+    $('#brd_brandlist_id').on('changed.bs.select', function (e, clickedIndex, isSelected, previousValue) {
+        // ลบ "ติ๊กถูก" อันเก่าทั้งหมด
+        $('#brd_brandlist_id option').prop('selected', false);
+
+        // ทำให้เฉพาะตัวที่ถูกเลือกใหม่ "ติ๊กถูก"
+        $(this).find('option').eq(clickedIndex).prop('selected', true);
+
+        // รีเฟรช selectpicker เพื่ออัปเดตการแสดงผล
+        $(this).selectpicker('refresh');
+
+        // พับ Dropdown เมื่อเลือกแล้ว
+        $(this).selectpicker('toggle');
+    });
+});
+    </script>
  
- 
+ <script>
+$(document).ready(function () {
+    // เมื่อผู้ใช้เปลี่ยนตัวเลือกใน Dropdown ผู้คัด
+    $('#select_emp_id').on('changed.bs.select', function (e, clickedIndex, isSelected, previousValue) {
+        // ลบ "ติ๊กถูก" อันเก่าทั้งหมด
+        $('#select_emp_id option').prop('selected', false);
+
+        // ทำให้เฉพาะตัวที่ถูกเลือกใหม่ "ติ๊กถูก"
+        $(this).find('option').eq(clickedIndex).prop('selected', true);
+
+        // รีเฟรช selectpicker เพื่ออัปเดตการแสดงผล
+        $(this).selectpicker('refresh');
+
+        // พับ Dropdown หลังจากเลือก
+        $(this).selectpicker('toggle');
+    });
+});
+
+
+    </script>
+
  <script>
 $(document).ready(function () {
     // ✅ เพิ่ม CSRF Token สำหรับ Laravel
@@ -440,67 +478,81 @@ $(document).ready(function () {
 
 <script>
 $(document).ready(function () {
-    // ปิดลิสต์ดรอปดาวน์หลังเลือก
-    $('#wip_empgroup_id_2').on('change', function () {
-        $(this).selectpicker('toggle'); // ปิด dropdown
-        console.log("Selected Value:", $(this).val());
-    });
+    // ดึงค่า line และ workId จาก URL
+    const urlParts = window.location.pathname.split('/');
+    const line = urlParts[urlParts.length - 2].replace('L', ''); // แปลง L2 เป็น 2
+    const workId = urlParts[urlParts.length - 1]; // ดึง workId เช่น 30053
+
+    console.log('Line:', line);
+    console.log('Work ID:', workId);
+
+    if (!line || !workId || isNaN(line) || isNaN(workId)) {
+        Swal.fire({
+            icon: 'error',
+            title: 'URL ไม่ถูกต้อง',
+            text: 'ไม่สามารถดึง Line หรือ Work ID จาก URL ได้',
+            showConfirmButton: true,
+        });
+        return;
+    }
 
     // ดักจับการ Submit ฟอร์ม
     $('#insertwipline1').on('submit', function (e) {
-        e.preventDefault(); // ป้องกันการ submit แบบปกติ
+        e.preventDefault();
 
-        const formData = $(this).serializeArray(); // ดึงข้อมูลฟอร์มทั้งหมด
-        console.log("Form Data:", formData);
+        const formData = $(this).serializeArray();
 
-        // ดึง URL Parameters
-        const currentUrl = window.location.pathname;
-        const urlSegments = currentUrl.split('/');
-        let line = urlSegments[urlSegments.length - 2];
-        const workId = urlSegments[urlSegments.length - 1];
-        line = line.replace('L', ''); // แปลง L1 -> 1
-
-        // ตรวจสอบค่าที่เลือก
-        const selectedValue = $('#wip_empgroup_id_2').val();
-        if (!selectedValue || selectedValue === "0") {
+        // ตรวจสอบข้อมูลบาร์โค้ดก่อนส่ง
+        const barcode = $('#wip_barcode').val();
+        if (!barcode || !barcode.startsWith('W') || barcode.length < 24) {
             Swal.fire({
-                icon: 'warning',
-                title: 'กรุณาเลือกผู้คัด',
-                text: 'คุณยังไม่ได้เลือกผู้คัด',
+                icon: 'error',
+                title: 'รูปแบบบาร์โค้ดไม่ถูกต้อง',
+                text: 'บาร์โค้ดต้องขึ้นต้นด้วย W และมีความยาวอย่างน้อย 24 ตัวอักษร',
                 showConfirmButton: true,
             });
             return;
         }
 
-        // ส่ง AJAX Request
+        // แสดง Loader ระหว่างรอการตอบกลับจากเซิร์ฟเวอร์
+        Swal.fire({
+            title: 'กำลังบันทึกข้อมูล...',
+            text: 'กรุณารอสักครู่',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // ส่งข้อมูลไปยังเซิร์ฟเวอร์
         $.ajax({
-            type: "POST",
-            url: `/insert-barcode/line/${line}/${workId}`,
+            type: 'POST',
+            url: `/insert-barcode/L/${line}/${workId}`,
             data: formData,
             success: function (response) {
-                console.log("Response:", response);
+                Swal.close(); // ปิด Loader
                 if (response.status === 'success') {
                     Swal.fire({
                         icon: 'success',
                         title: response.title || 'บันทึกเรียบร้อย',
-                        html: `<small style="color:green;">${response.message || 'ข้อมูลถูกบันทึกสำเร็จ'}</small>`,
+                        text: response.message || 'ข้อมูลถูกบันทึกสำเร็จ',
+                        timer: 1500,
                         showConfirmButton: false,
-                        timer: 1500
                     });
-                    window.setTimeout(function () {
-                        location.reload(); // รีเฟรชหน้าเว็บหลังจาก 1.5 วินาที
-                    }, 1500);
+
+                    // รีเฟรชหน้าหลังจาก 1.5 วินาที
+                    setTimeout(() => location.reload(), 1500);
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: response.title || 'ข้อผิดพลาด',
-                        html: `<small style="color:red;">${response.message || 'ไม่สามารถบันทึกข้อมูลได้'}</small>`,
+                        text: response.message || 'ไม่สามารถบันทึกข้อมูลได้',
                         showConfirmButton: true,
                     });
                 }
             },
             error: function (xhr) {
-                console.error("Error Response:", xhr);
+                Swal.close(); // ปิด Loader
                 let errorMessage = 'เกิดข้อผิดพลาด';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMessage = xhr.responseJSON.message;
@@ -508,15 +560,59 @@ $(document).ready(function () {
                 Swal.fire({
                     icon: 'error',
                     title: 'บันทึกข้อมูลไม่สำเร็จ',
-                    html: `<small style="color:red;">${errorMessage}</small><br><small style="color:red;">กรุณาตรวจสอบข้อมูลอีกครั้ง</small>`,
+                    text: errorMessage,
                     showConfirmButton: true,
                 });
             }
         });
     });
 });
-
 </script>
+
+<script>
+    $(document).ready(function () {
+        $('#outfgform').on('submit', function (e) {
+            e.preventDefault(); // หยุดการทำงานของฟอร์มแบบปกติ
+
+            // ส่งข้อมูลผ่าน AJAX
+            $.ajax({
+                type: "POST",
+                url: "{{ route('outfgcode', ['line' => $line, 'work_id' => $work_id]) }}", // กำหนด URL จาก Route
+                data: $(this).serialize(), // ดึงข้อมูลในฟอร์ม
+                success: function (response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'บันทึกข้อมูลแล้ว',
+                            html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                            showConfirmButton: false,
+                            timer: 1600
+                        });
+
+                        // รีเซ็ตฟอร์ม (ถ้าจำเป็น)
+                        $('#outfgform')[0].reset();
+                        $('.selectpicker').selectpicker('refresh'); // รีเฟรช dropdown ถ้าใช้ Bootstrap Select
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: response.message || 'ไม่สามารถบันทึกข้อมูลได้',
+                        });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: 'ไม่สามารถบันทึกข้อมูลได้',
+                    });
+                }
+            });
+        });
+    });
+</script>
+
+
 
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
@@ -1021,13 +1117,49 @@ $(document).ready(function () {
                         <div class="panel-body" style="padding-top: 0px;padding-left: 0px;">
                             <br>
                             <div class="text-center">
-                                <input class="form-control text-center" type="number" name="brd_amount" max="" value="100" data-toggle="tooltip" title="กรอกจำนวน" placeholder="กรอกจำนวน" required>
-                                @include('frontend.selectbrand') 
-                                &nbsp;&nbsp;&nbsp;
-                                <select id="select_emp_id" name="brd_eg_id" class="margin-select selectpicker show-tick form-control" aria-required="true" data-size="9" data-dropup-auto="true" data-live-search="true" data-style="btn-warning btn-sm text-white" data-width="fit" data-container="body" required>
-                                    <option value="0">เลือกผู้คัด</option>
-                                        <option style="font-size:15px;" data-tokens="1" value=""></option>
-                                </select>
+           <input 
+    class="form-control text-center" 
+    type="number" 
+    name="brd_amount" 
+    max="" 
+    value="{{ ($totalWipAmount ?? 0) - ($totalNgAmount ?? 0) }}" 
+    data-toggle="tooltip" 
+    title="กรอกจำนวน" 
+    placeholder="กรอกจำนวน" 
+    readonly 
+    required>
+
+                                <select name="brd_brandlist_id" 
+        id="brd_brandlist_id"
+        class="margin-select selectpicker show-tick form-control move-up" 
+        aria-required="true" 
+        data-size="9" 
+        data-dropup-auto="true" 
+        data-live-search="true" 
+        data-style="btn-info btn-md text-white" 
+        data-width="fit" 
+        data-container="body" 
+        required>
+        <option value="0">เลือกแบรนด์</option>
+    @foreach ($brandLists as $brand)
+        <option data-tokens="{{ $brand->bl_name }}" value="{{ $brand->bl_id }}">{{ $brand->bl_name }}</option>
+    @endforeach
+</select>
+                              
+
+&nbsp;&nbsp;                      
+<select id="select_emp_id" name="brd_eg_id" class="margin-select selectpicker show-tick form-control" aria-required="true" data-size="9" data-dropup-auto="true" data-live-search="true" data-style="btn-warning btn-sm text-white" data-width="fit" data-container="body" required>
+    <option value="0">เลือกผู้คัด</option>
+    @foreach ($empGroups as $group)
+        <option style="font-size:15px;" 
+                value="{{ $group->id }}" 
+                data-emp1="{{ $group->emp1 }}" 
+                data-emp2="{{ $group->emp2 }}">
+            {{ $group->emp1 }} - {{ $group->emp2 }}
+        </option>
+    @endforeach
+</select>
+
                                 &nbsp;&nbsp;
                                 <input style="width:30%;" class="form-control text-center" name="brd_checker" type="text"  placeholder="ผู้ตรวจสอบ" required> <br>
                                 <b>เลขหลังบอร์ด</b>

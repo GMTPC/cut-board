@@ -75,9 +75,13 @@ Route::delete('/deleteemp/{id}', [EmployeeController::class, 'delete'])->name('d
 Route::get('/getemp/{line}', [EmployeeController::class, 'getEmpGroups'])->name('line.getEmpGroups');
 Route::get('/get-barcode/{line}/{id}', [WipController::class, 'getBarcode']);
 Route::put('/update-empgroup/{id}', [WipController::class, 'updateEmpGroup'])->name('update.empgroup');
-Route::post('/insert-barcode/line/{line}/{work_id}', [WipController::class, 'insertWip'])->name('insertWip');
+Route::post('/insert-barcode/L/{line}/{work_id}', [WipController::class, 'insertWip'])->name('insertWip');
 Route::post('/addng', [WipController::class, 'addng'])->name('addng');
 Route::put('/editwipamg/{id}', [WipController::class, 'editwipamg'])->name('editwipamg');
 Route::delete('/deleteline1wip/{work_id}/{id}', [WipController::class, 'deleteWipLine1'])->name('deletewipline1');
+
+
+Route::get('/brandlist', [MainmenuController::class, 'BrandLis'])->name('brandlist');
+Route::post('/outfgcode/{line}/{work_id}', [WipController::class, 'outfgcode'])->name('outfgcode');
 
 require __DIR__.'/auth.php';

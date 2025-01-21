@@ -11,6 +11,7 @@ use App\Models\GroupEmp; // Import Model GroupEmp
 use App\Models\Wipbarcode;
 use App\Models\Listngall;
 use App\Models\ProductTypeEmp;
+use App\Models\BrandList;
 
 class MainmenuController extends Controller
 {
@@ -132,19 +133,35 @@ class MainmenuController extends Controller
         // ดึงผลรวม amg_amount จาก AmountNg ที่ amg_wip_id ตรงกับ wip_id
         $totalNgAmount = AmountNg::whereIn('amg_wip_id', $wipBarcodes->pluck('wip_id'))->sum('amg_amount');
     
+        // ✅ ดึงข้อมูลแบรนด์จากตาราง brandlist
+        $brandLists = BrandList::select('bl_id', 'bl_name')->get();
+    
+        // ✅ ดึงข้อมูล wip_sku_name โดยตรงจาก wipbarcodes
+        $wipSkuNames = Wipbarcode::where('wip_working_id', $id)
+                                 ->pluck('wip_sku_name');
+    
         // ส่งข้อมูลไปยัง View
         return view('datawip', [
-            'workprocess'      => $workprocess,
-            'line'             => $line,
-            'empGroups'        => $empGroups,
-            'work_id'          => $id,
-            'wipBarcodes'      => $wipBarcodes,
-            'totalWipAmount'   => $totalWipAmount,
-            'listNgAll'        => $listNgAll,
-            'productTypes'     => $productTypes,
-            'totalNgAmount'    => $totalNgAmount,
-            'currentEmpGroupId'=> $currentEmpGroupId   // ✅ ส่งตัวแปรไปที่ View
+            'workprocess'       => $workprocess,
+            'line'              => $line,
+            'empGroups'         => $empGroups,
+            'work_id'           => $id,
+            'wipBarcodes'       => $wipBarcodes,
+            'totalWipAmount'    => $totalWipAmount,
+            'listNgAll'         => $listNgAll,
+            'productTypes'      => $productTypes,
+            'totalNgAmount'     => $totalNgAmount,
+            'currentEmpGroupId' => $currentEmpGroupId,   // ✅ ส่งตัวแปรไปที่ View
+            'brandLists'        => $brandLists,         // ✅ เพิ่มตัวแปร brandLists
+            'wipSkuNames'       => $wipSkuNames,        // ✅ เพิ่มตัวแปร wipSkuNames
         ]);
+    }
+    
+    
+    public function BrandLis()
+    {
+        $brandLists = BrandList::select('bl_id', 'bl_name')->get();
+        return view('frontend.selectbrand', compact('brandLists'));
     }
     
     
