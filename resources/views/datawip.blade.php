@@ -356,58 +356,167 @@ $(document).ready(function() {
 </script>
 
 
-<script>
-    $(document).ready(function () {
-        $('#insertwipline1').on('submit', function (e) {
-            e.preventDefault(); // ป้องกันการ submit แบบปกติ
 
-            // ส่ง AJAX Request
-            $.ajax({
-                type: "POST",
-                url: $(this).attr('action'), // URL จาก action ของฟอร์ม
-                data: $(this).serialize(), // ดึงข้อมูลจากฟอร์มทั้งหมด
-                success: function () {
+</script>
+<script>
+$(document).ready(function () {
+    // เปิด Modal และตั้งค่า
+    $(document).on('click', '.open-edit-modal', function () {
+        const workingId = $(this).data('working-id');
+        $('#empwipid').val(workingId);
+        $('#editempwipform').attr('action', `/update-empgroup/${workingId}`);
+        $('#editempwip').modal('show');
+    });
+
+    // เมื่อเปลี่ยนค่าของ Dropdown
+    $('#wip_empgroup_id_1').on('change', function () {
+        const selectedValue = $(this).val(); // ดึงค่าที่เลือกใหม่
+
+        // ล้างตัวเลือกเก่าทั้งหมด
+        $('#wip_empgroup_id_1 option').prop('selected', false); // ล้างตัวเลือกทั้งหมด
+        $(`#wip_empgroup_id_1 option[value="${selectedValue}"]`).prop('selected', true); // ตั้งค่าตัวเลือกใหม่
+
+        // รีเฟรช Select Picker เพื่ออัปเดตสถานะ
+        $(this).selectpicker('refresh');
+
+        // พับ Dropdown หลังจากเลือกตัวเลือก
+        $(this).closest('.bootstrap-select').find('.dropdown-toggle').dropdown('toggle'); // บังคับปิด Dropdown
+    });
+
+    // ปิด Modal และรีเซ็ต Dropdown
+    $('#editempwip').on('hidden.bs.modal', function () {
+        // รีเซ็ตค่ากลับไปเริ่มต้น
+        $('#wip_empgroup_id_1 option').prop('selected', false); // ล้างตัวเลือกทั้งหมด
+        $('#wip_empgroup_id_1').val('0'); // ตั้งค่าเริ่มต้น
+        $('#wip_empgroup_id_1').selectpicker('refresh'); // รีเฟรช Dropdown
+    });
+
+    // ส่งฟอร์มด้วย Ajax
+    $('#editempwipform').on('submit', function (e) {
+        e.preventDefault();
+
+        const actionUrl = $(this).attr('action');
+        const formData = $(this).serialize();
+
+        $.ajax({
+            url: actionUrl,
+            type: 'PUT',
+            data: formData,
+            beforeSend: function () {
+                Swal.fire({
+                    title: 'กรุณารอสักครู่...',
+                    html: '<small style="color:green;">ระบบกำลังทำการบันทึกข้อมูล</small>',
+                    showConfirmButton: false,
+                    allowOutsideClick: false
+                });
+            },
+            success: function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกเรียบร้อย',
+                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                    showConfirmButton: false
+                });
+                window.setTimeout(function () {
+                    location.reload();
+                }, 1350);
+            },
+            error: function () {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">กด OK เพื่อปิดหน้าต่าง</small>',
+                    showConfirmButton: true
+                });
+            }
+        });
+    });
+});
+
+
+
+
+</script>
+
+<script>
+$(document).ready(function () {
+    // ปิดลิสต์ดรอปดาวน์หลังเลือก
+    $('#wip_empgroup_id_2').on('change', function () {
+        $(this).selectpicker('toggle'); // ปิด dropdown
+        console.log("Selected Value:", $(this).val());
+    });
+
+    // ดักจับการ Submit ฟอร์ม
+    $('#insertwipline1').on('submit', function (e) {
+        e.preventDefault(); // ป้องกันการ submit แบบปกติ
+
+        const formData = $(this).serializeArray(); // ดึงข้อมูลฟอร์มทั้งหมด
+        console.log("Form Data:", formData);
+
+        // ดึง URL Parameters
+        const currentUrl = window.location.pathname;
+        const urlSegments = currentUrl.split('/');
+        let line = urlSegments[urlSegments.length - 2];
+        const workId = urlSegments[urlSegments.length - 1];
+        line = line.replace('L', ''); // แปลง L1 -> 1
+
+        // ตรวจสอบค่าที่เลือก
+        const selectedValue = $('#wip_empgroup_id_2').val();
+        if (!selectedValue || selectedValue === "0") {
+            Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาเลือกผู้คัด',
+                text: 'คุณยังไม่ได้เลือกผู้คัด',
+                showConfirmButton: true,
+            });
+            return;
+        }
+
+        // ส่ง AJAX Request
+        $.ajax({
+            type: "POST",
+            url: `/insert-barcode/line/${line}/${workId}`,
+            data: formData,
+            success: function (response) {
+                console.log("Response:", response);
+                if (response.status === 'success') {
                     Swal.fire({
                         icon: 'success',
-                        title: 'บันทึกเรียบร้อย',
-                        html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                        title: response.title || 'บันทึกเรียบร้อย',
+                        html: `<small style="color:green;">${response.message || 'ข้อมูลถูกบันทึกสำเร็จ'}</small>`,
                         showConfirmButton: false,
-                        timer: 1000
+                        timer: 1500
                     });
                     window.setTimeout(function () {
-                        location.reload(); // รีเฟรชหน้าเว็บหลังจาก 800ms
-                    }, 800);
-                },
-                error: function () {
+                        location.reload(); // รีเฟรชหน้าเว็บหลังจาก 1.5 วินาที
+                    }, 1500);
+                } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'บันทึกข้อมูลไม่สำเร็จ',
-                        html: '<small style="color:red;">สาเหตุอาจจะมาจากชนิดที่ไม่เหมือนกัน บาร์โค้ดซ้ำ ยังไม่เลือกผู้คัด หรือ รูปแบบไม่ถูกต้อง</small><br><small style="color:red;">กด OK เพื่อดำเนินการต่อ</small>',
+                        title: response.title || 'ข้อผิดพลาด',
+                        html: `<small style="color:red;">${response.message || 'ไม่สามารถบันทึกข้อมูลได้'}</small>`,
                         showConfirmButton: true,
                     });
                 }
-            });
+            },
+            error: function (xhr) {
+                console.error("Error Response:", xhr);
+                let errorMessage = 'เกิดข้อผิดพลาด';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    html: `<small style="color:red;">${errorMessage}</small><br><small style="color:red;">กรุณาตรวจสอบข้อมูลอีกครั้ง</small>`,
+                    showConfirmButton: true,
+                });
+            }
         });
     });
+});
+
 </script>
-<script>
-    $(document).ready(function () {
-        // ฟังก์ชันเปิด Modal
-        $(document).on('click', '.open-edit-modal', function () {
-            // ดึงค่า `data-working-id` (หรือข้อมูลอื่นๆ ถ้าจำเป็น)
-            const workingId = $(this).data('working-id');
-            
-            // คุณสามารถใส่ค่าที่ดึงมาในฟอร์มหรือส่วนต่าง ๆ ของ Modal ได้
-            $('#empwipid').val(workingId); // เติมค่าลงในฟิลด์ hidden (ถ้าจำเป็น)
-
-            // เปิด Modal
-            $('#editempwip').modal('show');
-        });
-    });
-</script>
-
-
-
 
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
@@ -499,27 +608,29 @@ $(document).ready(function() {
 
     <!-- Dropdown -->
     <div class="form-group mr-2">
-        <select name="wip_empgroup_id" 
-                id="wip_empgroup_id"
-                class="margin-select selectpicker show-tick form-control move-up" 
-                aria-required="true" 
-                data-size="9" 
-                data-dropup-auto="true" 
-                data-live-search="true" 
-                data-style="btn-info btn-md text-white" 
-                data-width="fit" 
-                data-container="body" 
-                required>
-            <option style="font-size:15px;" value="0">เลือกผู้คัด</option>
-            @foreach ($empGroups as $group)
-                <option style="font-size:15px;" 
-                        value="{{ $group->id }}" 
-                        data-emp1="{{ $group->emp1 }}" 
-                        data-emp2="{{ $group->emp2 }}">
-                    {{ $group->emp1 }} - {{ $group->emp2 }}
-                </option>
-            @endforeach
-        </select>
+    <select name="wip_empgroup_id" 
+        id="wip_empgroup_id_2"
+        class="margin-select selectpicker show-tick form-control move-up" 
+        aria-required="true" 
+        data-size="9" 
+        data-dropup-auto="true" 
+        data-live-search="true" 
+        data-style="btn-info btn-md text-white" 
+        data-width="fit" 
+        data-container="body" 
+        required>
+    <option style="font-size:15px;" value="0">เลือกผู้คัด</option>
+    @foreach ($empGroups as $group)
+        <option style="font-size:15px;" 
+                value="{{ $group->id }}" 
+                data-emp1="{{ $group->emp1 }}" 
+                data-emp2="{{ $group->emp2 }}">
+            {{ $group->emp1 }} - {{ $group->emp2 }}
+        </option>
+    @endforeach
+</select>
+
+
     </div>
 
     <!-- Input -->
@@ -692,22 +803,6 @@ $(document).ready(function () {
 });
     
 </script>                      
-<script>
-    var listNgAll = @json($listNgAll);
-</script>
-<script>
-    $(document).ready(function () {
-        // ฟังก์ชันเปิด Modal
-        function openEditEmpWipModal() {
-            $('#editempwip').modal('show'); // ใช้ Bootstrap method ในการแสดง Modal
-        }
-
-        // ตัวอย่างการเรียกใช้ฟังก์ชันเมื่อคลิกปุ่มหรือเหตุการณ์
-        $(document).on('click', '.open-modal-button', function () {
-            openEditEmpWipModal(); // เรียกฟังก์ชันเพื่อเปิด Modal
-        });
-    });
-</script>
 
                       
               <div id="detail" class="tab-pane fade">
@@ -1262,33 +1357,36 @@ $(document).ready(function () {
                 <h4><b>Barcode : <u><i id="empwipbarcode">{{ $wipBarcodes->first()->wip_barcode ?? 'ไม่มีข้อมูล' }}</i></u></b></h4>
             </div>
             <div class="container-fluid">
-                <form id="editempwipform">
-                    @csrf
+            <form id="editempwipform" action="{{ route('update.empgroup', ['id' => 0]) }}" method="POST">
+            @csrf
                     @method('PUT')
                     <div class="modal-body">
                         <div class="text-center">
                             <!-- Select ผู้คัด -->
                             <select name="wip_empgroup_id" 
-                                    id="wip_empgroup_id"
-                                    class="margin-select selectpicker show-tick form-control" 
-                                    aria-required="true" 
-                                    data-size="9" 
-                                    data-dropup-auto="true" 
-                                    data-live-search="true" 
-                                    data-style="btn-info btn-md text-white" 
-                                    data-width="fit" 
-                                    data-container="body" 
-                                    required>
-                                <option style="font-size:15px;" value="0">เลือกผู้คัด</option>
-                                @foreach ($empGroups as $group)
-                                    <option style="font-size:15px;" 
-                                            value="{{ $group->id }}" 
-                                            data-emp1="{{ $group->emp1 }}" 
-                                            data-emp2="{{ $group->emp2 }}">
-                                        {{ $group->emp1 }} - {{ $group->emp2 }}
-                                    </option>
-                                @endforeach
-                            </select>
+        id="wip_empgroup_id_1"
+        class="margin-select selectpicker show-tick form-control move-up" 
+        aria-required="true" 
+        data-size="9" 
+        data-dropup-auto="true" 
+        data-live-search="true" 
+        data-style="btn-info btn-md text-white" 
+        data-width="fit" 
+        data-container="body" 
+        required>
+    <option style="font-size:15px;" value="0">เลือกผู้คัด</option>
+    @foreach ($empGroups as $group)
+        <option style="font-size:15px;" 
+                value="{{ $group->id }}" 
+                data-emp1="{{ $group->emp1 }}" 
+                data-emp2="{{ $group->emp2 }}">
+            {{ $group->emp1 }} - {{ $group->emp2 }}
+        </option>
+    @endforeach
+</select>
+
+
+
                         </div>
                         <!-- Hidden Inputs -->
                         <input type="hidden" name="id" id="empwipid">

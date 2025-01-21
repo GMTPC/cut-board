@@ -13,12 +13,12 @@ class WipController extends Controller
     public function insertWip(Request $request, $line, $work_id)
     {
         try {
-            // ✅ 1. Debug เช็คข้อมูล
+            // Debug ข้อมูล
             Log::info('Request Data:', $request->all());
             Log::info('Line:', ['line' => $line]);
             Log::info('Work ID:', ['work_id' => $work_id]);
     
-            // ✅ 2. เช็ค WorkProcess ว่ามีหรือไม่
+            // เช็ค WorkProcess
             $workProcess = WorkProcessQC::find($work_id);
             if (!$workProcess) {
                 return response()->json([
@@ -28,7 +28,7 @@ class WipController extends Controller
                 ], 400);
             }
     
-            // ✅ 3. เช็คว่า Line ตรงกับฐานข้อมูลหรือไม่
+            // เช็คว่า Line ตรงกับฐานข้อมูลหรือไม่
             if ($workProcess->line != $line) {
                 return response()->json([
                     'status' => 'error',
@@ -39,23 +39,23 @@ class WipController extends Controller
                 ], 400);
             }
     
-            // ✅ 4. Validate ข้อมูล
+            // Validate ข้อมูล
             $request->validate([
-                'wip_barcode' => 'required|min:24',
-                'wip_empgroup_id' => 'required|integer',
+                'wip_barcode' => 'required|string|min:24',
+                'wip_empgroup_id' => 'required|integer|min:1', // เปลี่ยนชื่อฟิลด์เป็น wip_empgroup_id
                 'wp_working_id' => 'required|integer',
             ]);
     
+            // ดึงข้อมูล
             $input = $request->all();
     
             DB::beginTransaction();
     
-            // ✅ 5. ตัดบาร์โค้ด 11 ตัวแรก เพื่อค้นหา SKU_NAME
+            // ตัดบาร์โค้ด 11 ตัวแรกเพื่อค้นหา SKU_NAME
             $barcode11 = substr($input['wip_barcode'], 0, 11);
     
-            // ✅ 6. ดึง SKU_NAME จาก Skumaster
+            // ดึง SKU_NAME จาก Skumaster
             $skuNameFull = Skumaster::where('SKU_CODE', $barcode11)->value('SKU_NAME');
-    
             if (!$skuNameFull) {
                 DB::rollBack();
                 return response()->json([
@@ -65,26 +65,14 @@ class WipController extends Controller
                 ], 400);
             }
     
-            // ✅ 7. ตัดคำว่า "แผ่นรอคัด Line X" ออก (X = 1, 2, 3, ...)
+            // ตัดคำว่า "แผ่นรอคัด Line X" ออก
             $skuNameClean = preg_replace('/^แผ่นรอคัด\s*line\s*\d+\s*/iu', '', $skuNameFull);
-            $skuName = mb_substr($skuNameClean, 0, 35);  // ตัดชื่อให้เหลือ 35 ตัวอักษร
+            $skuName = mb_substr($skuNameClean, 0, 35);
     
-            // ✅ 8. คำนวณ pe_index ต่อจากเดิม
+            // คำนวณ pe_index ต่อจากเดิม
             $peIndex = ProductTypeEmp::max('pe_index') + 1;
     
-            // ✅ 9. บันทึกข้อมูลลง ProductTypeEmp
-            $productTypeEmp = ProductTypeEmp::create([
-                'pe_working_id' => $input['wp_working_id'],  // ส่ง wip_working_id ไปที่ pe_working_id
-                'pe_type_code'  => substr($barcode11, -6),   // บาร์โค้ด 6 ตัวท้าย
-                'pe_type_name'  => $skuName,                // SKU_NAME ที่ถูกตัดคำ
-                'pe_index'      => $peIndex,               // index ต่อจากเดิม
-            ]);
-    
-            // ✅ 10. ตัดเลข 3 ตัวท้ายของบาร์โค้ดเป็นจำนวนสินค้า
-            $lastThreeDigits = substr($input['wip_barcode'], -3);
-            $input['wip_amount'] = (int) ltrim($lastThreeDigits, '0');
-    
-            // ✅ 11. ตรวจสอบว่าบาร์โค้ดซ้ำหรือไม่
+            // ตรวจสอบว่าบาร์โค้ดซ้ำหรือไม่
             $existingWip = Wipbarcode::where('wip_barcode', $input['wip_barcode'])->first();
             if ($existingWip) {
                 DB::rollBack();
@@ -95,14 +83,14 @@ class WipController extends Controller
                 ], 400);
             }
     
-            // ✅ 12. บันทึกข้อมูลลง Wipbarcode
+            // บันทึกข้อมูลลง Wipbarcode
             Wipbarcode::create([
                 'wip_barcode'    => $input['wip_barcode'],
-                'wip_amount'     => $input['wip_amount'],
+                'wip_amount'     => (int) ltrim(substr($input['wip_barcode'], -3), '0'),
                 'wip_working_id' => $input['wp_working_id'],
-                'wip_empgroup_id'=> $input['wip_empgroup_id'],
-                'wip_sku_name'   => $skuName,   // บันทึกชื่อสินค้า (ตัดคำแล้ว)
-                'wip_index'      => $peIndex,   // บันทึก index
+                'wip_empgroup_id'=> $input['wip_empgroup_id'], // ใช้ชื่อ wip_empgroup_id ตรงจากฟอร์ม
+                'wip_sku_name'   => $skuName,
+                'wip_index'      => $peIndex,
             ]);
     
             DB::commit();
@@ -125,6 +113,8 @@ class WipController extends Controller
         }
     }
     
+
+    
     
     
   
@@ -133,25 +123,30 @@ class WipController extends Controller
 
 
 
-public function updateEmpGroup(Request $request, $id)
-{
-    try {
-        $request->validate([
-            'wip_empgroup_id' => 'required|integer',
-        ]);
-
-        $wipBarcode = Wipbarcode::find($id);
-        if (!$wipBarcode) {
-            return response()->json(['status' => 'error', 'message' => 'ไม่พบข้อมูล WIP Barcode']);
+    public function updateEmpGroup(Request $request, $id)
+    {
+        try {
+            // ตรวจสอบข้อมูลที่รับมา
+            $request->validate([
+                'wip_empgroup_id' => 'required|integer',
+            ]);
+    
+            // ค้นหาข้อมูลโดยใช้ wip_working_id
+            $wipBarcode = Wipbarcode::where('wip_working_id', $id)->first();
+    
+            if (!$wipBarcode) {
+                return response()->json(['status' => 'error', 'message' => 'ไม่พบข้อมูล WIP Barcode']);
+            }
+    
+            // อัปเดตข้อมูล
+            $wipBarcode->update(['wip_empgroup_id' => $request->wip_empgroup_id]);
+    
+            return response()->json(['status' => 'success', 'message' => 'อัปเดตข้อมูลสำเร็จ']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
         }
-
-        $wipBarcode->update(['wip_empgroup_id' => $request->wip_empgroup_id]);
-
-        return response()->json(['status' => 'success', 'message' => 'อัปเดตข้อมูลสำเร็จ']);
-    } catch (\Exception $e) {
-        return response()->json(['status' => 'error', 'message' => $e->getMessage()]);
     }
-}
+    
     public function addng(Request $request)
     {
         try {
