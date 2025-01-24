@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Wipbarcode, WipProductDate, EmpInOut, ProductTypeEmp, WipWorktime, WorkProcessQC,GroupEmp,Skumaster,AmountNg};
+use App\Models\{Wipbarcode, WipProductDate, EmpInOut, ProductTypeEmp, WipWorktime, WorkProcessQC, GroupEmp, Skumaster, AmountNg, Brand};
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -84,9 +84,10 @@ class WipController extends Controller
             }
     
             // บันทึกข้อมูลลง Wipbarcode
+            $wipAmount = (int) ltrim(substr($input['wip_barcode'], -3), '0');
             Wipbarcode::create([
                 'wip_barcode'    => $input['wip_barcode'],
-                'wip_amount'     => (int) ltrim(substr($input['wip_barcode'], -3), '0'),
+                'wip_amount'     => $wipAmount,
                 'wip_working_id' => $input['wp_working_id'],
                 'wip_empgroup_id'=> $input['wip_empgroup_id'],
                 'wip_sku_name'   => $skuName,
@@ -99,6 +100,15 @@ class WipController extends Controller
                 'pe_type_code'  => $typeCode,
                 'pe_type_name'  => $skuName,
                 'pe_index'      => $peIndex,
+            ]);
+    
+            // บันทึกข้อมูลลง EmpInOut
+            EmpInOut::create([
+                'eio_emp_group'    => $input['wip_empgroup_id'], // ค่าเดียวกับ wip_empgroup_id
+                'eio_working_id'   => $input['wp_working_id'],  // ค่าเดียวกับ wp_working_id
+                'eio_input_amount' => $wipAmount,              // ค่าเดียวกับ wip_amount
+                'eio_line'         => $line,                  // แปลง L2 เป็น 2 หรือ L1 เป็น 1
+                'eio_division'     => 'QC',                   // กำหนดเป็น QC
             ]);
     
             DB::commit();
@@ -120,6 +130,7 @@ class WipController extends Controller
             ], 500);
         }
     }
+    
     
     
     
@@ -247,6 +258,7 @@ class WipController extends Controller
 
 public function deleteWipLine1($work_id, $id)
 {
+    
     try {
         $checkWip = Wipbarcode::where('wip_id', $id)->first();
 
@@ -299,106 +311,261 @@ public function deleteWipLine1($work_id, $id)
 }
 public function outfgcode(Request $request, $line, $work_id)
 {
-    // กำหนดสีตามเงื่อนไข (สมมติว่า function conditioncolor ยังคงใช้ได้)
-    $colorpd = $this->conditioncolor($work_id_con = $work_id, $line_con = $line);
+    // ตรวจสอบและแปลง $line ให้มี "L" ข้างหน้าถ้าเป็นตัวเลขล้วน
+    $line = preg_match('/^\d+$/', $line) ? "L$line" : $line;
 
-    // ตรวจสอบ lot ซ้ำในตาราง workprocess_qc
-    $checklot = WorkProcessQC::where('line', $line)
-        ->whereHas('wipBarcodes', function ($query) use ($request) {
-            $query->where('lot', $request->input('brd_lot'));
-        });
+    // ดึงสีตามเงื่อนไข
+    $colorpd = $this->conditioncolor($work_id, $line);
 
-    // ค้นหาข้อมูล EmpInOut ตาม working_id และ group_emp
-    $eio = EmpInOut::where('eio_working_id', $work_id)
-        ->where('eio_emp_group', $request->get('brd_eg_id'));
+    // ตรวจสอบ lot โดยใช้ group_emp
+    $checklot = Brand::leftJoin('group_emp', 'group_emp.id', '=', 'brands.brd_eg_id')
+        ->where('group_emp.line', '=', $line)
+        ->where('brands.brd_lot', '=', $request->input('brd_lot'));
+
+    // ตรวจสอบ EmpInOut
+    $eio = EmpInOut::where('eio_working_id', '=', $work_id)
+        ->where('eio_emp_group', '=', $request->get('brd_eg_id'));
 
     $eioid = $eio->value('eio_id');
-    $eiooutput = $eio->value('eio_output_amount');
+    $eiooutput = $eio->value('eio_output_amount') ?? 0;
 
-    // คำนวณจำนวน index สำหรับ empdate_index_key
-    $index = Brands::where('brd_working_id', $work_id)
-        ->where('brd_eg_id', $request->input('brd_eg_id'))
+    // ตรวจสอบลำดับข้อมูล
+    $index = Brand::where('brd_working_id', '=', $work_id)
+        ->where('brd_eg_id', '=', $request->input('brd_eg_id'))
         ->count();
     $countindex = $index + 1;
 
-    // Validation
-    $this->validate($request, [
-        'brd_lot' => 'required',
-        'brd_eg_id' => 'required',
-        'brd_brandlist_id' => 'required'
+    // Validate Input
+    $request->validate([
+        'brd_lot' => 'required|string',
+        'brd_eg_id' => 'required|numeric',
+        'brd_brandlist_id' => 'required|numeric',
+        'brd_amount' => 'required|numeric|min:1',
+        'brd_checker' => 'required|string',
     ]);
 
-    // เงื่อนไขแบรนด์
+    // กำหนดค่าคงที่สำหรับแบรนด์
     $white_brandlist = ["32", "33", "36", "37", "38", "49"];
     $white_manufacture = "44";
     $white_qc = "31";
 
-    // เพิ่มข้อมูลลงตาราง Brands
-    if (!$checklot->exists()) {
-        $brands = new Brands;
-        $brands->brd_working_id = $work_id;
-        $brands->brd_brandlist_id = $request->input('brd_brandlist_id');
-        $brands->brd_lot = $request->input('brd_lot');
-        $brands->brd_eg_id = $request->input('brd_eg_id');
-        $brands->brd_amount = $request->input('brd_amount');
-        $brands->brd_outfg_date = Carbon::now();
-        $brands->brd_empdate_index_key = $countindex;
-        $brands->brd_remark = $request->input('brd_remark');
-        $brands->brd_backboard_no = $request->input('brd_backboard_no');
-        $brands->brd_checker = $request->input('brd_checker');
-        $brands->brd_color = $colorpd;
+    $brd_eg_id = $request->input('brd_eg_id');
+    $brd_brandlist_id = $request->input('brd_brandlist_id');
 
-        // กำหนดสถานะ
-        if (in_array($request->input('brd_brandlist_id'), $white_brandlist) ||
-            $request->input('brd_brandlist_id') == $white_manufacture ||
-            $request->input('brd_brandlist_id') == $white_qc) {
-            $brands->brd_status = '2';
+    if ($brd_eg_id != "0" && $brd_brandlist_id != "0") {
+        if (!$checklot->exists()) {
+            $brands = new Brand();
+            $brands->brd_working_id = $work_id;
+            $brands->brd_brandlist_id = $brd_brandlist_id;
+            $brands->brd_lot = $request->input('brd_lot');
+            $brands->brd_eg_id = $brd_eg_id;
+            $brands->brd_amount = $request->input('brd_amount');
+            $brands->brd_outfg_date = now();
+            $brands->brd_empdate_index_key = $countindex;
+            $brands->brd_remark = $request->input('brd_remark');
+            $brands->brd_backboard_no = $request->input('brd_backboard_no');
+            $brands->brd_checker = $request->input('brd_checker');
+            $brands->brd_color = $colorpd;
+
+            // ตรวจสอบสถานะแบรนด์
+            $brands->brd_status = in_array($brd_brandlist_id, $white_brandlist) || 
+                                  $brd_brandlist_id == $white_manufacture || 
+                                  $brd_brandlist_id == $white_qc ? '2' : '1';
+
+            $brands->save();
+
+            // อัปเดตข้อมูล EmpInOut
+            if ($eioid) {
+                $eioout = EmpInOut::find($eioid);
+                $eioout->eio_output_amount = $eiooutput + $request->input('brd_amount');
+                $eioout->update();
+            }
+
+            return response()->json([
+                'message' => 'บันทึกข้อมูลสำเร็จ', // ข้อความภาษาไทย
+                'brd_id' => $brands->brd_id,
+                'brd_brandlist_id' => $brands->brd_brandlist_id,
+            ], 200, [], JSON_UNESCAPED_UNICODE); // เพิ่ม JSON_UNESCAPED_UNICODE
         } else {
-            $brands->brd_status = '1';
+            return response()->json(['error' => 'Duplicate lot detected'], 400);
         }
-
-        $brands->save();
-
-        // อัปเดต EmpInOut
-        $eioout = EmpInOut::find($eioid);
-        $eioout->eio_output_amount = $eiooutput + $request->input('brd_amount');
-        $eioout->update();
-
-        // ดึงข้อมูลล่าสุด
-        $outfg = Brands::leftJoin('brandlist', 'bl_id', '=', 'brd_brandlist_id')
-            ->orderBy('brd_outfg_date', 'DESC')
-            ->where('brd_status', $brands->brd_status)
-            ->limit(1)
-            ->get();
-
-        // ส่งข้อมูลแจ้งเตือน LINE
-        foreach ($outfg as $linefg) {
-            $sToken = "YOUR_LINE_TOKEN_HERE";
-            $sMessage = "คัดบอร์ดออก tag FG ";
-            $sMessage2 = "| Line: $line | Lot: {$linefg->brd_lot} | BX" . $linefg->bl_code;
-
-            $chOne = curl_init();
-            curl_setopt($chOne, CURLOPT_URL, "https://notify-api.line.me/api/notify");
-            curl_setopt($chOne, CURLOPT_SSL_VERIFYHOST, 0);
-            curl_setopt($chOne, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($chOne, CURLOPT_POST, 1);
-            curl_setopt($chOne, CURLOPT_POSTFIELDS, "message=" . $sMessage . "\n" . $sMessage2);
-            curl_setopt($chOne, CURLOPT_HTTPHEADER, [
-                'Content-type: application/x-www-form-urlencoded',
-                'Authorization: Bearer ' . $sToken,
-            ]);
-            curl_setopt($chOne, CURLOPT_RETURNTRANSFER, 1);
-            $result = curl_exec($chOne);
-            curl_close($chOne);
-        }
-
-        return response()->json(['success' => true, 'brd_id' => $brands->brd_id]);
     } else {
-        return response()->json(['success' => false, 'message' => 'Lot already exists.']);
+        return response()->json(['error' => 'Invalid input'], 400);
     }
 }
 
 
+public function conditioncolor($work_id_con,$line_con){
+
+    $colorpd = "";
+
+    $pdtype = ProductTypeEmp::leftJoin('wip_working','ww_id','=','pe_working_id')
+    ->leftJoin('brands','brd_working_id','=','ww_id')
+    ->where('ww_id','=',$work_id_con);
+
+    $pdcode = $pdtype->value('pe_type_code');
+    $remark = $pdtype->value('brd_remark');
+
+    if (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '10' && substr($pdcode,4,2) == '18'){
+        $colorpd = "#FFFFFF";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '3' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '09') {
+        if ($line_con == 'L1') {
+            $colorpd = "#92d050";
+        }
+        elseif ($line_con == 'L2') {
+            $colorpd = "#ffff00";
+        }
+        else {
+            $colorpd = "#00b0f0";
+        }
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '09') {
+        if ($line_con == 'L1') {
+            $colorpd = "#92d050";
+        }
+        elseif ($line_con == 'L2') {
+            $colorpd = "#ffff00";
+        }
+        else {
+            $colorpd = "#00b0f0";
+        }
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '4' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '09') {
+        if ($line_con == 'L1') {
+            $colorpd = "#92d050";
+        }
+        elseif ($line_con == 'L2') {
+            $colorpd = "#ffff00";
+        }
+        else {
+            $colorpd = "#00b0f0";
+        }
+    }
+    elseif (substr($pdcode,0,1) == 'B' && substr($pdcode,1,1) == '3' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '09') {
+        $colorpd = "#00b0f0";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '3' && substr($pdcode,2,2) == '02' && substr($pdcode,4,2) == '09') {
+        $colorpd = "#ff9966";
+    }
+    elseif (substr($pdcode,0,1) == 'A' &&  substr($pdcode,1,1) == '01' && substr($pdcode,2,2) == '02' && substr($pdcode,4,2) == '09') {
+        $colorpd = "#ff9966";
+    }
+    elseif (substr($pdcode,0,1) == 'B' && substr($pdcode,1,1) == '3' && substr($pdcode,2,2) == '02' && substr($pdcode,4,2) == '09') {
+        $colorpd = "#ff99cc";
+    }
+    elseif (substr($pdcode,0,1) == 'B' && substr($pdcode,1,1) == '01' && substr($pdcode,2,2) == '02' && substr($pdcode,4,2) == '09') {
+        $colorpd = "#ff99cc";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '07' && substr($pdcode,4,2) == '12') {
+        $colorpd = "#a9d08e";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '3' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '12') {
+        if ($line_con == 'L1') {
+            $colorpd = "#92d050";
+        }
+        elseif ($line_con == 'L2') {
+            $colorpd = "#ffff00";
+        }
+        else {
+            $colorpd = "#00b0f0";
+        }
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '12') {
+        if ($line_con == 'L1') {
+            $colorpd = "#92d050";
+        }
+        elseif ($line_con == 'L2') {
+            $colorpd = "#ffff00";
+        }
+        else {
+            $colorpd = "#00b0f0";
+        }
+    }
+    elseif (substr($pdcode,0,1) == 'B' && substr($pdcode,1,1) == '3' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '12') {
+        if ($line_con == 'L1') {
+            $colorpd = "#92d050";
+        }
+        elseif ($line_con == 'L2') {
+            $colorpd = "#ffff00";
+        }
+        else {
+            $colorpd = "#00b0f0";
+        }
+    }
+    elseif (substr($pdcode,0,1) == 'B' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '12') {
+        if ($line_con == 'L1') {
+            $colorpd = "#92d050";
+        }
+        elseif ($line_con == 'L2') {
+            $colorpd = "#ffff00";
+        }
+        else {
+            $colorpd = "#00b0f0";
+        }
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '08' && substr($pdcode,4,2) == '12') {
+        $colorpd = "#ccccff";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '11' && substr($pdcode,4,2) == '12') {
+        if ($line_con == 'L1') {
+            $colorpd = "#92d050";
+        }
+        elseif ($line_con == 'L2') {
+            $colorpd = "#ffff00";
+        }
+        elseif ($line_con == 'L3') {
+            $colorpd = "#00b0f0";
+        }
+        else {
+            $colorpd = "#FFFFFF";
+        }
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '12' && substr($pdcode,4,2) == '12') {
+        $colorpd = "#00b0f0";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '13') {
+        $colorpd = "#a9d08e";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '08' && substr($pdcode,4,2) == '13') {
+        $colorpd = "#a9d08e";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '02' && substr($pdcode,4,2) == '13') {
+        $colorpd = "#a9d08e";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '02' && substr($pdcode,4,2) == '12' && $line_con == 'L2') {
+        $colorpd = "#ff9966";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '3' && substr($pdcode,2,2) == '02' && substr($pdcode,4,2) == '12' && $line_con == 'L2') {
+        $colorpd = "#ff9966";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '3' && substr($pdcode,2,2) == '02' && substr($pdcode,4,2) == '12') {
+        $colorpd = "#ff9966";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '02' && substr($pdcode,4,2) == '12') {
+        $colorpd = "#ff9966";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '1' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '15' && $line_con == 'L3') {
+        $colorpd = "#ff9966";
+    }
+    elseif (substr($pdcode,0,1) == 'A' && substr($pdcode,1,1) == '3' && substr($pdcode,2,2) == '01' && substr($pdcode,4,2) == '15' && $line_con == 'L3') {
+        $colorpd = "#ff9966";
+    }
+    else {
+        $colorpd = "#FFFFFF";
+    }
+
+    return $colorpd;
+
+    #92d050 //green line 1
+    #ffff00 //yellow
+    #00b0f0 //sky
+    #ff9966 //orange
+    #ff99cc //pink
+    #ccccff //pureple
+    #a9d08e //green
+    #FFFFFF //white
+}
 }
 
 

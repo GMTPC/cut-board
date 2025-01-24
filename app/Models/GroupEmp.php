@@ -22,6 +22,7 @@ class GroupEmp extends Model
      * @var array
      */
     protected $fillable = [
+        'id',
         'emp1',
         'emp2',
         'line',

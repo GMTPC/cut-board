@@ -4,24 +4,35 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class WipWorking extends Model
 {
     use HasFactory;
 
-    // กำหนดชื่อตารางในฐานข้อมูล (หากชื่อไม่ตรงกับ `wip_workings`)
-    protected $table = 'wip_workings'; // ชื่อตารางจริงในฐานข้อมูล
+    // ชื่อตารางในฐานข้อมูล
+    protected $table = 'wip_working';
 
-    // กำหนด Primary Key (ถ้าใช้ชื่ออื่นที่ไม่ใช่ `id`)
+    // ชื่อ Primary Key
     protected $primaryKey = 'ww_id';
 
-    // หากตารางไม่มี `created_at` และ `updated_at`
+    // ตารางไม่มี timestamps (created_at, updated_at)
     public $timestamps = false;
 
-    // กำหนดฟิลด์ที่สามารถกรอกข้อมูลได้
+    // ฟิลด์ที่สามารถกรอกข้อมูลได้
     protected $fillable = [
         'ww_id',
         'ww_line',
-        // เพิ่มคอลัมน์อื่น ๆ หากจำเป็น
+        // เพิ่มฟิลด์อื่น ๆ ตามที่ต้องการ
     ];
+
+    // เพิ่ม Global Scope เพื่อเรียงลำดับตาม `ww_id`
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::addGlobalScope('orderById', function (Builder $builder) {
+            $builder->orderBy('ww_id', 'asc'); // เรียงจากน้อยไปมาก
+        });
+    }
 }

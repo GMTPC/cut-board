@@ -15,6 +15,9 @@ class WorkProcessQC extends Model
     // เชื่อมกับ Wipbarcode
     public function wipBarcodes()
     {
+        // ลบเงื่อนไขเกี่ยวกับ status
         return $this->hasMany(Wipbarcode::class, 'wip_working_id', 'id');
     }
+    
 }
+

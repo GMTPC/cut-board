@@ -514,6 +514,10 @@ $(document).ready(function () {
             return;
         }
 
+        // เพิ่มข้อมูลเพิ่มเติมใน formData
+        formData.push({ name: 'line', value: line }); // ส่ง line (เช่น 2)
+        formData.push({ name: 'work_id', value: workId }); // ส่ง work_id
+
         // แสดง Loader ระหว่างรอการตอบกลับจากเซิร์ฟเวอร์
         Swal.fire({
             title: 'กำลังบันทึกข้อมูล...',
@@ -527,7 +531,7 @@ $(document).ready(function () {
         // ส่งข้อมูลไปยังเซิร์ฟเวอร์
         $.ajax({
             type: 'POST',
-            url: `/insert-barcode/L/${line}/${workId}`,
+            url: `/insert-barcode/L/${line}/${workId}`, // URL ที่เซิร์ฟเวอร์รองรับ
             data: formData,
             success: function (response) {
                 Swal.close(); // ปิด Loader
@@ -567,52 +571,58 @@ $(document).ready(function () {
         });
     });
 });
+
 </script>
 
+
 <script>
-    $(document).ready(function () {
-        $('#outfgform').on('submit', function (e) {
-            e.preventDefault(); // หยุดการทำงานของฟอร์มแบบปกติ
+    $('#outfgform').on('submit', function (e) {
+        e.preventDefault(); // ป้องกันการ Submit แบบปกติ
 
-            // ส่งข้อมูลผ่าน AJAX
-            $.ajax({
-                type: "POST",
-                url: "{{ route('outfgcode', ['line' => $line, 'work_id' => $work_id]) }}", // กำหนด URL จาก Route
-                data: $(this).serialize(), // ดึงข้อมูลในฟอร์ม
-                success: function (response) {
-                    if (response.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'บันทึกข้อมูลแล้ว',
-                            html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
-                            showConfirmButton: false,
-                            timer: 1600
-                        });
+        let line = "{{ $line }}";
+        let workid = "{{ $work_id }}";
+        let path = "{{ url('/') }}";
 
-                        // รีเซ็ตฟอร์ม (ถ้าจำเป็น)
-                        $('#outfgform')[0].reset();
-                        $('.selectpicker').selectpicker('refresh'); // รีเฟรช dropdown ถ้าใช้ Bootstrap Select
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'เกิดข้อผิดพลาด',
-                            text: response.message || 'ไม่สามารถบันทึกข้อมูลได้',
-                        });
+        $.ajax({
+            type: 'POST',
+            url: `${path}/outfgcode/${line}/${workid}`,
+            data: $('#outfgform').serialize(),
+            success: function (response) {
+                // ตรวจสอบและแปลง response หากจำเป็น
+                const data = typeof response === 'string' ? JSON.parse(response) : response;
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สำเร็จ!',
+                    text: data.message || 'บันทึกข้อมูลสำเร็จ',
+                    timer: 2000,
+                    showConfirmButton: false,
+                });
+            },
+            error: function (xhr) {
+                // ตรวจสอบข้อความ Error
+                let errorMessage = 'ไม่สามารถบันทึกข้อมูลได้';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                } else if (xhr.responseText) {
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.message || errorMessage;
+                    } catch (e) {
+                        console.error('Parsing Error:', e);
                     }
-                },
-                error: function (xhr, status, error) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'เกิดข้อผิดพลาด',
-                        text: 'ไม่สามารถบันทึกข้อมูลได้',
-                    });
                 }
-            });
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด!',
+                    text: errorMessage,
+                    showConfirmButton: true,
+                });
+            },
         });
     });
 </script>
-
-
 
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
@@ -833,13 +843,16 @@ $(document).ready(function () {
                         </tr>
                     </thead>
                     <tbody>
+                    @foreach ($brandsLots as $lot)
                         <tr>
                             <td></td>
-                            <td></td>
+                            <td>{{ $lot }}</td>
                             <td></td>
                             <td></td>
                             <td></td>
                         </tr>
+                        @endforeach
+
                     </tbody>
                 </table>
             </div>
@@ -1109,85 +1122,105 @@ $(document).ready(function () {
                 </button>
                 <h3 class="modal-title" id="OutFg"><b>ออกรหัส FG</b></h3>
             </div>
-            <form id="outfgform" class="form-inline md-form form-sm mt-0 text-right" enctype="multipart/form-data" accept-charset="utf-8" method="post">
-                <div class="modal-body">
-                    {{ csrf_field() }}
-                    <div class="panel panel-gmt">
-                        <div class="panel-heading text-center" style="font-size:18px;">ออกรหัส FG</div>
-                        <div class="panel-body" style="padding-top: 0px;padding-left: 0px;">
-                            <br>
-                            <div class="text-center">
-           <input 
-    class="form-control text-center" 
-    type="number" 
-    name="brd_amount" 
-    max="" 
-    value="{{ ($totalWipAmount ?? 0) - ($totalNgAmount ?? 0) }}" 
-    data-toggle="tooltip" 
-    title="กรอกจำนวน" 
-    placeholder="กรอกจำนวน" 
-    readonly 
-    required>
+   <form id="outfgform" 
+      class="form-inline md-form form-sm mt-0 text-right" 
+      enctype="multipart/form-data" 
+      method="post" 
+      action="{{ url('/outfgcode/' . $line . '/' . $work_id) }}">
+    {{ csrf_field() }}
 
-                                <select name="brd_brandlist_id" 
-        id="brd_brandlist_id"
-        class="margin-select selectpicker show-tick form-control move-up" 
-        aria-required="true" 
-        data-size="9" 
-        data-dropup-auto="true" 
-        data-live-search="true" 
-        data-style="btn-info btn-md text-white" 
-        data-width="fit" 
-        data-container="body" 
-        required>
-        <option value="0">เลือกแบรนด์</option>
-    @foreach ($brandLists as $brand)
-        <option data-tokens="{{ $brand->bl_name }}" value="{{ $brand->bl_id }}">{{ $brand->bl_name }}</option>
-    @endforeach
-</select>
-                              
+    <!-- เพิ่ม hidden inputs -->
+    <input type="hidden" name="brd_working_id" value="{{ $work_id }}">
+    <input type="hidden" name="brd_lot" value="{{ $lotgenerator }}">
 
-&nbsp;&nbsp;                      
-<select id="select_emp_id" name="brd_eg_id" class="margin-select selectpicker show-tick form-control" aria-required="true" data-size="9" data-dropup-auto="true" data-live-search="true" data-style="btn-warning btn-sm text-white" data-width="fit" data-container="body" required>
-    <option value="0">เลือกผู้คัด</option>
-    @foreach ($empGroups as $group)
-        <option style="font-size:15px;" 
-                value="{{ $group->id }}" 
-                data-emp1="{{ $group->emp1 }}" 
-                data-emp2="{{ $group->emp2 }}">
-            {{ $group->emp1 }} - {{ $group->emp2 }}
-        </option>
-    @endforeach
-</select>
-
-                                &nbsp;&nbsp;
-                                <input style="width:30%;" class="form-control text-center" name="brd_checker" type="text"  placeholder="ผู้ตรวจสอบ" required> <br>
-                                <b>เลขหลังบอร์ด</b>
-                                <input style="width:30%;" class="form-control text-center" name="brd_backboard_no" type="text" placeholder="เลขหลังบอร์ด">
-                                <b>เพิ่มหมายเหตุ</b>
-                                <input style="width:30%;" class="form-control text-center" name="brd_remark" type="text" name="" placeholder="หมายเหตุ">
-                            </div>
-                            <input type="hidden" name="brd_working_id" value="">
-                            <input type="hidden" name="brd_lot" value="">
-                        </div>
-                    </div>
-                    <br>
-                </div>
+    <div class="modal-body">
+        <div class="panel panel-gmt">
+            <div class="panel-heading text-center" style="font-size:18px;">ออกรหัส FG</div>
+            <div class="panel-body" style="padding-top: 0px;padding-left: 0px;">
+                <br>
                 <div class="text-center">
-                    <button type="submit" class="btn btn-success fas fa-save">  บันทึก </button> 
-                    
-                    <!--  $sToken = "qyfH6ZcGoMCGxuOufKmdjOXXQwSVzsVjihm6vf17PQ4";
-                        $ttexe = "BX".$tag->bl_code."-".$tag->pe_type_code.":".$sizearr[substr($tag->pe_type_code,2,2)].":".$tag->ww_line."++++++++";
-                        $sMessage1 = "คัดบอร์ดออก tag FG ";
-                        $sMessage = $sMessage1 ."".$ttexe;
-                    -->
-                    
-                    
+                    <input 
+                        class="form-control text-center" 
+                        type="number" 
+                        name="brd_amount" 
+                        max="" 
+                        value="{{ ($totalWipAmount ?? 0) - ($totalNgAmount ?? 0) }}" 
+                        data-toggle="tooltip" 
+                        title="กรอกจำนวน" 
+                        placeholder="กรอกจำนวน" 
+                        required>
+                    <select name="brd_brandlist_id" 
+                            id="brd_brandlist_id"
+                            class="margin-select selectpicker show-tick form-control move-up" 
+                            aria-required="true" 
+                            data-size="9" 
+                            data-dropup-auto="true" 
+                            data-live-search="true" 
+                            data-style="btn-info btn-md text-white" 
+                            data-width="fit" 
+                            data-container="body" 
+                            required>
+                        <option value="0">เลือกแบรนด์</option>
+                        @foreach ($brandLists as $brand)
+                            <option data-tokens="{{ $brand->bl_name }}" value="{{ $brand->bl_id }}">{{ $brand->bl_name }}</option>
+                        @endforeach
+                    </select>
+                    &nbsp;&nbsp;
+                    <select id="select_emp_id" 
+                            name="brd_eg_id" 
+                            class="margin-select selectpicker show-tick form-control" 
+                            aria-required="true" 
+                            data-size="9" 
+                            data-dropup-auto="true" 
+                            data-live-search="true" 
+                            data-style="btn-warning btn-sm text-white" 
+                            data-width="fit" 
+                            data-container="body" 
+                            required>
+                        <option value="0">เลือกผู้คัด</option>
+                        @foreach ($empGroups as $group)
+                            <option style="font-size:15px;" 
+                                    value="{{ $group->id }}" 
+                                    data-emp1="{{ $group->emp1 }}" 
+                                    data-emp2="{{ $group->emp2 }}">
+                                {{ $group->emp1 }} - {{ $group->emp2 }}
+                            </option>
+                        @endforeach
+                    </select>
+                    &nbsp;&nbsp;
+                    <input style="width:30%;" 
+                           class="form-control text-center" 
+                           name="brd_checker" 
+                           type="text"  
+                           placeholder="ผู้ตรวจสอบ" 
+                           required>
+                    <br>
+                    <b>เลขหลังบอร์ด</b>
+                    <input style="width:30%;" 
+                           class="form-control text-center" 
+                           name="brd_backboard_no" 
+                           type="text" 
+                           placeholder="เลขหลังบอร์ด">
+                    <b>เพิ่มหมายเหตุ</b>
+                    <input style="width:30%;" 
+                           class="form-control text-center" 
+                           name="brd_remark" 
+                           type="text" 
+                           placeholder="หมายเหตุ">
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                </div>
-            </form>
+            </div>
+        </div>
+        <br>
+    </div>
+    <div class="text-center">
+        <button type="submit" class="btn btn-success fas fa-save">  บันทึก </button>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
+    </div>
+</form>
+
+
         </div>
     </div>
 </div>
