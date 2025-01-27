@@ -11,125 +11,142 @@ use Illuminate\Support\Facades\Log;
 class WipController extends Controller
 {
     public function insertWip(Request $request, $line, $work_id)
-    {
-        try {
-            // ตรวจสอบว่า $line และ $work_id ถูกต้องหรือไม่
-            if (!is_numeric($work_id) || !is_numeric($line)) {
-                return response()->json([
-                    'status' => 'error',
-                    'title' => 'ข้อมูลไม่ถูกต้อง',
-                    'message' => 'Line หรือ Work ID ไม่ถูกต้อง'
-                ], 400);
-            }
-    
-            // Debug ข้อมูล
-            Log::info('Request Data:', $request->all());
-            Log::info('Line:', ['line' => $line]);
-            Log::info('Work ID:', ['work_id' => $work_id]);
-    
-            // เช็ค WorkProcess
-            $workProcess = WorkProcessQC::find($work_id);
-            if (!$workProcess) {
-                return response()->json([
-                    'status' => 'error',
-                    'title' => 'ไม่พบข้อมูล',
-                    'message' => 'ไม่พบข้อมูลกระบวนการทำงานสำหรับ work_id นี้'
-                ], 400);
-            }
-    
-            // Validate ข้อมูล
-            $request->validate([
-                'wip_barcode' => 'required|string|min:24',
-                'wip_empgroup_id' => 'required|integer|min:1',
-                'wp_working_id' => 'required|integer',
-            ]);
-    
-            // ดึงข้อมูลจาก Request
-            $input = $request->all();
-            DB::beginTransaction();
-    
-            // ตัดบาร์โค้ด 11 ตัวแรกเพื่อค้นหา SKU_NAME
-            $barcode11 = substr($input['wip_barcode'], 0, 11);
-    
-            // ดึง SKU_NAME จาก Skumaster
-            $skuNameFull = Skumaster::where('SKU_CODE', $barcode11)->value('SKU_NAME');
-            if (!$skuNameFull) {
-                DB::rollBack();
-                return response()->json([
-                    'status' => 'error',
-                    'title' => 'ไม่พบข้อมูล SKU',
-                    'message' => 'ไม่พบข้อมูลใน SKUMASTER ที่ตรงกับบาร์โค้ดนี้'
-                ], 400);
-            }
-    
-            // ตัดคำว่า "แผ่นรอคัด Line X" ออก
-            $skuNameClean = preg_replace('/^แผ่นรอคัด\s*line\s*\d+\s*/iu', '', $skuNameFull);
-            $skuName = mb_substr($skuNameClean, 0, 35);
-    
-            // ตัด 5 ตัวแรกออกจาก 11 ตัวแรก (ให้เหลือ 6 ตัวท้าย)
-            $typeCode = substr($barcode11, 5);
-    
-            // คำนวณ pe_index ต่อจากเดิม
-            $peIndex = ProductTypeEmp::max('pe_index') + 1;
-    
-            // ตรวจสอบว่าบาร์โค้ดซ้ำหรือไม่
-            $existingWip = Wipbarcode::where('wip_barcode', $input['wip_barcode'])->first();
-            if ($existingWip) {
-                DB::rollBack();
-                return response()->json([
-                    'status' => 'error',
-                    'title' => 'บาร์โค้ดซ้ำ',
-                    'message' => 'บาร์โค้ดนี้ถูกบันทึกแล้ว'
-                ], 400);
-            }
-    
-            // บันทึกข้อมูลลง Wipbarcode
-            $wipAmount = (int) ltrim(substr($input['wip_barcode'], -3), '0');
-            Wipbarcode::create([
-                'wip_barcode'    => $input['wip_barcode'],
-                'wip_amount'     => $wipAmount,
-                'wip_working_id' => $input['wp_working_id'],
-                'wip_empgroup_id'=> $input['wip_empgroup_id'],
-                'wip_sku_name'   => $skuName,
-                'wip_index'      => $peIndex,
-            ]);
-    
-            // บันทึกข้อมูลลง ProductTypeEmp
-            ProductTypeEmp::create([
-                'pe_working_id' => $work_id,
-                'pe_type_code'  => $typeCode,
-                'pe_type_name'  => $skuName,
-                'pe_index'      => $peIndex,
-            ]);
-    
-            // บันทึกข้อมูลลง EmpInOut
-            EmpInOut::create([
-                'eio_emp_group'    => $input['wip_empgroup_id'], // ค่าเดียวกับ wip_empgroup_id
-                'eio_working_id'   => $input['wp_working_id'],  // ค่าเดียวกับ wp_working_id
-                'eio_input_amount' => $wipAmount,              // ค่าเดียวกับ wip_amount
-                'eio_line'         => $line,                  // แปลง L2 เป็น 2 หรือ L1 เป็น 1
-                'eio_division'     => 'QC',                   // กำหนดเป็น QC
-            ]);
-    
-            DB::commit();
-    
-            return response()->json([
-                'status' => 'success',
-                'title' => 'บันทึกเรียบร้อย',
-                'message' => 'ข้อมูลถูกบันทึกสำเร็จ'
-            ], 200);
-    
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error($e->getMessage());
-    
+{
+    try {
+        // ตรวจสอบว่า $line และ $work_id ถูกต้องหรือไม่
+        if (!is_numeric($work_id) || !is_numeric($line)) {
             return response()->json([
                 'status' => 'error',
-                'title' => 'เกิดข้อผิดพลาด',
-                'message' => $e->getMessage()
-            ], 500);
+                'title' => 'ข้อมูลไม่ถูกต้อง',
+                'message' => 'Line หรือ Work ID ไม่ถูกต้อง'
+            ], 400);
         }
+
+        // Debug ข้อมูล
+        Log::info('Request Data:', $request->all());
+        Log::info('Line:', ['line' => $line]);
+        Log::info('Work ID:', ['work_id' => $work_id]);
+
+        // เช็ค WorkProcess
+        $workProcess = WorkProcessQC::find($work_id);
+        if (!$workProcess) {
+            return response()->json([
+                'status' => 'error',
+                'title' => 'ไม่พบข้อมูล',
+                'message' => 'ไม่พบข้อมูลกระบวนการทำงานสำหรับ work_id นี้'
+            ], 400);
+        }
+
+        // Validate ข้อมูล
+        $request->validate([
+            'wip_barcode' => 'required|string|min:24',
+            'wip_empgroup_id' => 'required|integer|min:1',
+            'wp_working_id' => 'required|integer',
+        ]);
+
+        // ดึงข้อมูลจาก Request
+        $input = $request->all();
+        DB::beginTransaction();
+
+        // ตัดบาร์โค้ด 11 ตัวแรกเพื่อค้นหา SKU_NAME
+        $barcode11 = substr($input['wip_barcode'], 0, 11);
+
+        // ดึง SKU_NAME จาก Skumaster
+        $skuNameFull = Skumaster::where('SKU_CODE', $barcode11)->value('SKU_NAME');
+        if (!$skuNameFull) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'title' => 'ไม่พบข้อมูล SKU',
+                'message' => 'ไม่พบข้อมูลใน SKUMASTER ที่ตรงกับบาร์โค้ดนี้'
+            ], 400);
+        }
+
+        // ตัดคำว่า "แผ่นรอคัด Line X" ออก
+        $skuNameClean = preg_replace('/^แผ่นรอคัด\s*line\s*\d+\s*/iu', '', $skuNameFull);
+        $skuName = mb_substr($skuNameClean, 0, 35);
+
+        // ตัด 5 ตัวแรกออกจาก 11 ตัวแรก (ให้เหลือ 6 ตัวท้าย)
+        $typeCode = substr($barcode11, 5);
+
+        // คำนวณ pe_index ต่อจากเดิม
+        $peIndex = ProductTypeEmp::max('pe_index') + 1;
+
+        // ตรวจสอบว่าบาร์โค้ดซ้ำหรือไม่
+        $existingWip = Wipbarcode::where('wip_barcode', $input['wip_barcode'])->first();
+        if ($existingWip) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'title' => 'บาร์โค้ดซ้ำ',
+                'message' => 'บาร์โค้ดนี้ถูกบันทึกแล้ว'
+            ], 400);
+        }
+
+        // บันทึกข้อมูลลง Wipbarcode
+        $wipAmount = (int) ltrim(substr($input['wip_barcode'], -3), '0');
+        $insertwip = Wipbarcode::create([
+            'wip_barcode'    => $input['wip_barcode'],
+            'wip_amount'     => $wipAmount,
+            'wip_working_id' => $input['wp_working_id'],
+            'wip_empgroup_id'=> $input['wip_empgroup_id'],
+            'wip_sku_name'   => $skuName,
+            'wip_index'      => $peIndex,
+        ]);
+
+        // คำนวณ indexcount
+        $index = WipProductDate::where('wp_working_id', $input['wp_working_id'])
+            ->where('wp_empgroup_id', $input['wip_empgroup_id'])
+            ->max('wp_empdate_index_id');
+        $indexcount = $index + 1;
+
+        // บันทึกข้อมูลลง WipProductDate
+        $dmy = now(); // ใช้วันที่ปัจจุบัน
+        $dateproduct = new WipProductDate;
+        $dateproduct->wp_working_id = $input['wp_working_id'];
+        $dateproduct->wp_wip_id = $insertwip->wip_id;
+        $dateproduct->wp_empdate_index_id = $indexcount;
+        $dateproduct->wp_empgroup_id = $input['wip_empgroup_id'];
+        $dateproduct->wp_date_product = Carbon::parse($dmy)->toDateTimeString();
+        $dateproduct->save();
+
+        // บันทึกข้อมูลลง ProductTypeEmp
+        ProductTypeEmp::create([
+            'pe_working_id' => $work_id,
+            'pe_type_code'  => $typeCode,
+            'pe_type_name'  => $skuName,
+            'pe_index'      => $peIndex,
+        ]);
+
+        // บันทึกข้อมูลลง EmpInOut
+        EmpInOut::create([
+            'eio_emp_group'    => $input['wip_empgroup_id'], // ค่าเดียวกับ wip_empgroup_id
+            'eio_working_id'   => $input['wp_working_id'],  // ค่าเดียวกับ wp_working_id
+            'eio_input_amount' => $wipAmount,              // ค่าเดียวกับ wip_amount
+            'eio_line'         => $line,                  // แปลง L2 เป็น 2 หรือ L1 เป็น 1
+            'eio_division'     => 'QC',                   // กำหนดเป็น QC
+        ]);
+
+        DB::commit();
+
+        return response()->json([
+            'status' => 'success',
+            'title' => 'บันทึกเรียบร้อย',
+            'message' => 'ข้อมูลถูกบันทึกสำเร็จ'
+        ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error($e->getMessage());
+
+        return response()->json([
+            'status' => 'error',
+            'title' => 'เกิดข้อผิดพลาด',
+            'message' => $e->getMessage()
+        ], 500);
     }
+}
+
     
     
     
@@ -566,6 +583,225 @@ public function conditioncolor($work_id_con,$line_con){
     #a9d08e //green
     #FFFFFF //white
 }
+public function tagwipqc($line, $work_id, $brd_id)
+{
+    // แปลง Line เช่น L2 -> 2
+    $line = preg_match('/^L(\d+)$/i', $line, $matches) ? $matches[1] : $line;
+
+    $id = $brd_id;
+
+    // ดึงข้อมูลพนักงานจาก GroupEmp
+    $groupEmp = GroupEmp::where('line', $line)->first();
+    if (!$groupEmp) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'ไม่พบข้อมูลพนักงานสำหรับ Line นี้'
+        ], 404);
+    }
+
+    $tag = DB::table('group_emp as g')
+        ->select(
+            'g.emp1 as name1',
+            'g.emp2 as name2',
+            'g.id as eg_id',
+            'brands.brd_lot',
+            'brandlist.bl_code',
+            'producttype_emp.pe_type_code',
+            'wip_working.ww_line',
+            'brands.brd_amount',
+            'brandlist.bl_name',
+            'wip_working.ww_lot_date',
+            'wip_working.ww_group',
+            'producttype_emp.pe_type_name',
+            'brands.brd_checker',
+            'brands.brd_color'
+        )
+        ->leftJoin('brands', 'brands.brd_eg_id', '=', 'g.id')
+        ->leftJoin('wip_working', 'wip_working.ww_id', '=', 'brands.brd_working_id')
+        ->leftJoin('producttype_emp', 'producttype_emp.pe_working_id', '=', 'wip_working.ww_id')
+        ->leftJoin('brandlist', 'brandlist.bl_id', '=', 'brands.brd_brandlist_id')
+        ->where('brands.brd_id', '=', $brd_id)
+        ->get();
+
+    $checkdatpd = WipProductDate::select('brands.brd_eg_id', 'wp_date_product')
+        ->leftJoin('brands', function ($query) {
+            $query->on('brands.brd_empdate_index_key', '=', 'wip_product_date.wp_empdate_index_id')
+                  ->on(DB::raw('cast(wip_product_date.wp_empgroup_id as nvarchar)'), '=', 'brands.brd_eg_id');
+        })
+        ->leftJoin('wipbarcode', 'wipbarcode.wip_empgroup_id', '=', 'brands.brd_eg_id');
+
+    $getegid = $checkdatpd->where('brands.brd_id', '=', $brd_id)->value('brands.brd_eg_id');
+
+    $dateproduct = $checkdatpd->where('brands.brd_id', '=', $brd_id)
+        ->where('wip_product_date.wp_empgroup_id', '=', $getegid)
+        ->where('wip_product_date.wp_working_id', '=', $work_id)
+        ->value('wip_product_date.wp_date_product');
+
+    $pcs = ProductColors::all();
+
+    $colorbyid = Brands::select('brd_color')->where('brd_id', '=', $brd_id)->value('brd_color');
+
+    $thmonth = $this->thaimonth();
+
+    $typearr = $this->typeofproduct();
+
+    $sizearr = $this->productsize();
+
+    $thicknessarr = $this->thickness();
+
+    $boarderarr = $this->boarder();
+
+    $colordate = $this->wipcolordatecon($dateproduct);
+
+    $view = view('template.tagwipqc', [
+        'tag'               => $tag,
+        'id'                => $id,
+        'typearr'           => $typearr,
+        'colorbyid'         => $colorbyid,
+        'sizearr'           => $sizearr,
+        'thicknessarr'      => $thicknessarr,
+        'pcs'               => $pcs,
+        'boarderarr'        => $boarderarr,
+        'thmonth'           => $thmonth,
+        'colordate'         => $colordate,
+        'dateproduct'       => $dateproduct,
+    ]);
+    return $view;
+}
+public function tagwipnn($line, $work_id, $brd_id)
+{
+    // แปลง Line เช่น L2 -> 2
+    $line = preg_match('/^L(\d+)$/i', $line, $matches) ? $matches[1] : $line;
+
+    $id = $brd_id;
+
+    // ดึงข้อมูลพนักงานจาก GroupEmp
+    $groupEmp = GroupEmp::where('line', $line)->first();
+    if (!$groupEmp) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'ไม่พบข้อมูลพนักงานสำหรับ Line นี้'
+        ], 404);
+    }
+
+    $tag = DB::table('brands')
+        ->select(
+            DB::raw("'{$groupEmp->emp1}' as name1"),
+            DB::raw("'{$groupEmp->emp2}' as name2"),
+            'brands.brd_lot',
+            'brandlist.bl_code',
+            'producttype_emp.pe_type_code',
+            'wip_working.ww_line',
+            'brands.brd_amount',
+            'brandlist.bl_name',
+            'wip_working.ww_lot_date',
+            'wip_working.ww_group',
+            'producttype_emp.pe_type_name',
+            'brands.brd_checker',
+            'brands.brd_color'
+        )
+        ->leftJoin('wip_working', 'wip_working.ww_id', '=', 'brands.brd_working_id')
+        ->leftJoin('producttype_emp', 'producttype_emp.pe_working_id', '=', 'wip_working.ww_id')
+        ->leftJoin('brandlist', 'brandlist.bl_id', '=', 'brands.brd_brandlist_id')
+        ->where('brands.brd_id', '=', $brd_id)
+        ->get();
+
+    $view = view('template.tagwipnn', [
+        'tag' => $tag,
+        'id' => $id,
+    ]);
+    return $view;
+}
+public function tagfn($line, $work_id, $brd_id)
+{
+    // แปลง Line เช่น L2 -> 2
+    $line = preg_match('/^L(\d+)$/i', $line, $matches) ? $matches[1] : $line;
+
+    $id = $brd_id;
+
+    // ดึงข้อมูลพนักงานจาก GroupEmp
+    $groupEmp = GroupEmp::where('line', $line)->first();
+    if (!$groupEmp) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'ไม่พบข้อมูลพนักงานสำหรับ Line นี้'
+        ], 404);
+    }
+
+    $tag = DB::table('brands')
+        ->select(
+            DB::raw("'{$groupEmp->emp1}' as name1"),
+            DB::raw("'{$groupEmp->emp2}' as name2"),
+            'brands.brd_lot',
+            'brandlist.bl_code',
+            'producttype_emp.pe_type_code',
+            'wip_working.ww_line',
+            'brands.brd_amount',
+            'brandlist.bl_name',
+            'wip_working.ww_lot_date',
+            'wip_working.ww_group',
+            'producttype_emp.pe_type_name',
+            'brands.brd_checker',
+            'brands.brd_color'
+        )
+        ->leftJoin('wip_working', 'wip_working.ww_id', '=', 'brands.brd_working_id')
+        ->leftJoin('producttype_emp', 'producttype_emp.pe_working_id', '=', 'wip_working.ww_id')
+        ->leftJoin('brandlist', 'brandlist.bl_id', '=', 'brands.brd_brandlist_id')
+        ->where('brands.brd_id', '=', $brd_id)
+        ->get();
+
+    $view = view('template.tagfn', [
+        'tag' => $tag,
+        'id' => $id,
+    ]);
+    return $view;
+}
+public function tagfg($line, $work_id, $brd_id)
+{
+    // แปลง Line เช่น L2 -> 2
+    $line = preg_match('/^L(\d+)$/i', $line, $matches) ? $matches[1] : $line;
+
+    $id = $brd_id;
+
+    // ดึงข้อมูลพนักงานจาก GroupEmp
+    $groupEmp = GroupEmp::where('line', $line)->first();
+    if (!$groupEmp) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'ไม่พบข้อมูลพนักงานสำหรับ Line นี้'
+        ], 404);
+    }
+
+    $tag = DB::table('brands')
+        ->select(
+            DB::raw("'{$groupEmp->emp1}' as name1"),
+            DB::raw("'{$groupEmp->emp2}' as name2"),
+            'brands.brd_lot',
+            'brandlist.bl_code',
+            'producttype_emp.pe_type_code',
+            'wip_working.ww_line',
+            'brands.brd_amount',
+            'brandlist.bl_name',
+            'wip_working.ww_lot_date',
+            'wip_working.ww_group',
+            'producttype_emp.pe_type_name',
+            'brands.brd_checker',
+            'brands.brd_color',
+            'brands.brd_remark'
+        )
+        ->leftJoin('wip_working', 'wip_working.ww_id', '=', 'brands.brd_working_id')
+        ->leftJoin('producttype_emp', 'producttype_emp.pe_working_id', '=', 'wip_working.ww_id')
+        ->leftJoin('brandlist', 'brandlist.bl_id', '=', 'brands.brd_brandlist_id')
+        ->where('brands.brd_id', '=', $brd_id)
+        ->get();
+
+    $view = view('template.tagfg', [
+        'tag' => $tag,
+        'id' => $id,
+    ]);
+    return $view;
+}
+
 }
 
 

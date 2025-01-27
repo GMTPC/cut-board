@@ -108,6 +108,27 @@
         vertical-align: middle; /* จัดปุ่มให้อยู่แนวเดียวกับ input */
     }
     </style>
+<script>
+    $(document).ready(function () {
+        // เมื่อมีการเปลี่ยนแปลงใน Dropdown
+        $('#brd_brandlist_id_01').on('changed.bs.select', function (e, clickedIndex, isSelected, previousValue) {
+            // ดึงค่าที่เลือกใหม่
+            const selectedValue = $(this).find('option').eq(clickedIndex).val();
+
+            // ลบ "ติ๊กถูก" อันเก่าทั้งหมด
+            $('#brd_brandlist_id_01 option').prop('selected', false);
+
+            // ทำให้เฉพาะตัวที่ถูกเลือกใหม่ "ติ๊กถูก"
+            $('#brd_brandlist_id_01 option[value="' + selectedValue + '"]').prop('selected', true);
+
+            // รีเฟรช selectpicker เพื่ออัปเดตการแสดงผล
+            $(this).selectpicker('refresh');
+        });
+    });
+</script>
+
+
+        </script>
  <script>
 $(document).ready(function () {
     // เมื่อมีการเปลี่ยนแปลงใน Dropdown
@@ -574,8 +595,8 @@ $(document).ready(function () {
 
 </script>
 
-
 <script>
+  $(document).ready(function () {
     $('#outfgform').on('submit', function (e) {
         e.preventDefault(); // ป้องกันการ Submit แบบปกติ
 
@@ -587,42 +608,70 @@ $(document).ready(function () {
             type: 'POST',
             url: `${path}/outfgcode/${line}/${workid}`,
             data: $('#outfgform').serialize(),
-            success: function (response) {
-                // ตรวจสอบและแปลง response หากจำเป็น
-                const data = typeof response === 'string' ? JSON.parse(response) : response;
-
+            success: function (result) {
+                // แสดง SweetAlert ก่อน
                 Swal.fire({
                     icon: 'success',
-                    title: 'สำเร็จ!',
-                    text: data.message || 'บันทึกข้อมูลสำเร็จ',
-                    timer: 2000,
+                    title: 'บันทึกข้อมูลแล้ว',
+                    html: '<small style="color:green;">การทำงานสำเร็จ</small>',
                     showConfirmButton: false,
+                    timer: 2000 // แสดงผล 2 วินาที
+                }).then(() => {
+                    // ตรวจสอบเงื่อนไขและกำหนด URL สำหรับการเปิดหน้าต่าง
+                    let targetUrl;
+                    if (result.brd_brandlist_id == white_qc) {
+                        targetUrl = `${path}/tagwipqc/${line.replace('L', '')}/${workid}/${result.brd_id}`;
+                    } else if (result.brd_brandlist_id == white_manu) {
+                        targetUrl = `${path}/tagwipnn/${line.replace('L', '')}/${workid}/${result.brd_id}`;
+                    } else if (white_list.indexOf(result.brd_brandlist_id) == -1) {
+                        targetUrl = `${path}/tagfg/${line.replace('L', '')}/${workid}/${result.brd_id}`;
+                    } else {
+                        targetUrl = `${path}/tagfn/${line.replace('L', '')}/${workid}/${result.brd_id}`;
+                    }
+
+                    console.log('Target URL:', targetUrl); // Debug URL ที่จะเปิด
+
+                    // พยายามเปิดหน้าต่าง
+                    const newWindow = window.open(targetUrl, '_blank', 'width=800,height=600');
+
+                    // ตรวจสอบว่าหน้าต่างถูกเปิดหรือถูกบล็อก
+                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                        console.error('Popup blocked by browser'); // Debug การบล็อกป๊อปอัป
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ไม่สามารถเปิดหน้าต่างได้',
+                            html: `
+                                <small style="color:red;">
+                                    โปรดตรวจสอบการตั้งค่าป๊อปอัปในเบราว์เซอร์ของคุณ<br>
+                                    หรือคลิก <a href="${targetUrl}" target="_blank">ที่นี่</a> เพื่อเปิดลิงก์ด้วยตนเอง.
+                                </small>
+                            `,
+                            showConfirmButton: true,
+                        });
+                    } else {
+                        console.log('Popup opened successfully'); // Debug หน้าต่างเปิดสำเร็จ
+                    }
                 });
             },
             error: function (xhr) {
-                // ตรวจสอบข้อความ Error
-                let errorMessage = 'ไม่สามารถบันทึกข้อมูลได้';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                } else if (xhr.responseText) {
-                    try {
-                        const errorResponse = JSON.parse(xhr.responseText);
-                        errorMessage = errorResponse.message || errorMessage;
-                    } catch (e) {
-                        console.error('Parsing Error:', e);
-                    }
-                }
+                console.error('Error Response:', xhr); // Debug ข้อผิดพลาดจากเซิร์ฟเวอร์
 
+                // แสดง SweetAlert กรณีเกิดข้อผิดพลาด
                 Swal.fire({
                     icon: 'error',
-                    title: 'เกิดข้อผิดพลาด!',
-                    text: errorMessage,
-                    showConfirmButton: true,
+                    title: 'ไม่สามารถบันทึกข้อมูลได้',
+                    html: '<small style="color:red;">โปรดตรวจสอบข้อมูลและลองใหม่อีกครั้ง</small>',
+                    showConfirmButton: true, // ให้ผู้ใช้กดปุ่มปิด
                 });
             },
         });
     });
+  });
 </script>
+
+
+
+
 
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
@@ -843,15 +892,47 @@ $(document).ready(function () {
                         </tr>
                     </thead>
                     <tbody>
-                    @foreach ($brandsLots as $lot)
-                        <tr>
-                            <td></td>
-                            <td>{{ $lot }}</td>
-                            <td></td>
-                            <td></td>
-                            <td></td>
-                        </tr>
-                        @endforeach
+                    @foreach ($brandsLots as $index => $lot)
+    <tr>
+        <td>{{ $index + 1 }}</td>
+        <td>{{ $lot }}</td>
+        <td>{{ $brdAmount }}</td>
+
+
+        <td> @if ($brandList && $peTypeCode && $brdAmount !== null && $workdetail->ww_line < 100)
+        BX{{ $brandList->bl_code }}-{{ $peTypeCode }}{{ $workdetail->ww_line }}++++++++00{{ $brdAmount }}
+    @elseif ($brandList && $peTypeCode && $brdAmount !== null)
+        BX{{ $brandList->bl_code }}-{{ $peTypeCode }}{{ $workdetail->ww_line }}++++++++{{ $brdAmount }}
+    @else
+        N/A <!-- กรณีไม่มีข้อมูลที่เพียงพอ -->
+    @endif</td>
+        <td>
+    <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+        <!-- ปุ่มแก้ไข -->
+        <button style="border: none; background-color: transparent; cursor: pointer;" title="Edit" data-toggle="modal" data-target="#notieditbrand">
+    <i class="fa fa-edit" style="font-size: 20px; color: #000;"></i>
+</button>
+        <!-- ปุ่มพิมพ์ -->
+        <button style="border: none; background-color: transparent; cursor: pointer;" title="Print">
+            <i class="fa fa-print" style="font-size: 20px; color: green;"></i>
+        </button>
+
+        <!-- ปุ่มลบ -->
+        <button 
+    style="border: none; background-color: transparent; cursor: pointer;" 
+    title="Delete" 
+    data-toggle="modal" 
+    data-target="#notideleteoutfg">
+    <i class="fa fa-trash" style="font-size: 20px; color: red;"></i>
+</button>
+
+    </div>
+</td>
+    </tr>
+@endforeach
+
+
+
 
                     </tbody>
                 </table>
@@ -1498,8 +1579,22 @@ $(document).ready(function () {
                     {{ csrf_field() }}
                     {{ method_field('PUT') }}
                     <div class="text-center">
-                        @include('frontend.selectbrand')
-                    </div>
+                    <select name="brd_brandlist_id_01_" 
+                            id="brd_brandlist_id_01"
+                            class="margin-select selectpicker show-tick form-control move-up" 
+                            aria-required="true" 
+                            data-size="9" 
+                            data-dropup-auto="true" 
+                            data-live-search="true" 
+                            data-style="btn-info btn-md text-white" 
+                            data-width="fit" 
+                            data-container="body" 
+                            required>
+                        <option value="0">เลือกแบรนด์</option>
+                        @foreach ($brandLists as $brand)
+                            <option data-tokens="{{ $brand->bl_name }}" value="{{ $brand->bl_id }}">{{ $brand->bl_name }}</option>
+                        @endforeach
+                    </select>                    </div>
                     <input type="hidden" name="id" id="editbrandid">
                 </div>
                 <div class="modal-footer">

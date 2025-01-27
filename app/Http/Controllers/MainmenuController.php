@@ -121,74 +121,73 @@ class MainmenuController extends Controller
 
     
 
-
-
 public function datawip($line, $id)
 {
-    // ค้นหา WorkProcess ตาม id และ line ให้ตรงกัน
+    // ค้นหา WorkProcess ตาม id และ line
     $workprocess = WorkProcessQC::where('id', $id)
                                 ->where('line', $line)
-                                ->first();
-
-    // ตรวจสอบว่ามีข้อมูลหรือไม่
-    if (!$workprocess) {
-        abort(404, 'ไม่พบข้อมูลหรือ Line ไม่ถูกต้อง');
-    }
+                                ->firstOrFail();
 
     // ดึงข้อมูล `wip_working` ที่เกี่ยวข้อง
-    $workdetail = WipWorking::where('ww_id', $id)->first();
+    $workdetail = WipWorking::findOrFail($id);
 
-    // ตรวจสอบว่ามีข้อมูลใน WipWorking หรือไม่
-    if (!$workdetail) {
-        abort(404, 'ไม่พบข้อมูลในตาราง wip_working');
-    }
-
-    // ดึงข้อมูลจาก `wip_working`
+    // ข้อมูลที่เกี่ยวข้องกับ `wip_working`
     $workpgroup = $workdetail->ww_group;
     $workstatus = $workdetail->ww_status;
     $workdate = $workdetail->ww_lot_date;
-    $enddate = $workdetail->ww_end_date;
     $workline = $workdetail->ww_line;
 
-    // คำนวณ Lot Check
+    // คำนวณจำนวน lot check
     $lotcheck = Brand::leftJoin('brandlist', 'brands.brd_brandlist_id', '=', 'brandlist.bl_id')
         ->leftJoin('wip_working', 'brands.brd_working_id', '=', 'wip_working.ww_id')
-        ->where('wip_working.ww_group', '=', $workpgroup)
-        ->where('wip_working.ww_line', '=', $workline)
-        ->where('wip_working.ww_division', '=', 'QC')
-        ->whereDate('wip_working.ww_lot_date', '=', $workdate)
+        ->where('wip_working.ww_group', $workpgroup)
+        ->where('wip_working.ww_line', $workline)
+        ->where('wip_working.ww_division', 'QC')
+        ->whereDate('wip_working.ww_lot_date', $workdate)
         ->count();
 
     // สร้าง Lot Generator
-    $lotgenerator = date('ymd', strtotime($workdate)) . substr($workpgroup, 1, 1) . str_pad($lotcheck + 1, 3, 0, STR_PAD_LEFT);
+    $lotgenerator = date('ymd', strtotime($workdate)) . substr($workpgroup, 1, 1) . str_pad($lotcheck + 1, 3, '0', STR_PAD_LEFT);
 
-    // ดึงข้อมูลผู้คัดเฉพาะ line และ status = 1
+    // ดึงข้อมูลพนักงานใน group ที่ line และ status = 1
     $empGroups = GroupEmp::where('line', $line)
                          ->where('status', 1)
                          ->get();
 
-    // ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้องกับ workprocess โดยใช้ Relation
+    // ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้องกับ workprocess
     $wipBarcodes = $workprocess->wipBarcodes()->with('groupEmp')->get();
 
-    // คำนวณผลรวมของ wip_amount จาก Relation
+    // คำนวณผลรวม wip_amount จาก Relation
     $totalWipAmount = $workprocess->wipBarcodes()->sum('wip_amount');
 
-    // ดึงข้อมูลทั้งหมดจากตาราง listngall ที่มี lng_status = 1
+    // ดึงข้อมูล listngall ที่สถานะ `lng_status` = 1
     $listNgAll = Listngall::where('lng_status', 1)->get();
 
     // ดึงข้อมูล ProductTypeEmp ที่ pe_working_id ตรงกับ $id
-    $productTypes = ProductTypeEmp::where('pe_working_id', $id)->get();
+    $productTypes = ProductTypeEmp::where('pe_working_id', $id)->first(); // ดึง ProductTypeEmp ที่ตรงกับ pe_working_id
+    $peTypeCode = $productTypes ? $productTypes->pe_type_code : null; // ตรวจสอบว่าเจอข้อมูลหรือไม่
 
-    // ดึงผลรวม amg_amount จาก AmountNg ที่ amg_wip_id ตรงกับ wip_id
+    // ดึงผลรวม amg_amount จาก AmountNg
     $totalNgAmount = AmountNg::whereIn('amg_wip_id', $wipBarcodes->pluck('wip_id'))->sum('amg_amount');
 
     // ดึงข้อมูลแบรนด์จากตาราง brandlist
     $brandLists = BrandList::select('bl_id', 'bl_name')->get();
 
-    // ดึงข้อมูล wip_sku_name โดยตรงจาก wipbarcodes
+    // ดึงชื่อ SKU ที่เกี่ยวข้องจาก wip_barcode
     $wipSkuNames = Wipbarcode::where('wip_working_id', $id)
                              ->pluck('wip_sku_name');
-$brandsLots = Brand::where('brd_working_id', $id)->pluck('brd_lot');
+
+    // ดึง lot ที่เกี่ยวข้องกับ brands
+    $brandsLots = Brand::where('brd_working_id', $id)->pluck('brd_lot');
+
+    // ดึงข้อมูล `bl_code` ผ่านความสัมพันธ์
+    $brand = Brand::where('brd_working_id', $id)->first(); // ค้นหา brand จาก brd_working_id
+    $brandList = null;
+    $brdAmount = null; // เก็บค่า brd_amount
+    if ($brand) {
+        $brandList = BrandList::where('bl_id', $brand->brd_brandlist_id)->first(); // ค้นหา brandList จาก brd_brandlist_id
+        $brdAmount = $brand->brd_amount; // ดึงค่า brd_amount
+    }
 
     // ส่งข้อมูลไปยัง View
     return view('datawip', [
@@ -204,18 +203,21 @@ $brandsLots = Brand::where('brd_working_id', $id)->pluck('brd_lot');
         'brandLists'        => $brandLists,
         'wipSkuNames'       => $wipSkuNames,
         'lotgenerator'      => $lotgenerator,
-        'brandsLots'        => $brandsLots, // ส่งข้อมูล `brd_lot` ไปยัง View
-
+        'brandsLots'        => $brandsLots,
+        'workdetail'        => $workdetail,
+        'brandList'         => $brandList,
+        'peTypeCode'        => $peTypeCode,
+        'brdAmount'         => $brdAmount, // ส่ง brd_amount ไปยัง View
     ]);
 }
 
 
+
+
+
+
     
-    public function BrandLis()
-    {
-        $brandLists = BrandList::select('bl_id', 'bl_name')->get();
-        return view('frontend.selectbrand', compact('brandLists'));
-    }
+   
     
     
     }
