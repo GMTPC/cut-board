@@ -85,7 +85,9 @@ Route::get('/brandlist', [MainmenuController::class, 'BrandLis'])->name('brandli
 Route::post('/outfgcode/{line}/{work_id}', [WipController::class, 'outfgcode'])->name('outfgcode');
 Route::get('/tagwipqc/{line}/{work_id}/{brd_id}', [WipController::class, 'tagwipqc'])->name('tagwipqc');
 Route::get('/tagwipnn/{line}/{work_id}/{brd_id}', [WipController::class, 'tagwipnn'])->name('tagwipnn');
-Route::get('/tagfg/{line}/{work_id}/{brd_id}', [WipController::class, 'tagfg'])->name('tagfg');
+Route::get('/production/tagfg/{line}/{work_id}/{brd_id}', [WipController::class, 'tagfg'])->name('tagfg');
 Route::get('/tagfn/{line}/{work_id}/{brd_id}', [WipController::class, 'tagfn'])->name('tagfn');
+Route::put('/wip/editbrand/{brd_id}', [WipController::class, 'editbrand'])->name('wip.editbrand');
+Route::post('/wip/deletebrand/{brd_id}', [WipController::class, 'deletebrand'])->name('deletebrand');
 
 require __DIR__.'/auth.php';

@@ -119,9 +119,7 @@ class MainmenuController extends Controller
     return redirect()->route('datawip', ['line' => $line, 'id' => $id]);
 }
 
-    
-
-public function datawip($line, $id)
+public function datawip($line, $id, $brd_id = null)
 {
     // ค้นหา WorkProcess ตาม id และ line
     $workprocess = WorkProcessQC::where('id', $id)
@@ -163,9 +161,12 @@ public function datawip($line, $id)
     // ดึงข้อมูล listngall ที่สถานะ `lng_status` = 1
     $listNgAll = Listngall::where('lng_status', 1)->get();
 
-    // ดึงข้อมูล ProductTypeEmp ที่ pe_working_id ตรงกับ $id
-    $productTypes = ProductTypeEmp::where('pe_working_id', $id)->first(); // ดึง ProductTypeEmp ที่ตรงกับ pe_working_id
-    $peTypeCode = $productTypes ? $productTypes->pe_type_code : null; // ตรวจสอบว่าเจอข้อมูลหรือไม่
+    // ✅ ดึงข้อมูล ProductTypeEmp ที่ pe_working_id ตรงกับ id ของ WorkProcessQC
+    $productTypes = ProductTypeEmp::where('pe_working_id', $workprocess->id)->get();
+    
+    // ✅ ดึงค่า pe_type_name และ pe_type_code
+    $peTypeName = $productTypes->isNotEmpty() ? $productTypes->first()->pe_type_name : null;
+    $peTypeCode = $productTypes->isNotEmpty() ? $productTypes->first()->pe_type_code : null;
 
     // ดึงผลรวม amg_amount จาก AmountNg
     $totalNgAmount = AmountNg::whereIn('amg_wip_id', $wipBarcodes->pluck('wip_id'))->sum('amg_amount');
@@ -174,22 +175,37 @@ public function datawip($line, $id)
     $brandLists = BrandList::select('bl_id', 'bl_name')->get();
 
     // ดึงชื่อ SKU ที่เกี่ยวข้องจาก wip_barcode
-    $wipSkuNames = Wipbarcode::where('wip_working_id', $id)
-                             ->pluck('wip_sku_name');
+    $wipSkuNames = Wipbarcode::where('wip_working_id', $id)->pluck('wip_sku_name');
 
-    // ดึง lot ที่เกี่ยวข้องกับ brands
-    $brandsLots = Brand::where('brd_working_id', $id)->pluck('brd_lot');
+    // ดึง lot ที่เกี่ยวข้องกับ brands ทั้งหมด
+    $brandsLots = Brand::where('brd_working_id', $id)
+                        ->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date', 'brd_brandlist_id') // ✅ เพิ่ม `brd_brandlist_id`
+                        ->get();
 
-    // ดึงข้อมูล `bl_code` ผ่านความสัมพันธ์
-    $brand = Brand::where('brd_working_id', $id)->first(); // ค้นหา brand จาก brd_working_id
-    $brandList = null;
-    $brdAmount = null; // เก็บค่า brd_amount
-    if ($brand) {
-        $brandList = BrandList::where('bl_id', $brand->brd_brandlist_id)->first(); // ค้นหา brandList จาก brd_brandlist_id
-        $brdAmount = $brand->brd_amount; // ดึงค่า brd_amount
-    }
+    // ✅ ตรวจสอบว่ามี `$brd_id` หรือไม่
+    $lot = $brd_id 
+        ? Brand::where('brd_id', $brd_id)->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date', 'brd_brandlist_id')->first()
+        : $brandsLots->first();
 
-    // ส่งข้อมูลไปยัง View
+    // **เพิ่มเงื่อนไขป้องกัน ERROR ถ้า `$lot` เป็น `null`**
+    $brd_lot = $lot ? $lot->brd_lot : null;
+    $brd_brandlist_id = $lot ? $lot->brd_brandlist_id : null; // ✅ เพิ่มตัวแปร brd_brandlist_id
+
+    // ✅ ดึงข้อมูล `bl_code` ตาม `brd_id` ที่ถูกเลือก
+    $brand = $lot 
+        ? Brand::where('brd_id', $lot->brd_id)->first()
+        : Brand::where('brd_working_id', $id)->first();
+
+    $brandList = $brand 
+        ? BrandList::where('bl_id', $brand->brd_brandlist_id)->first()
+        : null;
+
+    $brdAmount = $brand ? $brand->brd_amount : null;
+
+    // ดึงผลรวมของ `brd_amount` ที่ `brd_working_id` ตรงกับ `$id`
+    $totalBrdAmount = Brand::where('brd_working_id', $id)->sum('brd_amount');
+
+    // ✅ ส่งข้อมูลไปยัง View
     return view('datawip', [
         'workprocess'       => $workprocess,
         'line'              => $line,
@@ -198,7 +214,9 @@ public function datawip($line, $id)
         'wipBarcodes'       => $wipBarcodes,
         'totalWipAmount'    => $totalWipAmount,
         'listNgAll'         => $listNgAll,
-        'productTypes'      => $productTypes,
+        'productTypes'      => $productTypes, // ✅ เพิ่ม `$productTypes`
+        'peTypeCode'        => $peTypeCode,   // ✅ แก้ไขตัวแปร `$peTypeCode`
+        'peTypeName'        => $peTypeName,   // ✅ เพิ่ม `$peTypeName`
         'totalNgAmount'     => $totalNgAmount,
         'brandLists'        => $brandLists,
         'wipSkuNames'       => $wipSkuNames,
@@ -206,10 +224,18 @@ public function datawip($line, $id)
         'brandsLots'        => $brandsLots,
         'workdetail'        => $workdetail,
         'brandList'         => $brandList,
-        'peTypeCode'        => $peTypeCode,
-        'brdAmount'         => $brdAmount, // ส่ง brd_amount ไปยัง View
+        'brdAmount'         => $totalBrdAmount, // ✅ ใช้ค่าผลรวมแทน
+        'lot'               => $lot,
+        'brd_lot'           => $brd_lot,
+        'brd_brandlist_id'  => $brd_brandlist_id,
     ]);
 }
+
+
+
+
+
+
 
 
 

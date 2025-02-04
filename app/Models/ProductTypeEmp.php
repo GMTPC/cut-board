@@ -10,6 +10,8 @@ class ProductTypeEmp extends Model
 {
     use HasFactory;
 
+    protected $table = 'product_type_emps'; // ชื่อจริงของตารางในฐานข้อมูล
+
     protected $fillable = [
         'pe_working_id',
         'pe_type_code',

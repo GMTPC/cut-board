@@ -416,7 +416,6 @@ $(document).ready(function() {
 
 
 
-</script>
 <script>
 $(document).ready(function () {
     // เปิด Modal และตั้งค่า
@@ -427,40 +426,33 @@ $(document).ready(function () {
         $('#editempwip').modal('show');
     });
 
-    // เมื่อเปลี่ยนค่าของ Dropdown
-    $('#wip_empgroup_id_1').on('change', function () {
-        const selectedValue = $(this).val(); // ดึงค่าที่เลือกใหม่
-
-        // ล้างตัวเลือกเก่าทั้งหมด
-        $('#wip_empgroup_id_1 option').prop('selected', false); // ล้างตัวเลือกทั้งหมด
-        $(`#wip_empgroup_id_1 option[value="${selectedValue}"]`).prop('selected', true); // ตั้งค่าตัวเลือกใหม่
-
-        // รีเฟรช Select Picker เพื่ออัปเดตสถานะ
-        $(this).selectpicker('refresh');
-
-        // พับ Dropdown หลังจากเลือกตัวเลือก
-        $(this).closest('.bootstrap-select').find('.dropdown-toggle').dropdown('toggle'); // บังคับปิด Dropdown
-    });
-
-    // ปิด Modal และรีเซ็ต Dropdown
+    // ปิด Modal และรีเซ็ตค่า
     $('#editempwip').on('hidden.bs.modal', function () {
-        // รีเซ็ตค่ากลับไปเริ่มต้น
         $('#wip_empgroup_id_1 option').prop('selected', false); // ล้างตัวเลือกทั้งหมด
         $('#wip_empgroup_id_1').val('0'); // ตั้งค่าเริ่มต้น
         $('#wip_empgroup_id_1').selectpicker('refresh'); // รีเฟรช Dropdown
     });
 
-    // ส่งฟอร์มด้วย Ajax
+    // ส่งฟอร์มด้วย AJAX
     $('#editempwipform').on('submit', function (e) {
         e.preventDefault();
 
+        const form = $(this)[0];
+        const formData = new FormData(form); // ใช้ FormData เพื่อให้รองรับ `_method=PUT`
         const actionUrl = $(this).attr('action');
-        const formData = $(this).serialize();
+
+        console.log("📤 ส่งข้อมูลไปที่:", actionUrl);
+        console.log("📌 ข้อมูลที่ส่ง:", Object.fromEntries(formData));
 
         $.ajax({
             url: actionUrl,
-            type: 'PUT',
+            type: 'POST', // ใช้ POST + `_method=PUT`
             data: formData,
+            processData: false, // สำคัญ: ปิด processData เพื่อให้ส่ง `FormData` ได้ถูกต้อง
+            contentType: false, // สำคัญ: ปิด contentType
+            headers: {
+                "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value
+            },
             beforeSend: function () {
                 Swal.fire({
                     title: 'กรุณารอสักครู่...',
@@ -491,11 +483,8 @@ $(document).ready(function () {
         });
     });
 });
-
-
-
-
 </script>
+
 
 <script>
 $(document).ready(function () {
@@ -595,80 +584,207 @@ $(document).ready(function () {
 
 </script>
 
-<script>
-  $(document).ready(function () {
-    $('#outfgform').on('submit', function (e) {
-        e.preventDefault(); // ป้องกันการ Submit แบบปกติ
 
-        let line = "{{ $line }}";
-        let workid = "{{ $work_id }}";
-        let path = "{{ url('/') }}";
+
+
+<script>
+$(document).ready(function () {
+    $('.editBrandBtn').on('click', function () {
+        let brd_id = $(this).data('id'); // ✅ ดึงค่า `brd_id`
+        let bl_id = $(this).data('bl-id'); // ✅ ดึงค่า `bl_id`
+        let brd_lot = $(this).data('brd-lot'); // ✅ ดึงค่า `brd_lot`
+
+        console.log("📝 กดปุ่มแก้ไข -> brd_id:", brd_id, "bl_id:", bl_id, "brd_lot:", brd_lot);
+
+        // ✅ ใส่ค่า `brd_id`, `brd_lot` ลงในฟอร์ม
+        $('#editbrandid').val(brd_id);
+        $('#editbrandidlot').val(brd_lot); // ✅ ตั้งค่า brd_lot ให้ input
+        $('#brd_brandlist_id_03').val(bl_id); // ✅ ตั้งค่า `bl_id` ให้ select
+        $('#lot_display').text(brd_lot); // ✅ แสดง LOT No. ใน modal
+
+        // ✅ ตั้งค่า Form Action ให้ส่ง `brd_id`
+        let actionUrl = `/wip/editbrand/${brd_id}`;
+        $('#editbrandform').attr('action', actionUrl);
+
+        console.log("✅ Form Action:", actionUrl);
+    });
+
+    // ✅ เมื่อกด "บันทึก"
+    $('#editbrandform').on('submit', function (e) {
+        e.preventDefault();
+
+        var actionUrl = $(this).attr('action');
+        var formData = $(this).serialize();
+
+        console.log('🚀 Submitting to URL:', actionUrl);
+        console.log('📄 Form Data:', formData);
 
         $.ajax({
-            type: 'POST',
-            url: `${path}/outfgcode/${line}/${workid}`,
-            data: $('#outfgform').serialize(),
-            success: function (result) {
-                // แสดง SweetAlert ก่อน
+            type: "PUT",
+            url: actionUrl,
+            data: formData,
+            beforeSend: function () {
+                Swal.fire({
+                    title: 'กำลังบันทึก...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+            },
+            success: function (response) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกเรียบร้อย',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+
+                setTimeout(() => location.reload(), 1350);
+            },
+            error: function (xhr) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    text: 'กรุณาลองใหม่อีกครั้ง'
+                });
+            }
+        });
+    });
+});
+</script>
+
+
+<script>
+$(document).ready(function () {
+    $('#outfgform').on('submit', function (e) {
+        e.preventDefault(); // ❌ ป้องกันการ Submit ปกติ
+
+        let actionUrl = $(this).attr('action'); // ดึง URL จาก form
+        let formData = $(this).serialize(); // ดึงค่าจาก form
+
+        console.log("🚀 ส่งคำขอไปยัง:", actionUrl);
+        console.log("📄 Form Data:", formData);
+
+        // ✅ แสดง Loader ระหว่างรอการตอบกลับจากเซิร์ฟเวอร์
+        Swal.fire({
+            title: 'กำลังบันทึกข้อมูล...',
+            text: 'โปรดรอสักครู่',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // ✅ ส่งคำขอ AJAX
+        $.ajax({
+            type: "POST",
+            url: actionUrl,
+            data: formData,
+            success: function (response) {
                 Swal.fire({
                     icon: 'success',
                     title: 'บันทึกข้อมูลแล้ว',
-                    html: '<small style="color:green;">การทำงานสำเร็จ</small>',
+                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
                     showConfirmButton: false,
-                    timer: 2000 // แสดงผล 2 วินาที
-                }).then(() => {
-                    // ตรวจสอบเงื่อนไขและกำหนด URL สำหรับการเปิดหน้าต่าง
-                    let targetUrl;
-                    if (result.brd_brandlist_id == white_qc) {
-                        targetUrl = `${path}/tagwipqc/${line.replace('L', '')}/${workid}/${result.brd_id}`;
-                    } else if (result.brd_brandlist_id == white_manu) {
-                        targetUrl = `${path}/tagwipnn/${line.replace('L', '')}/${workid}/${result.brd_id}`;
-                    } else if (white_list.indexOf(result.brd_brandlist_id) == -1) {
-                        targetUrl = `${path}/tagfg/${line.replace('L', '')}/${workid}/${result.brd_id}`;
-                    } else {
-                        targetUrl = `${path}/tagfn/${line.replace('L', '')}/${workid}/${result.brd_id}`;
-                    }
-
-                    console.log('Target URL:', targetUrl); // Debug URL ที่จะเปิด
-
-                    // พยายามเปิดหน้าต่าง
-                    const newWindow = window.open(targetUrl, '_blank', 'width=800,height=600');
-
-                    // ตรวจสอบว่าหน้าต่างถูกเปิดหรือถูกบล็อก
-                    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                        console.error('Popup blocked by browser'); // Debug การบล็อกป๊อปอัป
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'ไม่สามารถเปิดหน้าต่างได้',
-                            html: `
-                                <small style="color:red;">
-                                    โปรดตรวจสอบการตั้งค่าป๊อปอัปในเบราว์เซอร์ของคุณ<br>
-                                    หรือคลิก <a href="${targetUrl}" target="_blank">ที่นี่</a> เพื่อเปิดลิงก์ด้วยตนเอง.
-                                </small>
-                            `,
-                            showConfirmButton: true,
-                        });
-                    } else {
-                        console.log('Popup opened successfully'); // Debug หน้าต่างเปิดสำเร็จ
-                    }
+                    timer: 1600
                 });
-            },
-            error: function (xhr) {
-                console.error('Error Response:', xhr); // Debug ข้อผิดพลาดจากเซิร์ฟเวอร์
 
-                // แสดง SweetAlert กรณีเกิดข้อผิดพลาด
+                // ✅ สร้าง URL ของ Route `/production/tagfg/{line}/{work_id}/{brd_id}`
+                let tagfgUrl = `/production/tagfg/${response.line}/${response.work_id}/${response.brd_id}`;
+
+                // ✅ เปิดหน้าป๊อปอัพ
+                window.open(tagfgUrl, "_blank", "width=800,height=600");
+
+                setTimeout(() => location.reload(), 1600); // ✅ รีโหลดหลังจาก 1.6 วินาที
+            },
+            error: function () {
                 Swal.fire({
                     icon: 'error',
-                    title: 'ไม่สามารถบันทึกข้อมูลได้',
-                    html: '<small style="color:red;">โปรดตรวจสอบข้อมูลและลองใหม่อีกครั้ง</small>',
-                    showConfirmButton: true, // ให้ผู้ใช้กดปุ่มปิด
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">โปรดตรวจสอบและลองใหม่อีกครั้ง</small>',
+                    showConfirmButton: true,
                 });
-            },
+            }
         });
     });
-  });
-</script>
+});
+    </script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // ดึง path จาก URL (ตัวอย่าง: "/production/datawip/L2/60081")
+        let urlParts = window.location.pathname.split("/");
 
+        // ดึงค่า `line` (ส่วนที่ 3 จากหลัง) และ `work_id` (ส่วนสุดท้าย)
+        let line = urlParts[urlParts.length - 2];  // เช่น "L2"
+        let workId = urlParts[urlParts.length - 1]; // เช่น "60081"
+
+        document.querySelectorAll('.printBtn').forEach(button => {
+            button.addEventListener('click', function () {
+                let brdId = this.getAttribute('data-id');
+
+                // สร้าง URL ไปที่ "/production/tagfg/{line}/{work_id}/{brd_id}"
+                let url = `/production/tagfg/${line}/${workId}/${brdId}`;
+
+                // เปิดหน้าใหม่แบบ Pop-up Window
+                window.open(url, "_blank", "width=900,height=800,top=100,left=200,scrollbars=yes");
+            });
+        });
+    });
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // ดึงค่า brd_id เมื่อกดปุ่มลบ
+        document.querySelectorAll('.deleteBrandBtn').forEach(button => {
+            button.addEventListener('click', function () {
+                let brdId = this.getAttribute('data-id');
+                let lotNo = this.getAttribute('data-lot');
+
+                console.log("🗑️ กำลังลบ BRD ID:", brdId);
+                console.log("🎯 Lot No ที่จะแสดง:", lotNo);
+
+                // อัปเดตค่าใน Modal
+                document.getElementById("showoutfg").innerText = lotNo;
+                document.getElementById("delete_outfgid").value = brdId; // เก็บ brd_id
+            });
+        });
+
+        // ส่งคำขอลบเมื่อกดปุ่ม "ลบบาร์โค้ด"
+        document.getElementById("confirmDelete").addEventListener("click", function () {
+            let brdId = document.getElementById("delete_outfgid").value;
+
+            fetch(`/wip/deletebrand/${brdId}`, {
+                method: "POST",
+                headers: {
+                    "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value,
+                    "Content-Type": "application/json"
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ลบข้อมูลแล้ว',
+                        html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    throw new Error(data.error || "ไม่สามารถลบข้อมูลได้");
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ลบข้อมูลไม่สำเร็จ',
+                    html: `<small style="color:red;">${error.message}</small>`,
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            });
+        });
+    });
+</script>
 
 
 
@@ -705,7 +821,7 @@ $(document).ready(function () {
 <h4><b>วันที่เริ่ม :</b> <b>{{ $workprocess->date ? \Carbon\Carbon::parse($workprocess->date)->format('d-m-Y') : 'ไม่มีข้อมูล' }}</b></h4>
 <h4><b>สถานะ :</b> <b style="color: green;">{{ $workprocess->status ?? 'ไม่มีข้อมูล' }}</b></h4>
 @if ($wipBarcodes->count() > 0 && $productTypes->count() > 0)
-    <h4><b>ชนิดสินค้า :</b> <b>{{ $productTypes->first()->pe_type_name }}</b></h4>
+<h4><b>ชนิดสินค้า :</b> <b>{{ $peTypeName ?? 'ไม่พบข้อมูล' }}</b></h4>
 @endif
 
 
@@ -733,12 +849,12 @@ $(document).ready(function () {
             </div>
             <div class="col-md-3 col-xs-3">
                 <h4>จำนวนแผ่นออก</h4>
-                <h4>0</h4>
+                <h4>{{ $brdAmount ?? 0}}</h4>
             </div>
             <div class="col-md-3 col-xs-3">
                 <h4>คงค้าง (HD)</h4>
-                <h4>{{ ($totalWipAmount ?? 0) - ($totalNgAmount ?? 0) }} </h4>
-            </div>
+                <h4>{{ ($totalWipAmount ?? 0) - ($totalNgAmount ?? 0) - ($brdAmount ?? 0) }}</h4>
+                </div>
             <div class="col-md-3 col-xs-3">
                 <h4>เสีย (NG)</h4>
                 <h4>{{ $totalNgAmount ?? 0 }}</h4>
@@ -892,56 +1008,90 @@ $(document).ready(function () {
                         </tr>
                     </thead>
                     <tbody>
-                    @foreach ($brandsLots as $index => $lot)
-    <tr>
-        <td>{{ $index + 1 }}</td>
-        <td>{{ $lot }}</td>
-        <td>{{ $brdAmount }}</td>
+    @foreach ($brandsLots as $index => $lot)
+        <tr>
+            <td>{{ $index + 1 }}</td>
+            
+            <!-- แสดง brd_id -->
+            <td>
+                @if (!empty($lot->brd_lot))
+                    ✅
+                @endif
+                {{ $lot->brd_lot }} </span>
+            </td>
 
+            <td>{{ $lot->brd_amount }}</td>
 
-        <td> @if ($brandList && $peTypeCode && $brdAmount !== null && $workdetail->ww_line < 100)
-        BX{{ $brandList->bl_code }}-{{ $peTypeCode }}{{ $workdetail->ww_line }}++++++++00{{ $brdAmount }}
-    @elseif ($brandList && $peTypeCode && $brdAmount !== null)
-        BX{{ $brandList->bl_code }}-{{ $peTypeCode }}{{ $workdetail->ww_line }}++++++++{{ $brdAmount }}
+            <td>
+    @if ($lot && $lot->brd_brandlist_id !== null && $brandList && $peTypeCode && $lot->brd_amount !== null && $workdetail->ww_line < 100)
+        BX{{ str_pad($lot->brd_brandlist_id, 2, '0', STR_PAD_LEFT) }}-{{ $peTypeCode }}{{ $workdetail->ww_line }}++++++++000{{ $lot->brd_amount }}
+    @elseif ($lot && $lot->brd_brandlist_id !== null && $brandList && $peTypeCode && $lot->brd_amount !== null)
+        {{ str_pad($lot->brd_brandlist_id, 2, '0', STR_PAD_LEFT) }}-{{ $peTypeCode }}{{ $workdetail->ww_line }}++++++++{{ $lot->brd_amount }}
     @else
-        N/A <!-- กรณีไม่มีข้อมูลที่เพียงพอ -->
-    @endif</td>
-        <td>
-    <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
-        <!-- ปุ่มแก้ไข -->
-        <button style="border: none; background-color: transparent; cursor: pointer;" title="Edit" data-toggle="modal" data-target="#notieditbrand">
+        N/A
+    @endif
+</td>
+
+
+            <td>
+                <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+                <button class="editBrandBtn"
+        data-toggle="modal"
+        data-target="#notieditbrand"
+        data-id="{{ $lot->brd_id }}"
+        data-bl-id="{{ $lot->brd_brandlist_id }}"
+        data-brd-lot="{{ $lot->brd_lot }}">
     <i class="fa fa-edit" style="font-size: 20px; color: #000;"></i>
 </button>
-        <!-- ปุ่มพิมพ์ -->
-        <button style="border: none; background-color: transparent; cursor: pointer;" title="Print">
-            <i class="fa fa-print" style="font-size: 20px; color: green;"></i>
-        </button>
 
-        <!-- ปุ่มลบ -->
-        <button 
-    style="border: none; background-color: transparent; cursor: pointer;" 
-    title="Delete" 
-    data-toggle="modal" 
-    data-target="#notideleteoutfg">
+
+
+
+
+
+<button class="printBtn" 
+        data-id="{{ $lot->brd_id }}" 
+        style="border: none; background-color: transparent; cursor: pointer;" 
+        title="Print">
+    <i class="fa fa-print" style="font-size: 20px; color: green;"></i>
+</button>
+
+
+
+                    <!-- ปุ่มลบ -->
+                    <button style="border: none; background-color: transparent; cursor: pointer;"
+        title="Delete" 
+        data-toggle="modal" 
+        data-target="#notideleteoutfg"
+        data-id="{{ $lot->brd_id }}"
+        data-lot="{{ $lot->brd_lot }}"
+        class="deleteBrandBtn">
     <i class="fa fa-trash" style="font-size: 20px; color: red;"></i>
 </button>
 
-    </div>
-</td>
-    </tr>
-@endforeach
 
+                </div>
+            </td>
+        </tr>
+    @endforeach
+</tbody>
 
-
-
-                    </tbody>
                 </table>
+                
             </div>
         </div>
     </div>
 </div>
 
-
+ <h3><p class="text-danger">ต้องรอการตรวจสอบรับเข้าคลังสินค้าให้หมด จึงจะสามารถจบทำงานได้</p></h3> <br>
+       
+        <!--ปิดปุ่มgขียว 27/05/21  -->
+        
+        
+        
+        <div class="text-center">
+            <a class="btn btn-success" data-target="#inputend" data-toggle="modal" name="button" ><b>บันทึกจบ (END) <i class="fas fa-file-export"></i></b></a>
+        </div>
 
 
   
@@ -992,7 +1142,7 @@ $(document).ready(function () {
     });
 });
     
-</script>                      
+</script>           
 
                       
               <div id="detail" class="tab-pane fade">
@@ -1141,15 +1291,7 @@ $(document).ready(function () {
                     </div>
                 </div>
         </div>
-        <h3><p class="text-danger">ต้องรอการตรวจสอบรับเข้าคลังสินค้าให้หมด จึงจะสามารถจบทำงานได้</p></h3> <br>
        
-        <!--ปิดปุ่มgขียว 27/05/21  -->
-        
-        
-        
-        <div class="text-center">
-            <a class="btn btn-success" data-target="#inputend" data-toggle="modal" name="button" ><b>บันทึกจบ (END) <i class="fas fa-file-export"></i></b></a>
-        </div>
           
             
     </div>
@@ -1548,19 +1690,19 @@ $(document).ready(function () {
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form id="deletoutfg">
-                <div class="modal-body">
-                    {{ csrf_field() }}
-                    {{ method_field('delete') }}
-
-                    <input type="hidden" name="id" id="delete_outfgid">
-                    <h4 class="text-center" style="color:red;">คุณต้องการลบข้อมูลบาร์โค้ด <b>Lot No : </b>  <b id="showoutfg"></b> หรือไม่</h4>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
-                    <button type="submit" class="btn btn-danger">ลบบาร์โค้ด</button>
-                </div>
-            </form>
+            <form id="deleteoutfg" onsubmit="return false;">
+    <div class="modal-body">
+        @csrf
+        <input type="hidden" name="id" id="delete_outfgid"> <!-- เก็บ brd_id -->
+        <h4 class="text-center" style="color:red;">
+            <p>คุณต้องการลบข้อมูลบาร์โค้ด <b>Lot No :</b> <b id="showoutfg"></b> หรือไม่</p>
+        </h4>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
+        <button type="submit" class="btn btn-danger" id="confirmDelete">ลบบาร์โค้ด</button>
+    </div>
+</form>
         </div>
     </div>
 </div>
@@ -1569,102 +1711,51 @@ $(document).ready(function () {
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title" id="EditBrand"><b>แก้ไขข้อมูล LOT No.</b> <b id="showoutlot"></b> </h3>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            @if(isset($lot))
+    <h3 class="modal-title" id="EditBrand">
+    <b>แก้ไขข้อมูล LOT No : <span id="lot_display">{{ $lot->brd_lot }}</span></b>
+    </h3>
+@else
+    <h3 class="modal-title" id="EditBrand">
+        <b>ไม่พบข้อมูล LOT</b> <b id="showoutlot"></b>
+    </h3>
+@endif                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <form id="editbrandform">
-                <div class="modal-body">
-                    {{ csrf_field() }}
-                    {{ method_field('PUT') }}
-                    <div class="text-center">
-                    <select name="brd_brandlist_id_01_" 
-                            id="brd_brandlist_id_01"
-                            class="margin-select selectpicker show-tick form-control move-up" 
-                            aria-required="true" 
-                            data-size="9" 
-                            data-dropup-auto="true" 
-                            data-live-search="true" 
-                            data-style="btn-info btn-md text-white" 
-                            data-width="fit" 
-                            data-container="body" 
-                            required>
-                        <option value="0">เลือกแบรนด์</option>
-                        @foreach ($brandLists as $brand)
-                            <option data-tokens="{{ $brand->bl_name }}" value="{{ $brand->bl_id }}">{{ $brand->bl_name }}</option>
-                        @endforeach
-                    </select>                    </div>
-                    <input type="hidden" name="id" id="editbrandid">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                    <button type="submit" class="btn btn-success">บันทึก</button>
-                </div>
-            </form>
+    <div class="modal-body">
+        {{ csrf_field() }}
+        {{ method_field('PUT') }}
+        <div class="text-center">
+        <select name="bl_id" id="brd_brandlist_id_03"
+                    class="margin-select selectpicker show-tick form-control move-up" 
+                    aria-required="true" 
+                    data-size="9" 
+                    data-dropup-auto="true" 
+                    data-live-search="true" 
+                    data-style="btn-info btn-md text-white" 
+                    data-width="fit" 
+                    data-container="body" 
+                    required>
+                <option value="0">เลือกแบรนด์</option>
+                @foreach ($brandLists as $brand)
+                    <option data-tokens="{{ $brand->bl_name }}" value="{{ $brand->bl_id }}">{{ $brand->bl_name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <!-- ✅ ใส่ `brd_id` ในฟอร์ม -->
+        <input type="hidden" name="id" id="editbrandid">
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
+        <button type="submit" class="btn btn-success">บันทึก</button>
+    </div>
+</form>
+
         </div>
     </div>
 </div>
-
-<div class="modal fade" id="editempwip" tabindex="-1" role="dialog" aria-labelledby="EditEnpWip" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-                <h3 class="modal-title" id="EditEnpWip"><b>แก้ไขข้อมูลผู้คัด</b></h3>
-                <h4><b>Barcode : <u><i id="empwipbarcode">{{ $wipBarcodes->first()->wip_barcode ?? 'ไม่มีข้อมูล' }}</i></u></b></h4>
-            </div>
-            <div class="container-fluid">
-            <form id="editempwipform" action="{{ route('update.empgroup', ['id' => 0]) }}" method="POST">
-            @csrf
-                    @method('PUT')
-                    <div class="modal-body">
-                        <div class="text-center">
-                            <!-- Select ผู้คัด -->
-                            <select name="wip_empgroup_id" 
-        id="wip_empgroup_id_1"
-        class="margin-select selectpicker show-tick form-control move-up" 
-        aria-required="true" 
-        data-size="9" 
-        data-dropup-auto="true" 
-        data-live-search="true" 
-        data-style="btn-info btn-md text-white" 
-        data-width="fit" 
-        data-container="body" 
-        required>
-    <option style="font-size:15px;" value="0">เลือกผู้คัด</option>
-    @foreach ($empGroups as $group)
-        <option style="font-size:15px;" 
-                value="{{ $group->id }}" 
-                data-emp1="{{ $group->emp1 }}" 
-                data-emp2="{{ $group->emp2 }}">
-            {{ $group->emp1 }} - {{ $group->emp2 }}
-        </option>
-    @endforeach
-</select>
-
-
-
-                        </div>
-                        <!-- Hidden Inputs -->
-                        <input type="hidden" name="id" id="empwipid">
-                        <input type="hidden" name="wip_empgroup_id_old" id="empgropidwip">
-                        <input type="hidden" name="emp1_old" id="emp1_old">
-                        <input type="hidden" name="emp2_old" id="emp2_old">
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                        <button type="submit" class="btn btn-success" id="save-btn">บันทึก</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-
 
 
 
@@ -1712,6 +1803,53 @@ $(document).ready(function () {
     </div>
 </div>
 </div>
+
+<div class="modal fade" id="editempwip" tabindex="-1" role="dialog" aria-labelledby="EditEnpWip" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h3 class="modal-title" id="EditEnpWip"><b>แก้ไขข้อมูลผู้คัด </b></h3>
+                <h4><b>Barcode :<u><i id="empwipbarcode"></i></u></b></h4>
+            </div>
+            <div class="container-fluid">
+            <form id="editempwipform" method="POST">
+    @csrf
+    @method('PUT') <!-- ใช้ `_method=PUT` เพื่อรองรับการอัปเดต -->
+
+    <div class="modal-body">
+        <div class="text-center">
+            <select name="wip_empgroup_id_1" class="margin-select selectpicker show-tick form-control"
+                    aria-required="true" data-size="9" data-dropup-auto="true" data-live-search="true"
+                    data-style="btn-info btn-md text-white" data-width="fit" data-container="body" required>
+                <option style="font-size:15px;" value="0">เลือกผู้คัด</option>
+                @foreach ($empGroups as $group)
+                    <option style="font-size:15px;" 
+                            value="{{ $group->id }}" 
+                            data-emp1="{{ $group->emp1 }}" 
+                            data-emp2="{{ $group->emp2 }}">
+                        {{ $group->emp1 }} - {{ $group->emp2 }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        <input type="hidden" name="id" id="empwipid">
+        <input type="hidden" name="wip_empgroup_id_old" id="empgropidwip">
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
+        <button type="submit" class="btn btn-success">บันทึก</button>
+    </div>
+</form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <script type="text/javascript">
 

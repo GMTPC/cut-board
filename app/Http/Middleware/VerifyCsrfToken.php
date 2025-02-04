@@ -12,6 +12,6 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        //
+        '/wip/editbrand/*' // 🔹 ปิด CSRF สำหรับ Edit Brand API
     ];
 }
