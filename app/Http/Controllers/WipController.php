@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Wipbarcode, WipProductDate, EmpInOut, ProductTypeEmp, WipWorktime, WorkProcessQC, GroupEmp, Skumaster, AmountNg, Brand,ProductionColor, BrandList,WipColordate,WipWorking};
+use App\Models\{Wipbarcode, WipProductDate, EmpInOut, ProductTypeEmp, WipWorktime, WorkProcessQC, GroupEmp, Skumaster, AmountNg, Brand,ProductionColor, BrandList,WipColordate,WipWorking,WipSummary,WipHolding};
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -844,13 +844,232 @@ public function tagfg($line, $work_id, $brd_id)
 }
 
 
+public function taghd($line, $work_id)
+{
+    // ✅ ดึงข้อมูลจาก WipHolding ตาม work_id
+    $wipHoldings = WipHolding::where('wh_working_id', $work_id)
+                              ->select('wh_barcode', 'wh_lot')
+                              ->get();
 
+    // ✅ ดึงค่า `pe_type_code` และ `pe_type_name` จาก `product_type_emps`
+    $productType = ProductTypeEmp::where('pe_working_id', $work_id)
+                                  ->select('pe_type_code', 'pe_type_name')
+                                  ->first();
 
-public function wipcolordatecon($dateproduct){
-    $monthno = date('m',strtotime($dateproduct));
-    $color = WipColordate::getcolor($monthno);
-    return $color;
+    $peTypeCode = $productType ? $productType->pe_type_code : null;
+    $peTypeName = $productType ? $productType->pe_type_name : null;
+
+    // ✅ ดึงค่า `ww_group` จาก `wip_working`
+    $wipWorking = WipWorking::where('ww_id', $work_id)
+                            ->select('ww_group')
+                            ->first();
+
+    $wwGroup = $wipWorking ? $wipWorking->ww_group : null;
+
+    // ✅ ดึงค่า `wh_lot` จาก `wip_holding`
+    $wipLot = WipHolding::where('wh_working_id', $work_id)
+                        ->select('wh_lot')
+                        ->first();
+
+    $whLot = $wipLot ? $wipLot->wh_lot : null;
+
+    // ✅ ดึงค่าผลรวม `wip_amount`
+    $totalWipAmount = Wipbarcode::where('wip_working_id', $work_id)
+                                ->sum('wip_amount');
+
+    // ✅ ค้นหา `eio_emp_group` จาก `emp_in_outs`
+    $empInOut = EmpInOut::where('eio_working_id', $work_id)
+                         ->select('eio_emp_group')
+                         ->first();
+
+    $eioEmpGroup = $empInOut ? $empInOut->eio_emp_group : null;
+
+    // ✅ ค้นหา `emp1` และ `emp2` จาก `group_emp`
+    $groupEmp = GroupEmp::where('id', $eioEmpGroup)
+                        ->select('emp1', 'emp2')
+                        ->first();
+
+    $emp1 = $groupEmp ? $groupEmp->emp1 : null;
+    $emp2 = $groupEmp ? $groupEmp->emp2 : null;
+
+    // ✅ ค้นหา `brd_checker` จาก `brands`
+    $brand = Brand::where('brd_working_id', $work_id)
+                  ->select('brd_checker')
+                  ->first();
+
+    $brdChecker = $brand ? $brand->brd_checker : null;
+
+    // ✅ ค้นหาข้อมูลจาก `wip_summary` โดยใช้ `ws_working_id`
+    $wipSummary = WipSummary::where('ws_working_id', $work_id)
+                            ->select('ws_holding_amount', 'ws_ng_amount')
+                            ->first();
+
+    $wsHoldingAmount = $wipSummary ? $wipSummary->ws_holding_amount : 0;
+    $wsNgAmount = $wipSummary ? $wipSummary->ws_ng_amount : 0;
+
+    // ✅ กำหนดสีของไลน์ (หากต้องการใช้งาน)
+    $colorline = $this->colorline();
+
+    // ✅ ส่งข้อมูลไปยัง Blade Template
+    return view('template.taghd', [
+        'colorline'        => $colorline, 
+        'wipHoldings'      => $wipHoldings, 
+        'work_id'          => $work_id,
+        'line'             => $line,
+        'peTypeCode'       => $peTypeCode, 
+        'peTypeName'       => $peTypeName, 
+        'wwGroup'          => $wwGroup,    
+        'whLot'            => $whLot,      
+        'totalWipAmount'   => $totalWipAmount,
+        'emp1'             => $emp1, 
+        'emp2'             => $emp2,
+        'brdChecker'       => $brdChecker,
+        'wsHoldingAmount'  => $wsHoldingAmount, // ✅ ส่งค่า `ws_holding_amount`
+        'wsNgAmount'       => $wsNgAmount,     // ✅ ส่งค่า `ws_ng_amount`
+    ]);
 }
+
+
+public function colorline($line_con = null)
+{
+    $colorline = '';
+
+    if ($line_con === 'L1') {
+        $colorline = '#92d050';
+    } elseif ($line_con === 'L2') {
+        $colorline = '#ffff00';
+    } elseif ($line_con === 'L3') {
+        $colorline = '#00b0f0';
+    } else {
+        // ถ้าไม่มี line_con ให้ใช้สีเริ่มต้นหรือสุ่มสี
+        $defaultColors = ['#FF5733', '#33FF57', '#3357FF', '#F1C40F', '#9B59B6'];
+        $colorline = $defaultColors[array_rand($defaultColors)];
+    }
+
+    return $colorline;
+}
+
+public function endprocess(Request $request, $line, $work_id)
+{
+    try {
+        // ✅ เริ่มต้น Transaction
+        return DB::transaction(function () use ($request, $line, $work_id) {
+            // ตรวจสอบว่า work_id มีอยู่ในตาราง WorkProcessQC หรือไม่
+            $workProcess = WorkProcessQC::where('id', $work_id)->first();
+            if (!$workProcess) {
+                return response()->json(['error' => 'ไม่พบข้อมูล WorkProcessQC'], 404);
+            }
+
+            // ✅ ตรวจสอบค่าที่ได้รับจาก request
+            $validatedData = $request->validate([
+                'ws_output_amount' => 'required|numeric|min:1',
+                'ws_input_amount' => 'required|numeric|min:1',
+                'ws_holding_amount' => 'required|numeric|min:0',
+                'ws_ng_amount' => 'required|numeric|min:0',
+                'ws_working_id' => 'required|numeric',
+                'wh_working_id' => 'required|numeric',
+                'wh_lot' => 'required|string',
+            ], [
+                'required' => 'ข้อมูลนี้จำเป็นต้องกรอก',
+                'numeric' => 'ค่าต้องเป็นตัวเลข',
+                'min' => 'ค่าต้องมากกว่า 0'
+            ]);
+
+            // กำหนดวันที่ปัจจุบัน
+            $enddate = Carbon::now('Asia/Bangkok');
+
+            // คำนวณ ws_index และ wh_index
+            $wsIndex = WipSummary::max('ws_index') + 1 ?? 1;
+            $whIndex = WipHolding::max('wh_index') + 1 ?? 1;
+
+            // ✅ คำนวณ `lothdgenerator`
+            $workdate = $workProcess->date;
+            $workpgroup = $workProcess->group;
+            $lothdcheck = WipHolding::where('wh_lot', $request->input('wh_lot'))->count();
+
+            $lothdgenerator = date('ymd', strtotime($workdate)) .
+                            substr($workpgroup,1,1) .
+                            substr($workpgroup,1,1) .
+                            str_pad($lothdcheck + 1, 2, '0', STR_PAD_LEFT);
+
+            // ✅ ตรวจสอบว่า line มี 'L' นำหน้าหรือไม่
+            $formattedLine = str_starts_with($line, 'L') ? substr($line, 1, 1) : $line;
+
+            // ✅ คำนวณ `hdbarcode`
+            $holding = $request->input('ws_holding_amount');
+            $typecode = $workProcess->type_code;
+
+            if ($holding !== null && is_numeric($holding)) {
+                if ($holding < 100 && $holding > 10) {
+                    $hdbarcode = 'B' . $formattedLine . '99-' . $typecode . $lothdgenerator . '0' . $holding;
+                } elseif ($holding < 10) {
+                    $hdbarcode = 'B' . $formattedLine . '99-' . $typecode . $lothdgenerator . '00' . $holding;
+                } else {
+                    $hdbarcode = 'B' . $formattedLine . '99-' . $typecode . $lothdgenerator . $holding;
+                }
+            } else {
+                return response()->json(['error' => 'ค่าคงค้าง (HD) ไม่ถูกต้อง'], 422);
+            }
+
+            // ✅ บันทึกข้อมูลใน WipSummary
+            $sum = new WipSummary();
+            $sum->ws_output_amount = $validatedData['ws_output_amount'];
+            $sum->ws_input_amount = $validatedData['ws_input_amount'];
+            $sum->ws_working_id = $validatedData['ws_working_id'];
+            $sum->ws_holding_amount = $validatedData['ws_holding_amount'];
+            $sum->ws_ng_amount = $validatedData['ws_ng_amount'];
+            $sum->ws_index = $wsIndex;
+            $sum->save();
+
+            // ✅ บันทึกข้อมูลใน WipHolding
+            $holdingEntry = new WipHolding();
+            $holdingEntry->wh_working_id = $validatedData['wh_working_id'];
+            $holdingEntry->wh_barcode = $hdbarcode;
+            $holdingEntry->wh_lot = $lothdgenerator;
+            $holdingEntry->wh_index = $whIndex;
+            $holdingEntry->save();
+
+            // ✅ อัปเดตสถานะของ WorkProcessQC เป็น "จบการทำงาน"
+            $workProcess->update([
+                'status' => 'จบการทำงาน',
+                'date' => $enddate
+            ]);
+
+            // ✅ อัปเดตค่า ww_end_date ใน WipWorking เป็นเวลาปัจจุบันของประเทศไทย
+            $wipWorking = WipWorking::find($work_id);
+            if ($wipWorking) {
+                $wipWorking->update([
+                    'ww_end_date' => $enddate->format('Y-m-d H:i:s')
+                ]);
+            }
+
+            // ✅ Transaction จะถูก Commit โดยอัตโนมัติที่นี่
+            return response()->json([
+                'wh_id' => $holdingEntry->wh_id,
+                'ws_holding_amount' => $sum->ws_holding_amount,
+                'hd_barcode' => $hdbarcode,
+                'message' => 'กระบวนการผลิตเสร็จสิ้นและอัปเดตสถานะเรียบร้อย',
+                'redirect_url' => route('taghd', ['line' => 'L' . $formattedLine, 'work_id' => $work_id])
+            ]);
+        });
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'error' => 'ข้อมูลไม่ครบถ้วน',
+            'details' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'เกิดข้อผิดพลาดในเซิร์ฟเวอร์',
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile()
+        ], 500);
+    }
+}
+
+
+
 public function thaimonth(){
 
     $thmonth = Array("","มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤษจิกายน","ธันวาคม");

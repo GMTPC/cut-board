@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
 
 class WipWorking extends Model
 {
@@ -23,6 +24,7 @@ class WipWorking extends Model
     protected $fillable = [
         'ww_id',
         'ww_line',
+        'ww_end_date', // ✅ เพิ่มฟิลด์ที่สามารถบันทึกค่าได้
         // เพิ่มฟิลด์อื่น ๆ ตามที่ต้องการ
     ];
 
@@ -34,5 +36,11 @@ class WipWorking extends Model
         static::addGlobalScope('orderById', function (Builder $builder) {
             $builder->orderBy('ww_id', 'asc'); // เรียงจากน้อยไปมาก
         });
+    }
+
+    // ✅ Mutator: กำหนดให้ `ww_end_date` ใช้วันที่ปัจจุบันของประเทศไทยเมื่อมีการอัปเดต
+    public function setWwEndDateAttribute($value)
+    {
+        $this->attributes['ww_end_date'] = Carbon::now('Asia/Bangkok')->format('Y-m-d H:i:s');
     }
 }

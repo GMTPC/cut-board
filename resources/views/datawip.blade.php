@@ -786,8 +786,119 @@ $(document).ready(function () {
     });
 </script>
 
+<script>
+    $(document).ready(function () {
+        $("#forminputend").submit(function (e) {
+    e.preventDefault();
 
+    var form = $(this);
+    var url = form.attr("action");
+    var formData = new FormData(this);
 
+    let requiredFields = ["ws_input_amount", "ws_output_amount", "ws_holding_amount", "ws_ng_amount", "ws_working_id", "wh_working_id", "wh_lot"];
+    let isValid = true;
+    let missingFields = [];
+
+    console.log("📌 ตรวจสอบค่าก่อนส่ง:");
+
+    requiredFields.forEach(field => {
+        let value = formData.get(field);
+        console.log(`✅ ${field}:`, value);
+
+        // ✅ ปรับเงื่อนไขให้ค่า 0 สามารถบันทึกได้
+        if (value === null || value.trim() === "" || value === "null") { 
+            isValid = false;
+            missingFields.push(field);
+        }
+    });
+
+    if (!isValid) {
+        console.error("❌ ข้อมูลที่ขาด:", missingFields);
+        Swal.fire({
+            title: "ข้อมูลไม่ครบถ้วน!",
+            text: "กรุณากรอกข้อมูลให้ครบทุกช่องก่อนบันทึก",
+            icon: "warning",
+            confirmButtonText: "ตกลง"
+        });
+        return;
+    }
+
+    // ✅ ส่ง AJAX
+    $.ajax({
+        type: "POST",
+        url: url,
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function (response) {
+            Swal.fire({
+                title: "บันทึกสำเร็จ!",
+                text: response.message || "ข้อมูลถูกบันทึกเรียบร้อย",
+                icon: "success",
+                confirmButtonText: "ตกลง"
+            }).then(() => {
+                if (response.redirect_url) {
+                    window.open(response.redirect_url, "_blank", "width=800,height=600");
+                }
+                location.reload();
+            });
+        },
+        error: function (xhr) {
+            let errorMessage = "ไม่สามารถบันทึกข้อมูลได้";
+            if (xhr.responseJSON) {
+                errorMessage = xhr.responseJSON.message || errorMessage;
+                console.error("❌ เกิดข้อผิดพลาด:", xhr.responseJSON);
+            }
+            
+            Swal.fire({
+                title: "เกิดข้อผิดพลาด!",
+                text: errorMessage,
+                icon: "error",
+                confirmButtonText: "ตกลง"
+            });
+        }
+    });
+});
+});
+
+</script>
+<script>
+    function openTagFgPopup(brd_id) {
+        // ✅ ดึง URL Path ของหน้าเว็บ
+        let path = window.location.pathname;
+
+        // ✅ ใช้ Regular Expression เพื่อดึงค่า line และ work_id จาก URL
+        let match = path.match(/\/production\/datawip\/L(\d+)\/(\d+)/);
+
+        if (!match) {
+            console.error('❌ ไม่พบค่า line หรือ work_id ใน URL');
+            alert("ไม่พบค่าที่จำเป็น!");
+            return;
+        }
+
+        // ✅ แยกค่าที่ดึงมา
+        let line = "L" + match[1]; // เติม L ด้านหน้าเสมอ
+        let work_id = match[2]; // ดึงค่า work_id
+
+        // ✅ ตรวจสอบค่าก่อนส่งไปที่ Route
+        if (!brd_id) {
+            console.error('❌ ไม่พบค่า brd_id');
+            alert("ไม่พบค่า brd_id!");
+            return;
+        }
+
+        // ✅ แสดงค่าทั้งหมดใน Console เพื่อตรวจสอบ
+        console.log("✅ brd_id:", brd_id);
+        console.log("✅ work_id:", work_id);
+        console.log("✅ line:", line);
+
+        // ✅ สร้าง URL สำหรับ Route `/production/tagfg/{line}/{work_id}/{brd_id}`
+        let popupUrl = `/production/tagfg/${line}/${work_id}/${brd_id}`;
+
+        // ✅ เปิด Popup Window
+        window.open(popupUrl, 'tagfgPopup', 'width=1000,height=600');
+    }
+</script>
 
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
@@ -819,13 +930,169 @@ $(document).ready(function () {
             <div class="container-fluid">
             <h4><b>กลุ่มที่คัด :</b> <b>{{ $workprocess->line ?? 'ไม่มีข้อมูล' }}{{ $workprocess->group ?? 'ไม่มีข้อมูล' }}</b></h4>
 <h4><b>วันที่เริ่ม :</b> <b>{{ $workprocess->date ? \Carbon\Carbon::parse($workprocess->date)->format('d-m-Y') : 'ไม่มีข้อมูล' }}</b></h4>
-<h4><b>สถานะ :</b> <b style="color: green;">{{ $workprocess->status ?? 'ไม่มีข้อมูล' }}</b></h4>
+@if (isset($workprocess->status) && trim($workprocess->status) === 'จบการทำงาน' && !empty($wwEndDate))
+    <h4><b>วันที่จบการทำงาน : {{ date("d-m-Y H:i", strtotime($wwEndDate)) }}</b></h4>
+@endif
+
+<h4><b>สถานะ :</b> 
+    <b style="color: {{ trim($workprocess->status ?? '') == 'จบการทำงาน' ? 'red' : 'green' }};">
+        {{ trim($workprocess->status ?? 'ไม่มีข้อมูล') }}
+    </b>
+</h4>
 @if ($wipBarcodes->count() > 0 && $productTypes->count() > 0)
 <h4><b>ชนิดสินค้า :</b> <b>{{ $peTypeName ?? 'ไม่พบข้อมูล' }}</b></h4>
 @endif
 
 
             </div>
+            @if (isset($workprocess->status) && trim($workprocess->status) === 'กำลังคัด')
+    <h3>
+        <p class="text-danger">
+            ต้องรอการตรวจสอบรับเข้าคลังสินค้าให้หมด จึงจะสามารถจบทำงานได้
+        </p>
+    </h3>
+    <br>
+@endif
+
+    @if (isset($workprocess->status) && trim($workprocess->status) === 'จบการทำงาน')
+    <h4><b>สรุปข้อมูล</b></h4>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th class="text-center">จำนวนแผ่นยิงรับเข้า</th>
+                    <th class="text-center">จำนวนแผ่นออก</th>
+                    <th class="text-center">จำนวนคงค้าง</th>
+                    <th class="text-center">จำนวนแผ่นเสีย</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                <td class="text-center info">{{ $wipSummary->ws_input_amount ?? 0 }}</td>
+<td class="text-center info">{{ $wipSummary->ws_output_amount ?? 0 }}</td>
+<td class="text-center info">{{ $wipSummary->ws_holding_amount ?? 0 }}</td>
+<td class="text-center info">{{ $wipSummary->ws_ng_amount ?? 0 }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <hr>
+
+    <h4><b>คงค้าง(HD)</b></h4>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th class="text-center">#</th>
+                    <th class="text-center">บาร์โค้ด</th>
+                    <th class="text-center">Lot HD</th>
+                    <th class="text-center"><i class="fa fa-cog"></i></th>
+                </tr>
+            </thead>
+            <tbody>
+            <tr>
+    @foreach ($wipHoldings as $holding)
+        <td class="text-center warning">{{ $loop->iteration }}</td> {{-- ✅ ใช้ $loop->iteration แทน $index --}}
+        <td class="text-center warning">{{ $holding->wh_barcode }}</td>
+        <td class="text-center warning">{{ $holding->wh_lot }}</td>
+        <td class="text-center warning">
+            <a href="#" class="btn btn-success btn-sm fa fa-print" 
+               onclick="openPopup()"
+               data-toggle="tooltip" title="พิมพ์" 
+               style="font-size:15px;">
+            </a>
+        </td>
+    </tr>
+    @endforeach
+
+
+            </tbody>
+        </table>
+    </div>
+    <hr>
+
+    <h4><b>บาร์โค้ดยิงรับเข้า</b></h4>
+    <table id="myTableCode" class="table table-hover bg-white text-center">
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>บาร์โค้ด</th>
+        <th>จำนวน</th>
+        <th>เสีย</th>
+    </tr>
+</thead>
+<tbody id="searchCode">
+    @forelse ($wipBarcodes as $index => $barcode)
+        <tr>
+            <td style="display:none"></td>
+            <td class="success">{{ $index + 1 }}</td> <!-- ลำดับที่ -->
+            <td class="wipline1code success">{{ $barcode->wip_barcode }}</td> <!-- บาร์โค้ด -->
+            <td class="success">{{ $barcode->wip_amount }}</td> <!-- จำนวน -->
+            <td class="success">
+            {{ $totalNgAmount ?? 0 }}
+            </td>
+        </tr>
+    @empty
+        <tr>
+            <td colspan="5" class="text-center">ไม่มีข้อมูล</td>
+        </tr>
+    @endforelse
+</tbody>
+
+        <tfoot>
+            <tr>
+                <th>#</th>
+                <th>บาร์โค้ด</th>
+                <th>จำนวน</th>
+                <th>เสีย</th>
+            </tr>
+        </tfoot>
+    </table>
+
+                        <hr>
+                        <h4><b>บาร์โค้ดออก FG</b></h4>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center">#</th>
+                                        <th class="text-center">บาร์โค้ด</th>
+                                        <th class="text-center">Lot FG</th>
+                                        <th class="text-center"><i class="fa fa-cog"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+
+                                    
+                                <tr>
+    <td class="text-center danger">{{ $index + 1 }}</td>
+    <td class="text-center danger">@if ($lot && $lot->brd_brandlist_id !== null && $brandList && $peTypeCode && $lot->brd_amount !== null && $workdetail->ww_line < 100)
+        BX{{ str_pad($lot->brd_brandlist_id, 2, '0', STR_PAD_LEFT) }}-{{ $peTypeCode }}{{ $workdetail->ww_line }}++++++++000{{ $lot->brd_amount }}
+    @elseif ($lot && $lot->brd_brandlist_id !== null && $brandList && $peTypeCode && $lot->brd_amount !== null)
+        {{ str_pad($lot->brd_brandlist_id, 2, '0', STR_PAD_LEFT) }}-{{ $peTypeCode }}{{ $workdetail->ww_line }}++++++++{{ $lot->brd_amount }}
+    @else
+        N/A
+    @endif</td>
+    <td class="text-center danger"> {{ $lot->brd_lot }}</td>
+    <td class="text-center danger">
+    <a href="#" 
+    onclick="openTagFgPopup({{ $lot->brd_id ?? 'null' }})" 
+    class="btn btn-success btn-sm fa fa-print" 
+    data-toggle="tooltip" 
+    title="พิมพ์" 
+    style="font-size:15px;">
+</a>
+
+    </td>
+</tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+@endif
+
+
+            @if (isset($workprocess->status) && $workprocess->status == 'กำลังคัด')
 
             <div class="tab-content">
                 <div id="barcode" class="tab-pane fade in active">
@@ -838,7 +1105,6 @@ $(document).ready(function () {
                             </div>
                         </div>
                            
-                       
                         <div class="panel panel-gmt">
     <div class="panel-heading text-center" style="font-size:18px;">สรุปรายการ</div>
     <div class="panel-body" style="padding: 0;">
@@ -1080,10 +1346,20 @@ $(document).ready(function () {
                 
             </div>
         </div>
+        
     </div>
 </div>
 
- <h3><p class="text-danger">ต้องรอการตรวจสอบรับเข้าคลังสินค้าให้หมด จึงจะสามารถจบทำงานได้</p></h3> <br>
+   
+
+
+
+    <h3>
+        <p class="text-danger">
+            ต้องรอการตรวจสอบรับเข้าคลังสินค้าให้หมด จึงจะสามารถจบทำงานได้
+        </p>
+    </h3>
+    <br>
        
         <!--ปิดปุ่มgขียว 27/05/21  -->
         
@@ -1093,6 +1369,7 @@ $(document).ready(function () {
             <a class="btn btn-success" data-target="#inputend" data-toggle="modal" name="button" ><b>บันทึกจบ (END) <i class="fas fa-file-export"></i></b></a>
         </div>
 
+        @endif
 
   
 
@@ -1620,63 +1897,56 @@ $(document).ready(function () {
                     <h3 class="modal-title" id="AddBrands"><b>ยืนยันการจบการทำงาน (END)</b></h3>
                     <p style="color:red;font-size:15px;">เมื่อกดยืนยัน สถานะจะถูกเปลี่ยนเป็น<u>จบการทำงาน</u> ข้อมูลทั้งหมดจะไม่สามารถแก้ไขได้ โปรดตรวจสอบข้อมูลให้เรียบร้อยก่อนกดยืนยัน</p>
                 </div>
-                <form id="forminputend" class="md-form text-center" enctype="multipart/form-data" method="post">
-                    <div class="modal-body">
-                        <div class="panel panel-gmt">
-                            <div class="panel-heading text-center" style="font-size:18px;">สรุปรายการ</div>
-                            <div class="panel-body" style="
-                            padding-top: 0px;
-                            padding-left: 0px;
-                            ">
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center">จำนวนแผ่นเข้า</h4>
-                            </div>
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center">จำนวนแผ่นออก</h4>
-                            </div>
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center">คงค้าง (HD)</h4>
-                            </div>
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center">เสีย (NG)</h4>
-                            </div>
-                        </div>
-                        <div class="panel-body" style="
-                        padding-top: 0px;
-                        padding-left: 0px;
-                        ">
-                        <div class="col-md-3 col-xs-3">
-                            <h4 class="text-center"></h4>
-                            <input class="form-control text-center" type="hidden" name="ws_input_amount" value="" readonly>
-                        </div>
-                        <div class="col-md-3 col-xs-3">
-                            <h4 class="text-center"></h4>
-                            <input class="form-control text-center" type="hidden" name="ws_output_amount" value="" readonly>
-                        </div>
-                        <div class="col-md-3 col-xs-3">
-                            <h4 class="text-center"></h4>
-                            <input class="form-control text-center" type="hidden" name="ws_holding_amount" value="" readonly>
-                        </div>
-                        <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center">0</h4>
-                                <input class="form-control text-center" type="hidden" name="ws_ng_amount" value="0" readonly>
-                                <h4 class="text-center"></h4>
-                                <input class="form-control text-center" type="hidden" name="ws_ng_amount" value="" readonly>
-                            <input type="hidden" name="ws_working_id" value="" readonly>
-                            <input type="hidden" name="wh_working_id" value="" readonly>
-
-                        </div>
-                        <input type="hidden" name="wh_barcode" value="" readonly>
-                        <input type="hidden" name="wh_lot" value="" readonly>
-                    </div>
+                <form id="forminputend" class="md-form text-center" enctype="multipart/form-data" method="POST" action="{{ route('endprocess', ['line' => $line, 'work_id' => $work_id]) }}">
+    @csrf <!-- ป้องกัน CSRF -->
+    <div class="modal-body">
+        <div class="panel panel-gmt">
+            <div class="panel-heading text-center" style="font-size:18px;">สรุปรายการ</div>
+            <div class="panel-body" style="padding-top: 0px; padding-left: 0px;">
+                <div class="col-md-3 col-xs-3">
+                    <h4 class="text-center">จำนวนแผ่นเข้า</h4>
+                </div>
+                <div class="col-md-3 col-xs-3">
+                    <h4 class="text-center">จำนวนแผ่นออก</h4>
+                </div>
+                <div class="col-md-3 col-xs-3">
+                    <h4 class="text-center">คงค้าง (HD)</h4>
+                </div>
+                <div class="col-md-3 col-xs-3">
+                    <h4 class="text-center">เสีย (NG)</h4>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                    <a href="#" style="cursor:not-allowed;" class="btn btn-light" data-toggle="tooltip" title="ยอดคงค้างติดลบ">ยืนยัน</a>
-                    <button type="submit" class="btn btn-success">ยืนยัน</button>
+            <div class="panel-body" style="padding-top: 0px; padding-left: 0px;">
+                <div class="col-md-3 col-xs-3">
+                    <h4 class="text-center">{{ $totalWipAmount ?? '0' }}</h4>
+                    <input class="form-control text-center" type="hidden" name="ws_input_amount" value="{{ $totalWipAmount ?? '0' }}" readonly>
+                </div>
+                <div class="col-md-3 col-xs-3">
+                    <h4 class="text-center">{{ $brdAmount ?? 0}}</h4>
+                    <input class="form-control text-center" type="hidden" name="ws_output_amount" value="{{ $brdAmount ?? 0 }}" readonly>
+                </div>
+                <div class="col-md-3 col-xs-3">
+                    <h4 class="text-center">{{ ($totalWipAmount ?? 0) - ($totalNgAmount ?? 0) - ($brdAmount ?? 0) }}</h4>
+                    <input class="form-control text-center" type="hidden" name="ws_holding_amount" value="{{ ($totalWipAmount ?? 0) - ($totalNgAmount ?? 0) - ($brdAmount ?? 0) }}" readonly>
+                </div>
+                <div class="col-md-3 col-xs-3">
+                    <h4 class="text-center">{{ $totalNgAmount ?? 0 }}</h4>
+                    <input class="form-control text-center" type="hidden" name="ws_ng_amount" value="{{ $totalNgAmount ?? 0 }}" readonly>
+                    <input type="hidden" name="ws_working_id" value="{{ $work_id }}" readonly>
+                    <input type="hidden" name="wh_working_id" value="{{ $work_id }}" readonly>
+                </div>
+                <input type="hidden" name="wh_barcode" value="{{ $hdbarcode }}" readonly>
+                <input type="hidden" name="wh_lot" value="{{ $lothdgenerator }}" readonly>
             </div>
-        </form>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
+        <button type="submit" class="btn btn-success">ยืนยัน</button>
+    </div>
+</form>
+
+
     </div>
 </div>
 </div>

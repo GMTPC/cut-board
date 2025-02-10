@@ -206,8 +206,8 @@
 
                                     </tr>
                                     <tr>
-                                        <td colspan="8" class="medium-text">VIP (มอก.)หน้าขาว ขอบลาด ธรรมดา 1.2 x 2.4
-                                            m. x9 mm.</td>
+                                        <td colspan="8" class="medium-text">    {{ $bl_name ?? 'N/A' }}  {{ $wip_sku_name ?? 'N/A' }}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <td>น้ำหนัก/หน่วย</td>

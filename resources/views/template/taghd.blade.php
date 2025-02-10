@@ -149,13 +149,13 @@ scratch. This page gets rid of all links and provides the needed markup only.
                             <div class="table-responsive">
                                 <div class="container">
                                     <div class="print-output">
-                                        @foreach ($taghd as $taghd)
+                                     
                                             <input type="hidden" name="" id="output1aid" value="">
                                             <table style="width:100%;" class="table-output">
                                                 <tr>
                                                     <td style="background-color: {{ $colorline }};" colspan="4" class="underlineheader">
                                                         <div class="col-6-md">
-                                                            <u style="color:black;"><h2 style="text-align: left;" class="text-left"><b >{{ substr($taghd->wh_lot,6,4) }}</b></h2></u>
+                                                            <u style="color:black;"><h2 style="text-align: left;" class="text-left"><b ></b></h2></u>
                                                         </div>
                                                         <div class="col-6-md">
                                                             <u style="color:black;"><h2 style="text-align: right;" class="text-right"><b >TAG WIP แผ่นรอคัด</b></h2></u>
@@ -163,75 +163,102 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                     </td>
                                                 </tr>
                                         
-                                                    @if ($taghd->ws_holding_amount == 10)
-                                                        <td colspan="4"><center>{!! DNS1D::getBarcodeHTML(substr($taghd->wh_barcode,0,21)."0".substr($taghd->wh_barcode,21,2),'C128',1,35)  !!}</center> 
-                                                        <small>{!! substr($taghd->wh_barcode,0,11).":".$sizearr[substr($taghd->pe_type_code,2,2)].":".$taghd->wh_lot.$taghd->ws_holding_amount !!}</small>
+                                                   
+                                                        <td colspan="4"><center></center> 
+                                                        <small></small>
  
-                                                    @else
-                                                    <td colspan="4"><center>{!! DNS1D::getBarcodeHTML($taghd->wh_barcode,'C128',1,35)  !!}</center> 
-                                                        <small>{!! substr($taghd->wh_barcode,0,11).":".$sizearr[substr($taghd->pe_type_code,2,2)].":".$taghd->wh_lot !!}</small>
-                                                    @endif
+                                                    <td colspan="4"><center></center> 
+                                                        <small></small>
+                                                 
                                                    
                                                     </br>
                                                     <div class="fix-row-center">
                                                         <div class="fix-grid-left">
-                                                            <small>{!! DNS1D::getBarcodeHTML(substr($taghd->wh_barcode,0,11),'C128',1,35) !!}</small>
-                                                            <small>{!! substr($taghd->wh_barcode,0,11) !!}</small>
+                                                            <small></small>
+                                                            <small></small>
                                                         </div>
                                                         <div class="fix-grid-right">
-                                                            <small>{!! DNS1D::getBarcodeHTML($taghd->wh_lot,'C128',1,35) !!}</small>
-                                                            <small>{{ $taghd->wh_lot }}</small>
+                                                            <small></small>
+                                                            <small></small>
                                                         </div>
                                                     </div>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <th style="background-color: {{ $colorline }};" class="wip-fix-fontsize-output"><b style="font-size:19px;">รหัสสินค้า</b></th>
-                                                <td style="background-color: {{ $colorline }};" colspan="3" class=""><b style="font-size:19px;">{{ substr($taghd->wh_barcode,0,11) }}</b></td>
+                                            <th style="background-color: {{ $colorline }};" class="wip-fix-fontsize-output">
+    <b style="font-size:19px;">รหัสสินค้า</b>
+</th>
+<td style="background-color: {{ $colorline }};" colspan="3">
+    <b style="font-size:19px;">
+        {{ substr($wipHoldings->first()->wh_barcode ?? 'ไม่มีข้อมูล', 0, 4) }} - {{ $peTypeCode ?? 'ไม่มีข้อมูล' }}
+    </b>
+</td>
+
+
                                             </tr>
                                             <tr>
-                                                <th style="background-color: {{ $colorline }};" class="wip-fix-fontsize-output"><b style="font-size:19px;">ชื่อสินค้า</b></th>
-                                                <td style="background-color: {{ $colorline }};" colspan="3" class=""><b style="font-size:19px;">{{ "แผ่นรอคัด ".$taghd->pe_type_name }}</b></td>
+                                            <th style="background-color: {{ $colorline }};" class="wip-fix-fontsize-output">
+    <b style="font-size:19px;">ชื่อสินค้า</b>
+</th>
+<td style="background-color: {{ $colorline }};" colspan="3">
+    <b style="font-size:19px;">
+        แผ่นรอคัด {{ $peTypeName ?? 'ไม่มีข้อมูล' }}
+    </b>
+</td>
+
                                             </tr>
-                                            <tr>
-                                                <th style="background-color: {{ $colorline }};" class="wip-fix-fontsize-output"><b style="font-size:19px;">วันที่คัด</b></th>
-                                                <td style="background-color: {{ $colorline }};" colspan="3" class=""><b style="font-size:19px;">{{ date('d ',strtotime($taghd->ww_lot_date)) }}{{ $thmonth[date('n',strtotime($taghd->ww_lot_date))]." " }}{{ date('Y',strtotime($taghd->ww_lot_date)) }}</b></td>
-                                            </tr>
-                                            <tr>
-                                                <th class="wip-fix-fontsize-output" style="font-size:17px;">หมวดสินค้า</th>
-                                                <td style="font-size:17px;width:30%;">WIP แผ่นรอคัด</td>
-                                                <td style="font-size:17px;width:20%;">ไลน์กะผลิต</td>
-                                                <td style="font-size:17px;width:30%;">{{ $taghd->ww_group }}</td>
-                                            </tr>
+                                          
+<tr>
+        <th style="background-color: {{ $colorline }}; width: 25%;" class="wip-fix-fontsize-output">
+            <b style="font-size:19px;">วันที่คัด</b>
+        </th>
+        <td style="background-color: {{ $colorline }};" colspan="3" width="75%">
+            <b style="font-size:19px;">
+                {{ \Carbon\Carbon::now()->locale('th')->translatedFormat('d F Y') }}
+            </b>
+        </td>
+    </tr>
+    <tr>
+        <th class="wip-fix-fontsize-output" style="font-size:17px; width: 25%;">หมวดสินค้า</th>
+        <td style="font-size:17px; width:30%;">WIP แผ่นรอคัด</td>
+        <td style="font-size:17px; width:20%;">ไลน์กะผลิต</td>
+        <td style="font-size:17px; width:%;">
+            {{ $wwGroup ?? 'ไม่มีข้อมูล' }}
+        </td>
+    </tr>
                                             <tr>
                                                 <th style="font-size:17px;" class="wip-fix-fontsize-output">Lot.</th>
-                                                <td style="font-size:17px;">{{ $taghd->wh_lot }}</td>
+                                                <td style="font-size:17px;">
+    {{ $whLot ?? 'ไม่มีข้อมูล' }}
+</td>
                                                 <td style="font-size:17px;">ไลน์กะคัด</td>
-                                                <td style="font-size:17px;">{{ $taghd->ww_group }}</td>
+                                                <td style="font-size:17px;"> {{ $wwGroup ?? 'ไม่มีข้อมูล' }}</td>
                                             </tr>
                                             <tr>
                                                 <th style="font-size:17px;" class="wip-fix-fontsize-output">จำนวน</th>
                                                 <td style="font-size:17px;">
-                                                    @if ($taghd->ws_holding_amount < 10){{ '00'.$taghd->ws_holding_amount }} </td>
-                                                    @elseif ($taghd->ws_holding_amount < 100){{ '0'.$taghd->ws_holding_amount }} </td>
-                                                    @else{{ $taghd->ws_holding_amount }}</td>
-                                                    @endif
+    {{ $totalWipAmount ?? 'ไม่มีข้อมูล' }}
+</td>
+
+                                                    </td>
+                                                    </td>
+                                                  
                                                     
                                                 </td>
                                                 <td style="font-size:17px;">ผู้ตรวจสอบ</td>
-                                                <td style="font-size:17px;"></td>
+                                                <td style="font-size:17px;">{{ $brdChecker }}</td>
                                             </tr>
                                             <tr>
                                                 <th style="font-size:17px;" class="wip-fix-fontsize-output">เวลา</th>
                                                 <td style="font-size:17px;"></td>
                                                 <td style="font-size:17px;">ผู้คัด</td>
-                                                <td style="font-size:17px;">{{ $taghd->ue_name }}</td>
+                                                <td style="font-size:17px;">{{ $emp1 }} - {{ $emp2 }}</td>
                                             </tr>
                                             <tr>
                                                 <th style="font-size:17px;" class="wip-fix-fontsize-output">น้ำหนัก</th>
                                                 <td style="font-size:17px;"></td>
                                                 <td style="font-size:17px;">วันที่ผลิต</td>
-                                                <td style="font-size:17px;">{{ date('d ',strtotime($dateproduct)) }}{{ $thmonth[date('n',strtotime($dateproduct))]}} {{ date('Y',strtotime($dateproduct)) }}</td>
+                                                <td style="font-size:17px;"></td>
                                             </tr>
                                         </table>
                                     <hr style="border-top: 1px dashed black;">
@@ -240,7 +267,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                         <tr>
                                             <td colspan="4" class=" underlineheader">
                                                 <div class="col-6-md">
-                                                    <u style="color:black;"><h2 style="text-align: left;" class="text-left"><b >{{ substr($taghd->wh_lot,6,4) }}</b></h2></u>
+                                                    <u style="color:black;"><h2 style="text-align: left;" class="text-left"><b ></b></h2></u>
                                                 </div>
                                                 <div class="col-6-md">
                                                     <u style="color:black;"><h2 style="text-align: right;" class="text-right"><b >ผ่ายคัดบอร์ด</b></h2></u>
@@ -248,59 +275,67 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                             </td>
                                         </tr>
                                         <tr> <!--DNS1D::getBarcodeHTML('C128',1,35)-->
-                                            <td colspan="4"><center>{!! DNS1D::getBarcodeHTML($taghd->wh_barcode,'C128',1,35)  !!}</center><small>{!! substr($taghd->wh_barcode,0,11).":".$sizearr[substr($taghd->pe_type_code,2,2)].":".$taghd->wh_lot !!}</small>
+                                            <td colspan="4"><center></center><small></small>
                                             </br>
                                             <div class="fix-row-center">
-                                                <div class="fix-grid-left"><small>{!! DNS1D::getBarcodeHTML(substr($taghd->wh_barcode,0,11),'C128',1,35) !!}</small><small>{!! substr($taghd->wh_barcode,0,11) !!}</small></div>
-                                                <div class="fix-grid-right"><small>{!! DNS1D::getBarcodeHTML($taghd->wh_lot,'C128',1,35) !!}</small><small>{{ $taghd->wh_lot }}</small></div>
+                                                <div class="fix-grid-left"><small></small><small></small></div>
+                                                <div class="fix-grid-right"><small></small><small></small></div>
                                             </div>
                                         </td>
                                     </tr>
                                     <tr>
                                         <th class="wip-fix-fontsize-output"><b style="font-size:19px;">รหัสสินค้า</b></th>
-                                        <td colspan="3" ><b style="font-size:19px;">{{ substr($taghd->wh_barcode,0,11) }}</b></td>
+                                        <td colspan="3" ><b style="font-size:19px;"> {{ substr($wipHoldings->first()->wh_barcode ?? 'ไม่มีข้อมูล', 0, 4) }} - {{ $peTypeCode ?? 'ไม่มีข้อมูล' }}</b></td>
                                     </tr>
                                     <tr>
                                         <th class="wip-fix-fontsize-output"><b style="font-size:19px;">ชื่อสินค้า</b></th>
-                                        <td colspan="3" ><b style="font-size:19px;">{{ "แผ่นรอคัด ".$taghd->pe_type_name }}</b></td>
+                                        <td colspan="3" ><b style="font-size:19px;">แผ่นรอคัด  {{ $peTypeName ?? 'ไม่มีข้อมูล' }}</b></td>
                                     </tr>
                                     <tr>
                                         <th class="wip-fix-fontsize-output"><b style="font-size:19px;">วันที่คัด</b></th>
-                                        <td colspan="3" ><b style="font-size:19px;">{{ date('d ',strtotime($taghd->ww_lot_date)) }}{{ $thmonth[date('n',strtotime($taghd->ww_lot_date))]." " }}{{ date('Y',strtotime($taghd->ww_lot_date)) }}</b></td>
+                                        <td colspan="3">
+    <b style="font-size:19px;">
+    {{ \Carbon\Carbon::now()->locale('th')->translatedFormat('d F Y') }}
+    </b>
+</td>
                                     </tr>
                                     <tr>
                                         <th class="wip-fix-fontsize-output" style="font-size:17px;">หมวดสินค้า</th>
                                         <td style="font-size:17px;width:30%;">WIP แผ่นรอคัด และ C</td>
                                         <td style="font-size:17px;width:20%;">ไลน์กะผลิต</td>
-                                        <td style="font-size:17px;width:30%;">{{ $taghd->ww_group }}</td>
+                                        <td style="font-size:17px;width:30%;">            {{ $wwGroup ?? 'ไม่มีข้อมูล' }}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th style="font-size:17px;" class="wip-fix-fontsize-output">Lot.</th>
-                                        <td style="font-size:17px;">{{ $taghd->wh_lot }}</td>
+                                        <td style="font-size:17px;">    {{ $whLot ?? 'ไม่มีข้อมูล' }}
+                                        </td>
                                         <td style="font-size:17px;">ไลน์กะคัด</td>
-                                        <td style="font-size:17px;">{{ $taghd->ww_group }}</td>
+                                        <td style="font-size:17px;">            {{ $wwGroup ?? 'ไม่มีข้อมูล' }}
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th style="font-size:17px;" class="wip-fix-fontsize-output">จำนวน</th>
-                                        <td style="font-size:17px;">HD {{ $taghd->ws_holding_amount }} NG @if ($ng == NULL) 0 @else {{ $ng }} @endif</td>
-                                        <td style="font-size:17px;">ผู้ตรวจสอบ</td>
-                                        <td style="font-size:17px;"></td>
-                                    </tr>
+                                        <td style="font-size:17px;">
+    HD ({{ $wsHoldingAmount ?? 0 }})  
+    NG ({{ $wsNgAmount ?? 0 }})
+</td>                                        <td style="font-size:17px;">ผู้ตรวจสอบ</td>
+                                        <td style="font-size:17px;">{{ $brdChecker }}</td>
+                                        </tr>
                                     <tr>
                                         <th style="font-size:17px;" class="wip-fix-fontsize-output">เวลา</th>
                                         <td style="font-size:17px;"></td>
                                         <td style="font-size:17px;">ผู้คัด</td>
-                                        <td style="font-size:17px;">{{ $taghd->ue_name }}</td>
-                                    </tr>
+                                        <td style="font-size:17px;">{{ $emp1 }} - {{ $emp2 }}</td>
+                                        </tr>
                                     <tr>
                                         <th style="font-size:17px;" class="wip-fix-fontsize-output">น้ำหนัก</th>
                                         <td style="font-size:17px;"></td>
                                         <td style="font-size:17px;">วันที่ผลิต</td>
-                                        <td style="font-size:17px;">{{ date('d ',strtotime($dateproduct)) }}{{ $thmonth[date('n',strtotime($dateproduct))]}} {{ date('Y',strtotime($dateproduct)) }}</td>
+                                        <td style="font-size:17px;"></td>
                                     </tr>
                                 </table>
                                         </br>
-                                    @endforeach
                                 </div>
                             </div>
                         </div>

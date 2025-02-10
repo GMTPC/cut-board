@@ -89,5 +89,7 @@ Route::get('/production/tagfg/{line}/{work_id}/{brd_id}', [WipController::class,
 Route::get('/tagfn/{line}/{work_id}/{brd_id}', [WipController::class, 'tagfn'])->name('tagfn');
 Route::put('/wip/editbrand/{brd_id}', [WipController::class, 'editbrand'])->name('wip.editbrand');
 Route::post('/wip/deletebrand/{brd_id}', [WipController::class, 'deletebrand'])->name('deletebrand');
+Route::get('/production/taghd/{line}/{work_id}', [WipController::class, 'taghd'])->name('taghd');
+Route::post('/endprocess/{line}/{work_id}', [WipController::class, 'endprocess'])->name('endprocess');
 
 require __DIR__.'/auth.php';
