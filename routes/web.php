@@ -5,6 +5,8 @@ use  App\Http\Controllers\MainmenuController;
 use App\Http\Controllers\UserSettingsController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\WipController;
+use App\Models\AmountNg;
+use App\Models\Wipbarcode;
 
 
 /*
@@ -68,6 +70,7 @@ Route::post('/employees/save-multiple', [EmployeeController::class, 'saveMultipl
 Route::get('/warehousebp', [MainmenuController::class, 'warehousebp'])->name('warehouse.bp');
 Route::post('/workprocess', [MainmenuController::class, 'workgroup'])->name('workgroup.start');
 Route::get('/production/datawip/L{line}/{id}', [MainmenuController::class, 'datawip'])->name('datawip');
+Route::post('/delete-workprocess/{id}', [MainmenuController::class, 'deleteWorkProcess'])->name('deleteWorkProcess');
 Route::post('/save-employees', [EmployeeController::class, 'saveEmployees'])->name('save-employees');
 Route::delete('/deleteemp/{id}', [EmployeeController::class, 'delete'])->name('delete.employee');
 
@@ -91,5 +94,40 @@ Route::put('/wip/editbrand/{brd_id}', [WipController::class, 'editbrand'])->name
 Route::post('/wip/deletebrand/{brd_id}', [WipController::class, 'deletebrand'])->name('deletebrand');
 Route::get('/production/taghd/{line}/{work_id}', [WipController::class, 'taghd'])->name('taghd');
 Route::post('/endprocess/{line}/{work_id}', [WipController::class, 'endprocess'])->name('endprocess');
+
+
+
+Route::get('/get-wip-barcode/{wip_id}', function ($wip_id) {
+    Log::info("📌 กำลังดึงข้อมูล WIP Barcode สำหรับ WIP ID: " . $wip_id);
+
+    // ✅ แก้ไขให้ใช้ `wip_id` แทน `wip_working_id`
+    $barcode = Wipbarcode::where('wip_id', $wip_id)->pluck('wip_barcode')->first();
+
+    if (!$barcode) {
+        Log::info("🚨 ไม่พบข้อมูล WIP Barcode สำหรับ WIP ID: " . $wip_id);
+        return response()->json(['error' => 'ไม่พบข้อมูลบาร์โค้ด'], 404);
+    }
+
+    Log::info("✅ พบ WIP Barcode: " . $barcode);
+    return response()->json(['barcode' => $barcode]);
+});
+
+
+Route::get('/get-amount-ng/{wip_id}', function ($wip_id) {
+    // ✅ Debug ตรวจสอบว่า API ถูกเรียกจริงไหม
+    Log::info("📌 กำลังดึงข้อมูล amg_amount สำหรับ WIP ID: " . $wip_id);
+
+    // ✅ ดึงข้อมูลจากฐานข้อมูล
+    $amount = AmountNg::where('amg_wip_id', $wip_id)->pluck('amg_amount')->first();
+
+    if (!$amount) {
+        Log::info("🚨 ไม่พบข้อมูล amg_amount สำหรับ WIP ID: " . $wip_id);
+        return response()->json(['status' => 'error', 'error' => 'Not Found'], 404);
+    }
+
+    Log::info("✅ พบข้อมูล amg_amount: " . $amount);
+    return response()->json(['status' => 'success', 'amg_amount' => $amount]);
+});
+
 
 require __DIR__.'/auth.php';

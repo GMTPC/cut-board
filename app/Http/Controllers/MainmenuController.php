@@ -26,7 +26,7 @@ class MainmenuController extends Controller
         return view('mainmenu'); // ตรวจสอบว่ามีไฟล์ `resources/views/mainmenu.blade.php`
     }
     
-    public function manufacture($line = null)
+    public function manufacture($line = null) 
     {
         // ดึงข้อมูลพนักงานเฉพาะไลน์ หรือทั้งหมดถ้า $line เป็น null
         $employees = Employee::when($line, function ($query, $line) {
@@ -46,19 +46,43 @@ class MainmenuController extends Controller
             return $query->where('line', $line);
         })->get();
     
+        // ดึงข้อมูลจาก WorkProcessQC เฉพาะไลน์ที่ระบุ พร้อม 'date' และเชื่อมกับ ProductTypeEmp
+        $workProcessQC = WorkProcessQC::when($line, function ($query, $line) {
+                return $query->where('line', $line);
+            })
+            ->leftJoin('product_type_emps', 'workprocess_qc.id', '=', 'product_type_emps.pe_working_id') // เชื่อมกับ ProductTypeEmp
+            ->leftJoin('wipbarcodes', 'workprocess_qc.id', '=', 'wipbarcodes.wip_working_id') // เชื่อมกับ Wipbarcode
+            ->select(
+                'workprocess_qc.id',
+                'workprocess_qc.line',
+                'workprocess_qc.group',
+                'workprocess_qc.status',
+                'workprocess_qc.date',
+                'product_type_emps.pe_type_name',
+                \DB::raw('SUM(wipbarcodes.wip_amount) as total_wip_amount') // รวมค่าของ wip_amount
+            )
+            ->groupBy(
+                'workprocess_qc.id',
+                'workprocess_qc.line',
+                'workprocess_qc.group',
+                'workprocess_qc.status',
+                'workprocess_qc.date',
+                'product_type_emps.pe_type_name'
+            )
+            ->get();
+    
         // ตรวจสอบว่ามีข้อมูลหรือไม่
-        if ($groupemps->isEmpty() && $groups->isEmpty() && $employees->isEmpty()) {
-            // หากไม่มีข้อมูลเลย อาจต้องส่งข้อความแจ้งเตือนไปยัง View
+        if ($groupemps->isEmpty() && $groups->isEmpty() && $employees->isEmpty() && $workProcessQC->isEmpty()) {
             $message = 'ไม่พบข้อมูลสำหรับ ' . ($line ? 'Line ' . $line : 'ทุก Line');
         } else {
-            $message = null; // ไม่มีข้อความแจ้งเตือน
+            $message = null;
         }
     
         // ส่งข้อมูลไปยัง view
-        return view('manufacture', compact('groups', 'groupemps', 'lineheader', 'employees', 'line', 'message'));
+        return view('manufacture', compact('groups', 'groupemps', 'lineheader', 'employees', 'line', 'message', 'workProcessQC'));
     }
     
-
+    
     public function workgroup(Request $request)
 {
     // ตรวจสอบค่าจาก Request
@@ -262,22 +286,28 @@ $wwEndDate = WipWorking::where('ww_id', $id)
     ]);
 } 
 
+public function deleteWorkProcess(Request $request, $id)
+{
+    try {
+        DB::beginTransaction();
+
+        $workProcess = WorkProcessQC::find($id);
+        if (!$workProcess) {
+            return response()->json(['message' => 'ไม่พบข้อมูล WorkProcessQC'], 404, [], JSON_UNESCAPED_UNICODE);
+        }
+
+        Wipbarcode::where('wip_working_id', $id)->delete();
+        $workProcess->delete();
+
+        DB::commit();
+        return response()->json(['message' => 'ลบข้อมูลสำเร็จ'], 200, [], JSON_UNESCAPED_UNICODE);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json(['message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()], 500, [], JSON_UNESCAPED_UNICODE);
+    }
+}
 
 
-
-
-
-
-
-
-
-
-
-
-    
-   
-    
-    
     }
     
     

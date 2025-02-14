@@ -11,11 +11,17 @@ class AmountNg extends Model
 {
     use HasFactory;
 
+    // เชื่อมต่อฐานข้อมูล SQL Server
+    protected $connection = 'sqlsrv'; // ใช้ connection จาก config/database.php
+
     // กำหนดชื่อตาราง
-    protected $table = 'amount_ngs';
+    protected $table = 'dbo.amount_ngs'; // ต้องใช้ 'dbo.' ถ้าตารางอยู่ใน schema dbo
 
     // กำหนด Primary Key
     protected $primaryKey = 'amg_id';
+
+    // ปิดการใช้ timestamps (created_at, updated_at) ถ้าไม่มีในตาราง
+    public $timestamps = false;
 
     // กำหนดฟิลด์ที่สามารถเพิ่มข้อมูลได้
     protected $fillable = [
@@ -36,3 +42,4 @@ class AmountNg extends Model
         return $this->belongsTo(Listngall::class, 'amg_ng_id', 'lng_id');
     }
 }
+

@@ -118,9 +118,12 @@
                                     <tr>
                                         <td colspan="2" rowspan="2">
                                             <small class="wms-text">สำหรับงานคลัง</small> <br><br>
-                                            {{ QrCode::size(150)->generate('https://103.40.144.249:8081/qrcodeinterface/B236-A10109240905A001100') }}
-                                            <br />
-                                            <small>B236-A10109240905A001100</small>
+                                            {{ QrCode::size(150)->generate("$ww_line $bl_code $peTypeCode $brd_lot $brd_amount") }}
+
+<br />
+<small>
+    B{{ $ww_line }}{{ $bl_code }}-{{ $peTypeCode }}{{ $brd_lot }}{{ $brd_amount }}
+</small>
                                         </td>
                                         @php
     $bl_id_formatted = isset($brandList->bl_id) ? (strlen($brandList->bl_id) == 1 ? '0' . $brandList->bl_id : $brandList->bl_id) : 'N/A';
@@ -145,11 +148,15 @@
                                         <td>หน่วย</td>
                                         <td>แผ่น</td>
                                         <td rowspan="6" colspan="2">
-                                            <small class="wms-text">สำหรับงาน WMS</small> <br><br>
-                                            {{ QrCode::size(150)->generate('B236-A10109240830B003P1P2P3') }}
-                                            <br />
-                                            <small>B236-A10109240830B003P1P2P3</small></center>
-                                        </td>
+                                        <small class="wms-text">สำหรับงาน WMS</small> <br><br>
+
+{{ QrCode::size(150)->generate("$ww_line $bl_code $peTypeCode $brd_lot $brd_amount") }}
+
+<br />
+<small>
+    {{ $ww_line }} {{ $bl_code }} {{ $peTypeCode }} {{ $brd_lot }} {{ $brd_amount }}
+</small>
+
                                     </tr>
                                     <tr>
                                         <td>Line</td>

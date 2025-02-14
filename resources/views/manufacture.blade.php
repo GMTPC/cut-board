@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <meta name="csrf-token" content="{{ csrf_token() }}">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/notif/0.1.0/notif.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/notif/0.1.0/notif.min.js"></script>
@@ -567,10 +567,66 @@ $(document).ready(function () {
 
 
     </script>
+<script>
+    $(document).ready(function() {
+        $(".delete-work").click(function() {
+            var workId = $(this).data("id");
+            var line = $(this).data("line");
 
+            // อัปเดตค่าใน input hidden
+            $("#delete_id").val(workId);
 
+            // อัปเดต action ของ form (แต่ใช้ AJAX แทน)
+            $("#deleteForm").attr("action", "/delete-workprocess/" + workId);
+        });
 
+        // เมื่อกดปุ่ม Submit ใน Modal
+        $("#deleteForm").submit(function(event) {
+            event.preventDefault(); // ป้องกัน Form เปิดหน้าใหม่
 
+            var form = $(this);
+            var actionUrl = form.attr("action");
+
+            $.ajax({
+                url: actionUrl,
+                type: 'POST', // ใช้ POST
+                data: form.serialize(),
+                success: function(response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ลบข้อมูลสำเร็จ',
+                        html: '<small style="color:green;">ข้อมูลถูกลบแล้ว</small>',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload();
+                    });
+                },
+                error: function(xhr) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ลบข้อมูลไม่สำเร็จ',
+                        html: '<small style="color:red;">' + xhr.responseText + '</small>',
+                        showConfirmButton: true
+                    });
+                }
+            });
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function() {
+        $(".enter-work").click(function() {
+            var workId = $(this).data("id"); // ดึงค่า work id
+            var line = $(this).data("line"); // ดึงค่า line
+            var targetUrl = "/production/datawip/L" + line + "/" + workId; // สร้าง URL ใหม่
+
+            console.log("Redirecting to:", targetUrl); // Debug URL
+            window.location.href = targetUrl; // เปลี่ยนหน้าไปยัง URL ใหม่
+        });
+    });
+</script>
 
 
 
@@ -583,71 +639,86 @@ $(document).ready(function () {
                     </h4>
                 </p><br>
                 <div class="table-responsive">
-                    <table class="table table-striped table-bordered display" id="worktable">
-                        <thead>
-                            <tr class="text-table-so">
-                                <th class="text-center">#</th>
-                                <th class="text-center">กลุ่ม</th>
-                                <th class="text-center">ชนิดสินค้า</th>
-                                <th class="text-center">สถานะ</th>
-                                <th class="text-center">วันที่</th>
-                                <th class="text-center"><em class="fa fa-cog"></em></th>
-                                <th style="width:1px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @empty($workdetail)
-                            <td>No data available in table</td>
-                            @else
-                            
-                            
-                                <tr>
-                                    <td class="text-center"></td>
-                                    <td class="text-center"></td>
-                                    <td class="text-center">  </td>
-                                   
-                                        <td class="text-center"><b style="color:green;">กำลังคัด</b></td>
-                                   
-                                        <td class="text-center"><b style="color:red;">จบการทำงาน</b></td>
-                                   
-                                    <td class="text-center"></td>
-                                    <td class="text-center">
-                                        <a href="" class="btn btn-success btn-sm fas fa-file-import" data-toggle="tooltip" title="เข้าสู่งาน" style="font-size:15px;"></a>
-                                        
-                                       
-                                            
-                                            <a href="#" class="btn btn-danger btn-sm fa fa-trash deletwork" data-toggle="tooltip" title="ลบข้อมูล" style="font-size:15px;"></a>
-                                            <div class="modal fade" id="notideletework" tabindex="-1" role="dialog" aria-labelledby="DeleteWork" aria-hidden="true">
-                                                <div class="modal-dialog" role="document">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h3 class="modal-title" id="DeleteWork"><b>ลบข้อมูลงาน</b></h3>
-                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                                <span aria-hidden="true">&times;</span>
-                                                            </button>
-                                                        </div>
-                                                        <form id="deletworkform">
-                                                            <div class="modal-body">
-                                                               
-                                                              {{-- <input type="text" name="deletworkform" id="deletworkform2" value=""> --}}
-                                                              <input type="hidden" name="deletworkform" id="deletworkform2" value="">
-                                                                <h4 style="color:red;">คุณต้องการเดินกำเนินการต่อหรือไม่</h4>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
-                                                                <button type="submit" class="btn btn-danger">ลบข้อมูล</button>
-                                                            </div>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                    </td>
-                                    <td style="width:1px;opacity:0;" class="text-center"></td>
-                                </tr>
-                           
-                            @endempty
-                        </tbody>
-                    </table>
+                <table class="table table-striped table-bordered display" id="worktable">
+    <thead>
+        <tr class="text-table-so">
+            <th class="text-center">#</th>
+            <th class="text-center">กลุ่ม</th>
+            <th class="text-center">ชนิดสินค้า</th>
+            <th class="text-center">สถานะ</th>
+            <th class="text-center">วันที่</th>
+            <th class="text-center"><em class="fa fa-cog"></em></th>
+            <th style="width:1px;"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @if($workProcessQC->isEmpty())
+            <tr>
+                <td colspan="7" class="text-center">No data available in table</td>
+            </tr>
+        @else
+            @foreach($workProcessQC as $index => $wpqc)
+            <tr>
+                <td class="text-center">{{ $index + 1 }}</td> {{-- ลำดับที่ (loop index) --}}
+                <td class="text-center">{{ $wpqc->line }}{{ $wpqc->group }}</td> {{-- ดึง line --}}
+                <td class="text-center">{{ $wpqc->pe_type_name ?? '-' }}</td>
+                <td class="text-center">
+    @if ($wpqc->status == 'กำลังคัด')
+        <span class="text-success"><b>{{ $wpqc->status }}</b></span>
+    @else
+        <span class="text-danger"><b>{{ $wpqc->status }}</b></span>
+    @endif
+</td>
+<td class="text-center">{{ date('d-m-Y', strtotime($wpqc->date)) }}</td>
+
+                <td class="text-center">
+                <a href="#" class="btn btn-success btn-sm fas fa-file-import enter-work" 
+   data-toggle="tooltip" 
+   title="เข้าสู่งาน" 
+   style="font-size:15px;" 
+   data-id="{{ $wpqc->id }}" 
+   data-line="{{ $wpqc->line }}">
+</a>
+<a href="#" class="btn btn-danger btn-sm fa fa-trash delete-work"
+   data-toggle="modal"
+   data-target="#notideletework"
+   data-id="{{ $wpqc->id }}"
+   data-line="{{ $wpqc->line }}">
+</a>
+
+
+                    {{-- Modal สำหรับลบข้อมูล --}}
+                   <!-- Modal ลบข้อมูล (ใช้ตัวเดียวกันทุกปุ่ม) -->
+<div class="modal fade" id="notideletework" tabindex="-1" role="dialog" aria-labelledby="DeleteWork" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="DeleteWork"><b>ลบข้อมูลงาน</b></h3>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="deleteForm" method="POST">
+                @csrf
+                <input type="hidden" name="delete_id" id="delete_id">
+                <h4 id="deleteMessage" style="color:red;">คุณต้องการดำเนินการต่อหรือไม่</h4>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
+                    <button type="submit" class="btn btn-danger">ลบข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+                </td>
+                <td style="width:1px;opacity:0;" class="text-center"></td>
+            </tr>
+            @endforeach
+        @endif
+    </tbody>
+</table>
+
                 </div>
                 <br>
                 <br>
@@ -1070,20 +1141,30 @@ $(document).ready(function () {
                             <span aria-hidden="true">&times;</span>
                         </button>
                         <div class="table-responsive">
-                            <table id="wipperdaytable" class="table table-striped table-bordered display">
-                                <thead>
-                                    <tr>
-                                        <th class="text-center">วันที่</th>
-                                        <th class="text-center">จำนวน</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                        <tr>
-                                            <td class="text-center"></td>
-                                            <td class="text-center"></td>
-                                        </tr>
-                                </tbody>
-                            </table>
+                        @php
+    // จัดกลุ่มข้อมูลตามวันที่ และนับจำนวนรายการ
+    $groupedData = $workProcessQC->groupBy('date')->map(function ($items) {
+        return count($items);
+    });
+@endphp
+
+<table id="wipperdaytable" class="table table-striped table-bordered display">
+    <thead>
+        <tr>
+            <th class="text-center">วันที่</th>
+            <th class="text-center">จำนวน</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach($groupedData as $date => $count)
+        <tr>
+            <td class="text-center">{{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}</td> {{-- แสดงวันที่ --}}
+            <td class="text-center">{{ $wpqc->total_wip_amount ?? 0 }}</td> {{-- แสดงจำนวนของรายการในวันนั้น --}}
+        </tr>
+        @endforeach
+    </tbody>
+</table>
+
                         </div>
                     </div>
                     <div class="modal-footer">

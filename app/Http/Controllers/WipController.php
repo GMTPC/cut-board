@@ -328,60 +328,40 @@ public function deleteWipLine1($work_id, $id)
 }
 public function datawip($line, $id, $brd_id = null)
 {
-    // ค้นหา WorkProcess ตาม id และ line
+    // ✅ ค้นหา WorkProcess ตาม id และ line
     $workprocess = WorkProcessQC::where('id', $id)
                                 ->where('line', $line)
                                 ->firstOrFail();
 
-    // ดึงข้อมูล `wip_working` ที่เกี่ยวข้อง
+    // ✅ ดึงข้อมูล `wip_working`
     $workdetail = WipWorking::findOrFail($id);
-
-    // ข้อมูลที่เกี่ยวข้องกับ `wip_working`
     $workpgroup = $workdetail->ww_group;
     $workstatus = $workdetail->ww_status;
     $workdate = $workdetail->ww_lot_date;
     $workline = $workdetail->ww_line;
 
-    // คำนวณจำนวน lot check
-    $lotcheck = Brand::leftJoin('brandlist', 'brands.brd_brandlist_id', '=', 'brandlist.bl_id')
-        ->leftJoin('wip_working', 'brands.brd_working_id', '=', 'wip_working.ww_id')
-        ->where('wip_working.ww_group', $workpgroup)
-        ->where('wip_working.ww_line', $workline)
-        ->where('wip_working.ww_division', 'QC')
-        ->whereDate('wip_working.ww_lot_date', $workdate)
-        ->count();
+    // ✅ ดึงข้อมูลบาร์โค้ด
+    $wipBarcodes = Wipbarcode::where('wip_working_id', $id)->get();
+    $wipIds = $wipBarcodes->pluck('wip_id')->toArray(); // ✅ แปลงเป็น array
 
-    // สร้าง Lot Generator
-    $lotgenerator = date('ymd', strtotime($workdate)) . substr($workpgroup, 1, 1) . str_pad($lotcheck + 1, 3, '0', STR_PAD_LEFT);
+    // ✅ Debug ตรวจสอบ WIP ID ที่ดึงมา
+    Log::info("🔍 WIP IDs in Table:", $wipIds);
 
-    // ดึงข้อมูลพนักงานใน group ที่ line และ status = 1
-    $empGroups = GroupEmp::where('line', $line)
-                         ->where('status', 1)
-                         ->get();
+    // ✅ ดึงข้อมูล NG โดยใช้ whereIn() เพื่อให้แน่ใจว่ามีค่าตรงกับ WIP ID
+    $ngData = AmountNg::whereIn('amg_wip_id', $wipIds)
+                        ->pluck('amg_amount', 'amg_wip_id')
+                        ->toArray();
 
-    // ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้องกับ workprocess
-    $wipBarcodes = $workprocess->wipBarcodes()->with('groupEmp')->get();
+    // ✅ Debug ค่า NG ที่ได้
+    Log::info("🔍 NG Data ที่พบ:", $ngData);
 
-    // คำนวณผลรวม wip_amount จาก Relation
-    $totalWipAmount = $workprocess->wipBarcodes()->sum('wip_amount');
-
-    // ดึงข้อมูล listngall ที่สถานะ `lng_status` = 1
+    // ✅ ดึงข้อมูลอื่น ๆ
+    $totalWipAmount = $wipBarcodes->sum('wip_amount');
     $listNgAll = Listngall::where('lng_status', 1)->get();
-
-    // ดึงข้อมูล ProductTypeEmp ที่ pe_working_id ตรงกับ $id
     $productTypes = ProductTypeEmp::where('pe_working_id', $id)->first();
     $peTypeCode = $productTypes ? $productTypes->pe_type_code : null;
-
-    // ดึงผลรวม amg_amount จาก AmountNg
-    $totalNgAmount = AmountNg::whereIn('amg_wip_id', $wipBarcodes->pluck('wip_id'))->sum('amg_amount');
-
-    // ดึงข้อมูลแบรนด์จากตาราง brandlist
     $brandLists = BrandList::select('bl_id', 'bl_name')->get();
-
-    // ดึงชื่อ SKU ที่เกี่ยวข้องจาก wip_barcode
     $wipSkuNames = Wipbarcode::where('wip_working_id', $id)->pluck('wip_sku_name');
-
-    // ดึง lot ที่เกี่ยวข้องกับ brands ทั้งหมด
     $brandsLots = Brand::where('brd_working_id', $id)
                         ->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date')
                         ->get();
@@ -391,10 +371,9 @@ public function datawip($line, $id, $brd_id = null)
         ? Brand::where('brd_id', $brd_id)->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date')->first()
         : $brandsLots->first();
 
-    // **เพิ่มเงื่อนไขป้องกัน ERROR ถ้า `$lot` เป็น `null`**
     $brd_lot = $lot ? $lot->brd_lot : null;
 
-    // ✅ ดึงข้อมูล `bl_code` ตาม `brd_id` ที่ถูกเลือก
+    // ✅ ดึง `bl_code` ตาม `brd_id`
     $brand = $lot 
         ? Brand::where('brd_id', $lot->brd_id)->first()
         : Brand::where('brd_working_id', $id)->first();
@@ -405,29 +384,45 @@ public function datawip($line, $id, $brd_id = null)
 
     $brdAmount = $brand ? $brand->brd_amount : null;
 
-    // ✅ ส่งข้อมูลไปยัง View
+    // ✅ ค้นหา Wipbarcode ที่มี wip_working_id ตรงกับ $id
+    $wipBarcodesByWorkingId = Wipbarcode::where('wip_working_id', $id)->pluck('wip_id')->toArray();
+
+    // ✅ ดึง Wipbarcode ตาม wip_id ที่ได้มา
+    $wipBarcodesFiltered = Wipbarcode::whereIn('wip_id', $wipBarcodesByWorkingId)->get();
+
+    // ✅ Debug ค่าที่จะส่งไปยัง View
+    Log::info("🔍 ข้อมูลที่ส่งไป View:", [
+        'totalNgAmounts' => $ngData, // ✅ NG Data ที่ส่งไป
+        'wipBarcodes' => $wipBarcodes->toArray(),
+        'wipBarcodesFiltered' => $wipBarcodesFiltered->toArray(), // ✅ Debug Wipbarcode ที่ค้นมาใหม่
+    ]);
+
     return view('datawip', [
         'workprocess'       => $workprocess,
         'line'              => $line,
-        'empGroups'         => $empGroups,
         'work_id'           => $id,
         'wipBarcodes'       => $wipBarcodes,
         'totalWipAmount'    => $totalWipAmount,
         'listNgAll'         => $listNgAll,
         'productTypes'      => $productTypes,
-        'totalNgAmount'     => $totalNgAmount,
+        'totalNgAmounts'    => $ngData, // ✅ ส่ง NG Data ไป Blade
         'brandLists'        => $brandLists,
         'wipSkuNames'       => $wipSkuNames,
-        'lotgenerator'      => $lotgenerator,
         'brandsLots'        => $brandsLots,
         'workdetail'        => $workdetail,
         'brandList'         => $brandList,
         'peTypeCode'        => $peTypeCode,
         'brdAmount'         => $brdAmount,
         'lot'               => $lot,
-        'brd_lot'           => $brd_lot, // ✅ ส่ง `brd_lot` ให้ View
+        'brd_lot'           => $brd_lot,
+        'wipBarcodesFiltered' => $wipBarcodesFiltered, // ✅ ส่งไป Blade
     ]);
 }
+
+
+
+
+
 
 
 public function conditioncolor($work_id_con,$line_con){
@@ -779,69 +774,56 @@ public function tagfn($line, $work_id, $brd_id)
 }
 public function tagfg($line, $work_id, $brd_id)
 {
-    // ค้นหา `Brand` โดยใช้ `brd_working_id` และ `brd_id`
-    $brand = Brand::where('brd_working_id', $work_id)
-                  ->where('brd_id', $brd_id)
-                  ->first();
+    // ✅ ค้นหา `Brand` โดยใช้ `brd_id`
+    $brand = Brand::where('brd_id', $brd_id)->first();
 
-    // ตรวจสอบว่าเจอ `Brand` หรือไม่
     if (!$brand) {
         return response()->json(['error' => 'ไม่พบข้อมูล Brand'], 404);
     }
 
-    // ค้นหา `BrandList` โดยใช้ `brd_brandlist_id`
+    // ✅ ค้นหา `BrandList` โดยใช้ `brd_brandlist_id` ที่ได้จาก `Brand`
     $brandList = BrandList::where('bl_id', $brand->brd_brandlist_id)->first();
 
-    // ตรวจสอบว่าเจอ `BrandList` หรือไม่
     if (!$brandList) {
         return response()->json(['error' => 'ไม่พบข้อมูล BrandList'], 404);
     }
 
-    // ดึงค่า `bl_id` พร้อมเติม `0` ถ้าหลักเดียว
-    $bl_id_formatted = isset($brandList->bl_id) ? (strlen($brandList->bl_id) == 1 ? '0' . $brandList->bl_id : $brandList->bl_id) : 'N/A';
-
-    // ดึงค่า `bl_name` จาก `BrandList`
+    // ✅ ดึงค่า `bl_code` จาก `BrandList`
+    $bl_code = $brandList->bl_code ?? 'N/A';
     $bl_name = $brandList->bl_name ?? 'N/A';
 
-    // ค้นหา `pe_type_code` จาก `product_type_emps` โดยใช้ `pe_working_id`
+    // ✅ ดึงค่า `pe_type_code`
     $peTypeCode = ProductTypeEmp::where('pe_working_id', $work_id)->value('pe_type_code') ?? 'N/A';
 
-    // ค้นหา `wip_sku_name` จาก `wipbarcodes` โดยใช้ `wip_working_id`
+    // ✅ ดึงค่า `brd_lot` และ `brd_amount` โดยใช้ `brd_id`
+    $brd_lot = Brand::where('brd_id', $brd_id)->value('brd_lot') ?? 'N/A';
+    $brd_amount = Brand::where('brd_id', $brd_id)->value('brd_amount') ?? 'N/A';
+
+    // ✅ ดึงค่า `ww_line` และตัดตัวอักษร `L` ออก
+    $ww_line = WipWorking::where('ww_id', $work_id)->value('ww_line') ?? 'N/A';
+    $ww_line = preg_replace('/^L/', '', $ww_line); // ตัด `L` ถ้ามี
+
+    // ✅ ดึงค่า `wip_sku_name` จาก `wipbarcodes` โดยใช้ `wip_working_id`
     $wip_sku_name = Wipbarcode::where('wip_working_id', $work_id)->value('wip_sku_name') ?? 'N/A';
 
-    // ดึงค่า `brd_amount` จาก `Brand`
-    $brd_amount = $brand->brd_amount ?? 'N/A';
-
-    // ค้นหา `ww_line` จาก `wip_working` โดยใช้ `ww_id`
-    $ww_line = WipWorking::where('ww_id', $work_id)->value('ww_line') ?? 'N/A';
-
-    // ค้นหา `ww_group` จาก `wip_working` โดยใช้ `ww_id`
-    $ww_group = WipWorking::where('ww_id', $work_id)->value('ww_group') ?? 'N/A';
-
-    // ค้นหา `eio_emp_group` จาก `emp_in_outs` โดยใช้ `eio_working_id`
-    $eio_emp_group = EmpInOut::where('eio_working_id', $work_id)->value('eio_emp_group');
-
-    // ตรวจสอบว่ามี `eio_emp_group` หรือไม่
-    if ($eio_emp_group) {
-        // ค้นหา `emp1` และ `emp2` จาก `group_emp` โดยใช้ `id` ที่ตรงกับ `eio_emp_group`
-        $groupEmp = GroupEmp::where('id', $eio_emp_group)->first();
-        $emp1 = $groupEmp->emp1 ?? 'N/A';
-        $emp2 = $groupEmp->emp2 ?? 'N/A';
+    // ✅ สร้าง QR Code ตามรูปแบบ
+    if ($brd_amount < 10) {
+        $qrcode = "B" . $ww_line . $bl_code . "-" . $peTypeCode . $brd_lot . '00' . $brd_amount;
+    } elseif ($brd_amount < 100) {
+        $qrcode = "B" . $ww_line . $bl_code . "-" . $peTypeCode . $brd_lot . '0' . $brd_amount;
     } else {
-        $emp1 = 'N/A';
-        $emp2 = 'N/A';
+        $qrcode = "B" . $ww_line . $bl_code . "-" . $peTypeCode . $brd_lot . $brd_amount;
     }
 
-    // ดึงค่า `brd_checker` จาก `Brand`
-    $brd_checker = $brand->brd_checker ?? 'N/A';
-
-    // ส่งข้อมูลไปยัง View
+    // ✅ ส่งข้อมูลไปยัง View
     return view('template.tagfg', compact(
-        'brandList', 'brand', 'work_id', 'line', 'bl_id_formatted', 
-        'peTypeCode', 'bl_name', 'wip_sku_name', 'brd_amount', 
-        'ww_line', 'ww_group', 'emp1', 'emp2', 'brd_checker'
+        'brandList', 'brand', 'work_id', 'line', 'bl_code', 
+        'peTypeCode', 'bl_name', 'brd_lot', 'brd_amount', 
+        'ww_line', 'qrcode', 'wip_sku_name'
     ));
 }
+
+
 
 
 public function taghd($line, $work_id)
