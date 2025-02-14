@@ -795,9 +795,12 @@ public function tagfg($line, $work_id, $brd_id)
     // ✅ ดึงค่า `pe_type_code`
     $peTypeCode = ProductTypeEmp::where('pe_working_id', $work_id)->value('pe_type_code') ?? 'N/A';
 
-    // ✅ ดึงค่า `brd_lot` และ `brd_amount` โดยใช้ `brd_id`
-    $brd_lot = Brand::where('brd_id', $brd_id)->value('brd_lot') ?? 'N/A';
-    $brd_amount = Brand::where('brd_id', $brd_id)->value('brd_amount') ?? 'N/A';
+    // ✅ ดึงค่า `brd_lot`, `brd_amount`, `brd_checker` โดยใช้ `brd_id`
+    $brandData = Brand::where('brd_id', $brd_id)->first(['brd_lot', 'brd_amount', 'brd_checker']);
+
+    $brd_lot = $brandData->brd_lot ?? 'N/A';
+    $brd_amount = $brandData->brd_amount ?? 'N/A';
+    $brd_checker = $brandData->brd_checker ?? 'N/A';
 
     // ✅ ดึงค่า `ww_line` และตัดตัวอักษร `L` ออก
     $ww_line = WipWorking::where('ww_id', $work_id)->value('ww_line') ?? 'N/A';
@@ -805,6 +808,15 @@ public function tagfg($line, $work_id, $brd_id)
 
     // ✅ ดึงค่า `wip_sku_name` จาก `wipbarcodes` โดยใช้ `wip_working_id`
     $wip_sku_name = Wipbarcode::where('wip_working_id', $work_id)->value('wip_sku_name') ?? 'N/A';
+
+    // ✅ ค้นหา `eio_emp_group` จาก `EmpInOut` ที่มี `eio_working_id` ตรงกับ `work_id`
+    $eio_emp_group = EmpInOut::where('eio_working_id', $work_id)->value('eio_emp_group') ?? 'N/A';
+
+    // ✅ ค้นหา `emp1` และ `emp2` จาก `GroupEmp` โดยใช้ `eio_emp_group` เป็น `id`
+    $groupEmp = GroupEmp::where('id', $eio_emp_group)->first(['emp1', 'emp2']);
+
+    $emp1 = $groupEmp->emp1 ?? 'N/A';
+    $emp2 = $groupEmp->emp2 ?? 'N/A';
 
     // ✅ สร้าง QR Code ตามรูปแบบ
     if ($brd_amount < 10) {
@@ -819,9 +831,11 @@ public function tagfg($line, $work_id, $brd_id)
     return view('template.tagfg', compact(
         'brandList', 'brand', 'work_id', 'line', 'bl_code', 
         'peTypeCode', 'bl_name', 'brd_lot', 'brd_amount', 
-        'ww_line', 'qrcode', 'wip_sku_name'
+        'ww_line', 'qrcode', 'wip_sku_name', 'brd_checker', 
+        'emp1', 'emp2'
     ));
 }
+
 
 
 

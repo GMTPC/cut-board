@@ -1052,6 +1052,26 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 </script>
+
+<script>
+    function openPopup() {
+        // ดึงค่าจากตัวแปร PHP หรือ JavaScript ที่ส่งมากับหน้าเว็บ
+        let line = "{{ $line }}";  // ดึงค่า line จาก Blade
+        let work_id = "{{ $work_id }}";  // ดึงค่า work_id จาก Blade
+        
+        // เพิ่ม 'L' นำหน้าค่า line
+        let formattedLine = "L" + line;
+
+        // สร้าง URL ของ route
+        let url = "{{ route('taghd', ['line' => '__LINE__', 'work_id' => '__WORK_ID__']) }}"
+                    .replace('__LINE__', formattedLine)
+                    .replace('__WORK_ID__', work_id);
+
+        // เปิด Popup Window
+        window.open(url, 'popupWindow', 'width=800,height=600,scrollbars=yes');
+    }
+</script>
+
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
             <div class="panel-body">
@@ -1149,11 +1169,13 @@ document.addEventListener("DOMContentLoaded", function() {
         <td class="text-center warning">{{ $holding->wh_barcode }}</td>
         <td class="text-center warning">{{ $holding->wh_lot }}</td>
         <td class="text-center warning">
-            <a href="#" class="btn btn-success btn-sm fa fa-print" 
-               onclick="openPopup()"
-               data-toggle="tooltip" title="พิมพ์" 
-               style="font-size:15px;">
-            </a>
+        <a href="#" class="btn btn-success btn-sm fa fa-print" 
+   onclick="openPopup()"
+   data-toggle="tooltip" title="พิมพ์" 
+   style="font-size:15px;">
+</a>
+
+
         </td>
     </tr>
     @endforeach

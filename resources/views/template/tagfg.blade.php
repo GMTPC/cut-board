@@ -172,7 +172,7 @@
                                         <td>ผู้คัด</td>
                                         <td>  {{ $emp1 ?? 'N/A' }} - {{ $emp2 ?? 'N/A' }}</td>
                                         <td>ไลน์/กะผลิต</td>
-                                        <td>{{ $ww_group ?? 'N/A' }}</td>
+                                        <td>L{{ preg_replace('/^L/', '', $ww_line) }}</td>
                                         <td>หน่วยย่อย</td>
                                         <td>-</td>
                                     </tr>
@@ -181,7 +181,7 @@
                                         <td>    {{ $brd_checker ?? 'N/A' }}
                                         </td>
                                         <td>ไลน์/กะคัด</td>
-                                        <td>{{ $ww_group ?? 'N/A' }}</td>
+                                        <td>L{{ preg_replace('/^L/', '', $ww_line) }}</td>
                                         <td>หมายเหตุ</td>
                                         <td>-</td>
                                     </tr>
@@ -238,7 +238,7 @@
                                         <td>ผู้คัด</td>
                                         <td>  {{ $emp1 ?? 'N/A' }} - {{ $emp2 ?? 'N/A' }}</td>
                                         <td>ไลน์/กะผลิต</td>
-                                        <td>{{ $ww_group ?? 'N/A' }}</td>
+                                        <td>L{{ preg_replace('/^L/', '', $ww_line) }}</td>
                                         <td>หน่วยย่อย</td>
                                         <td>-</td>
                                         <td colspan="2"></td>

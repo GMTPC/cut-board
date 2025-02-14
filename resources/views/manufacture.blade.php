@@ -569,9 +569,14 @@ $(document).ready(function () {
     </script>
 <script>
     $(document).ready(function() {
+        console.log("jQuery Loaded:", typeof $ !== "undefined");
+        console.log("SweetAlert Loaded:", typeof Swal !== "undefined");
+
         $(".delete-work").click(function() {
             var workId = $(this).data("id");
             var line = $(this).data("line");
+
+            console.log("Clicked delete for ID:", workId);
 
             // อัปเดตค่าใน input hidden
             $("#delete_id").val(workId);
@@ -587,15 +592,19 @@ $(document).ready(function () {
             var form = $(this);
             var actionUrl = form.attr("action");
 
+            console.log("Submitting form to:", actionUrl);
+
             $.ajax({
                 url: actionUrl,
                 type: 'POST', // ใช้ POST
                 data: form.serialize(),
                 success: function(response) {
+                    console.log("Success Response:", response);
+
                     Swal.fire({
                         icon: 'success',
                         title: 'ลบข้อมูลสำเร็จ',
-                        html: '<small style="color:green;">ข้อมูลถูกลบแล้ว</small>',
+                        html: '<small style="color:green;">' + (response.message || "ข้อมูลถูกลบแล้ว") + '</small>',
                         showConfirmButton: false,
                         timer: 1500
                     }).then(() => {
@@ -603,16 +612,27 @@ $(document).ready(function () {
                     });
                 },
                 error: function(xhr) {
+                    console.log("Error Response:", xhr);
+
+                    let errorMessage = "เกิดข้อผิดพลาดในการลบข้อมูล";
+                    try {
+                        let response = JSON.parse(xhr.responseText);
+                        errorMessage = response.message || errorMessage;
+                    } catch (e) {
+                        console.error("JSON parse error:", e);
+                    }
+
                     Swal.fire({
                         icon: 'error',
                         title: 'ลบข้อมูลไม่สำเร็จ',
-                        html: '<small style="color:red;">' + xhr.responseText + '</small>',
+                        html: '<small style="color:red;">' + errorMessage + '</small>',
                         showConfirmButton: true
                     });
                 }
             });
         });
     });
+
 </script>
 
 <script>
@@ -679,12 +699,16 @@ $(document).ready(function () {
    data-id="{{ $wpqc->id }}" 
    data-line="{{ $wpqc->line }}">
 </a>
-<a href="#" class="btn btn-danger btn-sm fa fa-trash delete-work"
-   data-toggle="modal"
-   data-target="#notideletework"
-   data-id="{{ $wpqc->id }}"
-   data-line="{{ $wpqc->line }}">
-</a>
+@if ($wpqc->status === 'กำลังคัด')
+    <a href="#" class="btn btn-danger btn-sm fa fa-trash delete-work"
+       data-toggle="modal"
+       data-target="#notideletework"
+       data-id="{{ $wpqc->id }}"
+       data-line="{{ $wpqc->line }}">
+    </a>
+@endif
+
+
 
 
                     {{-- Modal สำหรับลบข้อมูล --}}
