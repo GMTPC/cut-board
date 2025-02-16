@@ -941,22 +941,26 @@ $(document).ready(function() {
 </script>
 <script>
 $(document).ready(function () {
-    // ✅ เมื่อเปิดฟอร์ม ให้ใช้ WIP ID ล่าสุด
-    $("#notiinputng").on("shown.bs.modal", function () {
-        let wipID = $("#inputng_id").val() || "";
+    // ✅ เมื่อเปิดฟอร์ม ให้ใช้ WIP ID ล่าสุดจากแถวแรกในตาราง
+    $("#notiinputng").on("show.bs.modal", function () {
+        let wipID = $("#wipline1awaste tr:first").data("wip-id-ng") || $("#inputng_id").val() || "";
 
-        // ✅ คงค่า WIP ID และ Barcode ไว้
+        if (!wipID) {
+            console.warn("⚠️ ไม่พบ WIP ID ในตาราง");
+            return;
+        }
+
+        // ✅ คงค่า WIP ID ไว้ใน `<input>`
         $("#selectedWipId").val(wipID);
-
-        console.log("🔄 อัปเดตค่า WIP ID ในฟอร์ม:", wipID);
+        console.log("🔄 อัปเดต WIP ID ในฟอร์ม (ครั้งแรก):", wipID);
 
         // ✅ ใช้ AJAX ดึงข้อมูล WIP Barcode ตาม WIP ID
         fetch(`/get-wip-barcode/${wipID}`)
             .then(response => response.json())
             .then(data => {
                 let barcode = data.barcode || "ไม่มีข้อมูล";
-
-                console.log("📌 WIP ID หลังเปิดฟอร์ม:", wipID);
+                
+                console.log("📌 WIP ID ที่ดึงมา:", wipID);
                 console.log("📌 Barcode ที่ดึงมา:", barcode);
 
                 // ✅ คงค่า Barcode ไว้
@@ -971,17 +975,21 @@ $(document).ready(function () {
         event.preventDefault();
         let wipID = $(this).closest("tr").data("wip-id-ng");
 
+        if (!wipID) {
+            console.warn("⚠️ ไม่พบ WIP ID ในแถวที่เลือก");
+            return;
+        }
+
         // ✅ อัปเดตค่า WIP ID ลงใน `<input>` ที่ซ่อนอยู่
         $("#selectedWipId").val(wipID);
-
-        console.log("🔄 อัปเดตค่า WIP ID ใหม่ในฟอร์ม:", wipID);
+        console.log("🔄 อัปเดต WIP ID ใหม่ในฟอร์ม:", wipID);
 
         // ✅ ใช้ AJAX ดึงข้อมูล WIP Barcode ตาม WIP ID
         fetch(`/get-wip-barcode/${wipID}`)
             .then(response => response.json())
             .then(data => {
                 let barcode = data.barcode || "ไม่มีข้อมูล";
-
+                
                 console.log("📌 WIP ID ที่เลือก:", wipID);
                 console.log("📌 Barcode ที่เลือก:", barcode);
 
@@ -998,7 +1006,6 @@ $(document).ready(function () {
     $("#selectedWipId").on("change", function () {
         console.log("✅ ค่า WIP ID ในฟอร์มเปลี่ยนเป็น:", $(this).val());
     });
-
 });
 
 

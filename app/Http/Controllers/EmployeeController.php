@@ -162,6 +162,7 @@ public function employeesaveline1(Request $request)
                     'emp2' => $emp2List[$index],
                     'line' => $line,
                     'date' => $date,
+                    'status' => 1 // กำหนดให้เปิดใช้งานทันที
                 ]);
             }
     
