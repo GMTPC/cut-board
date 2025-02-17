@@ -94,6 +94,7 @@ Route::put('/wip/editbrand/{brd_id}', [WipController::class, 'editbrand'])->name
 Route::post('/wip/deletebrand/{brd_id}', [WipController::class, 'deletebrand'])->name('deletebrand');
 Route::get('/production/taghd/{line}/{work_id}', [WipController::class, 'taghd'])->name('taghd');
 Route::post('/endprocess/{line}/{work_id}', [WipController::class, 'endprocess'])->name('endprocess');
+Route::get('/check-sku/{skuCode}', [WipController::class, 'checkSku']);
 
 
 
@@ -113,21 +114,21 @@ Route::get('/get-wip-barcode/{wip_id}', function ($wip_id) {
 });
 
 
+
 Route::get('/get-amount-ng/{wip_id}', function ($wip_id) {
-    // ✅ Debug ตรวจสอบว่า API ถูกเรียกจริงไหม
     Log::info("📌 กำลังดึงข้อมูล amg_amount สำหรับ WIP ID: " . $wip_id);
 
-    // ✅ ดึงข้อมูลจากฐานข้อมูล
-    $amount = AmountNg::where('amg_wip_id', $wip_id)->pluck('amg_amount')->first();
+    $totalAmount = AmountNg::where('amg_wip_id', $wip_id)->sum('amg_amount');
 
-    if (!$amount) {
+    if ($totalAmount === 0) {
         Log::info("🚨 ไม่พบข้อมูล amg_amount สำหรับ WIP ID: " . $wip_id);
-        return response()->json(['status' => 'error', 'error' => 'Not Found'], 404);
+        return Response::json(['status' => 'error', 'error' => 'Not Found'], 404);
     }
 
-    Log::info("✅ พบข้อมูล amg_amount: " . $amount);
-    return response()->json(['status' => 'success', 'amg_amount' => $amount]);
+    Log::info("✅ พบข้อมูล amg_amount รวม: " . $totalAmount);
+    return Response::json(['status' => 'success', 'amg_amount' => $totalAmount]);
 });
+
 
 
 require __DIR__.'/auth.php';

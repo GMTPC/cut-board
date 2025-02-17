@@ -148,7 +148,25 @@ class WipController extends Controller
     }
 }
 
-    
+
+public function checkSku($skuCode)
+{
+    // ค้นหา SKU_CODE ในตาราง SKUMASTER
+    $sku = Skumaster::where('SKU_CODE', $skuCode)->first();
+
+    if (!$sku) {
+        return response()->json([
+            'status' => 'not_found',
+            'message' => 'ไม่พบชนิดสินค้า'
+        ], 404);
+    }
+
+    return response()->json([
+        'status' => 'found',
+        'message' => 'พบชนิดสินค้า'
+    ], 200);
+}
+   
     
     
     

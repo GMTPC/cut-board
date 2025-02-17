@@ -211,59 +211,60 @@ $(document).ready(function () {
         $("#wipline1awaste").append(newRow);
     });
 
-    // ✅ ตรวจสอบข้อมูลก่อน Submit Form
     $('#inputngform').on('submit', function (e) {
-        e.preventDefault();
-        let isValid = true;
+    e.preventDefault();
 
-        $('#wipline1awaste').find('select, input[type="number"]').each(function () {
-            if ($(this).val() === '') {
-                isValid = false;
-                $(this).addClass('is-invalid');
-            } else {
-                $(this).removeClass('is-invalid');
-            }
+    let isValid = true;
+
+    $('#wipline1awaste').find('select, input[type="number"]').each(function () {
+        if ($(this).val() === '') {
+            isValid = false;
+            $(this).addClass('is-invalid');
+        } else {
+            $(this).removeClass('is-invalid');
+        }
+    });
+
+    if (!isValid) {
+        Swal.fire({
+            icon: 'error',
+            title: 'ข้อมูลไม่ครบถ้วน',
+            text: 'กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึก',
         });
+        return;
+    }
 
-        if (!isValid) {
+    // ✅ **เก็บ WIP ID ลง LocalStorage ก่อนรีเฟรช**
+    let selectedWipID = $("#selectedWipId").val();
+    localStorage.setItem("lastSelectedWipID", selectedWipID);
+
+    // ✅ **ส่งข้อมูลผ่าน AJAX**
+    $.ajax({
+        type: "POST",
+        url: "{{ route('addng') }}",
+        data: $(this).serialize(),
+        success: function () {
+            Swal.fire({
+                icon: 'success',
+                title: 'บันทึกข้อมูลแล้ว',
+                text: 'โปรดรอสักครู่...',
+                timer: 1500
+            });
+
+            // ✅ **รีเฟรชหน้าเว็บหลังจาก 1.2 วินาที**
+            setTimeout(() => location.reload(), 1200);
+        },
+        error: function () {
             Swal.fire({
                 icon: 'error',
-                title: 'ข้อมูลไม่ครบถ้วน',
-                text: 'กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึก',
+                title: 'บันทึกข้อมูลไม่สำเร็จ',
+                text: 'โปรดรีเฟรชหน้าแล้วลองอีกครั้ง',
             });
-            return;
         }
-
-        // ✅ ส่งข้อมูลผ่าน AJAX
-        $.ajax({
-            type: "POST",
-            url: "{{ route('addng') }}",
-            data: $(this).serialize(),
-            success: function () {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'บันทึกข้อมูลแล้ว',
-                    text: 'โปรดรีเฟรชหน้าหากไม่มีการเปลี่ยนแปลง',
-                    timer: 1500
-                });
-                setTimeout(() => location.reload(), 1200);
-            },
-            error: function () {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'บันทึกข้อมูลไม่สำเร็จ',
-                    text: 'โปรดรีเฟรชหน้าแล้วลองอีกครั้ง',
-                });
-            }
-        });
-    });
-
-    // ✅ ปุ่มทำใหม่ (Reset Form)
-    $('#removelistng').click(function () {
-        $('#wipline1awaste').find('input, select').val('');
-        $('#wipline1awaste').find('.is-invalid').removeClass('is-invalid');
     });
 });
+});
+
     </script>
 
 
@@ -494,24 +495,57 @@ $(document).ready(function () {
         e.preventDefault();
 
         const formData = $(this).serializeArray();
-
-        // ตรวจสอบข้อมูลบาร์โค้ดก่อนส่ง
         const barcode = $('#wip_barcode').val();
-        if (!barcode || !barcode.startsWith('W') || barcode.length < 24) {
+
+        // ✅ เช็คว่า "ตัวที่สอง" ของบาร์โค้ดตรงกับ line หรือไม่
+        const barcodeLine = barcode.charAt(1); // ตัวอักษรที่สองของบาร์โค้ด
+        if (barcodeLine !== line) {
             Swal.fire({
                 icon: 'error',
-                title: 'รูปแบบบาร์โค้ดไม่ถูกต้อง',
-                text: 'บาร์โค้ดต้องขึ้นต้นด้วย W และมีความยาวอย่างน้อย 24 ตัวอักษร',
+                title: 'ไลน์ผลิตและบาร์โค้ดไม่ตรงกัน',
+                text: 'กรุณาตรวจสอบและลองใหม่อีกครั้ง',
                 showConfirmButton: true,
             });
             return;
         }
 
-        // เพิ่มข้อมูลเพิ่มเติมใน formData
-        formData.push({ name: 'line', value: line }); // ส่ง line (เช่น 2)
-        formData.push({ name: 'work_id', value: workId }); // ส่ง work_id
+        // ✅ ดึง 11 ตัวแรกของบาร์โค้ด เช่น "W299-A10209"
+        const skuCode = barcode.substring(0, 11);
 
-        // แสดง Loader ระหว่างรอการตอบกลับจากเซิร์ฟเวอร์
+        // ✅ เช็คว่ามี SKU_CODE นี้ในฐานข้อมูลหรือไม่
+        $.ajax({
+            type: 'GET',
+            url: `/check-sku/${skuCode}`, // Route เช็ค SKU
+            success: function (response) {
+                if (response.status === 'not_found') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ไม่พบชนิดสินค้า',
+                        text: `บาร์โค้ด ${skuCode} ไม่มีอยู่ในระบบ`,
+                        showConfirmButton: true,
+                    });
+                    return;
+                }
+
+                // ✅ ถ้า SKU มีอยู่ ให้ส่งฟอร์มต่อไป
+                sendDataToServer(formData, line, workId);
+            },
+            error: function () {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไม่พบ ชนิดสินค้านี้',
+                    text: 'ไม่มีชนิดสินค้านี้ โปรดลองใหม่อีกครั้ง',
+                    showConfirmButton: true,
+                });
+            }
+        });
+    });
+
+    // ฟังก์ชันส่งข้อมูลไปยังเซิร์ฟเวอร์
+    function sendDataToServer(formData, line, workId) {
+        formData.push({ name: 'line', value: line });
+        formData.push({ name: 'work_id', value: workId });
+
         Swal.fire({
             title: 'กำลังบันทึกข้อมูล...',
             text: 'กรุณารอสักครู่',
@@ -521,51 +555,44 @@ $(document).ready(function () {
             }
         });
 
-        // ส่งข้อมูลไปยังเซิร์ฟเวอร์
         $.ajax({
             type: 'POST',
-            url: `/insert-barcode/L/${line}/${workId}`, // URL ที่เซิร์ฟเวอร์รองรับ
+            url: `/insert-barcode/L/${line}/${workId}`,
             data: formData,
             success: function (response) {
-                Swal.close(); // ปิด Loader
+                Swal.close();
                 if (response.status === 'success') {
                     Swal.fire({
                         icon: 'success',
-                        title: response.title || 'บันทึกเรียบร้อย',
-                        text: response.message || 'ข้อมูลถูกบันทึกสำเร็จ',
+                        title: 'บันทึกเรียบร้อย',
+                        text: 'ข้อมูลถูกบันทึกสำเร็จ',
                         timer: 1500,
                         showConfirmButton: false,
                     });
-
-                    // รีเฟรชหน้าหลังจาก 1.5 วินาที
                     setTimeout(() => location.reload(), 1500);
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: response.title || 'ข้อผิดพลาด',
+                        title: 'ข้อผิดพลาด',
                         text: response.message || 'ไม่สามารถบันทึกข้อมูลได้',
                         showConfirmButton: true,
                     });
                 }
             },
             error: function (xhr) {
-                Swal.close(); // ปิด Loader
-                let errorMessage = 'เกิดข้อผิดพลาด';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
+                Swal.close();
                 Swal.fire({
                     icon: 'error',
                     title: 'บันทึกข้อมูลไม่สำเร็จ',
-                    text: errorMessage,
+                    text: 'เกิดข้อผิดพลาดระหว่างบันทึก',
                     showConfirmButton: true,
                 });
             }
         });
-    });
+    }
 });
-
 </script>
+
 
 
 
@@ -907,70 +934,51 @@ $(document).ready(function () {
 
 <script>
 $(document).ready(function() {
+    let wipData = {}; // เก็บผลรวม amg_amount ตาม WIP ID
+
     $("#searchCode tr").each(function() {
         let row = $(this);
         let wipId = row.data("wip-id");
 
         if (wipId) {
-            $.ajax({
-                url: `/get-amount-ng/${wipId}`,
-                type: "GET",
-                dataType: "json",
-                success: function(response) {
-                    console.log(`✅ สำเร็จ: ดึงข้อมูลสำเร็จสำหรับ WIP ID: ${wipId}`, response);
+            if (!wipData[wipId]) {
+                wipData[wipId] = 0; // ตั้งค่าเริ่มต้น
+                $.ajax({
+                    url: `/get-amount-ng/${wipId}`,
+                    type: "GET",
+                    dataType: "json",
+                    success: function(response) {
+                        console.log(`✅ สำเร็จ: ดึงข้อมูลสำเร็จสำหรับ WIP ID: ${wipId}`, response);
 
-                    if (response.status === "success" && response.amg_amount !== null) {
-                        row.find(".amg-amount").text(response.amg_amount);
-                    } else {
-                        row.find(".amg-amount").text("ไม่พบข้อมูล").css("color", "red");
-                        console.warn(`⚠️ คำเตือน: ไม่พบข้อมูล amg_amount สำหรับ WIP ID: ${wipId}`);
+                        if (response.status === "success" && response.amg_amount !== null) {
+                            wipData[wipId] += parseInt(response.amg_amount) || 0;
+                        }
+
+                        // ✅ อัปเดตทุก `<tr>` ที่มี WIP ID เดียวกัน
+                        $(`#searchCode tr[data-wip-id="${wipId}"] .amg-amount`).text(wipData[wipId]);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(`❌ เกิดข้อผิดพลาดกับ WIP ID: ${wipId}`, {
+                            status: status,
+                            error: error,
+                            responseText: xhr.responseText
+                        });
+                        row.find(".amg-amount").text("ไม่มีของเสีย").css("color", "red");
                     }
-                },
-                error: function(xhr, status, error) {
-                    console.error(`❌ เกิดข้อผิดพลาดกับ WIP ID: ${wipId}`, {
-                        status: status,
-                        error: error,
-                        responseText: xhr.responseText
-                    });
-                    row.find(".amg-amount").text("ไม่มีของเสีย").css("color", "red");
-                }
-            });
+                });
+            } else {
+                // ✅ ถ้ามีค่าที่เคยดึงมาแล้ว ให้อัปเดตทุกแถวที่ซ้ำกัน
+                row.find(".amg-amount").text(wipData[wipId]);
+            }
         }
     });
 });
+
+
 </script>
 <script>
 $(document).ready(function () {
-    // ✅ เมื่อเปิดฟอร์ม ให้ใช้ WIP ID ล่าสุดจากแถวแรกในตาราง
-    $("#notiinputng").on("show.bs.modal", function () {
-        let wipID = $("#wipline1awaste tr:first").data("wip-id-ng") || $("#inputng_id").val() || "";
-
-        if (!wipID) {
-            console.warn("⚠️ ไม่พบ WIP ID ในตาราง");
-            return;
-        }
-
-        // ✅ คงค่า WIP ID ไว้ใน `<input>`
-        $("#selectedWipId").val(wipID);
-        console.log("🔄 อัปเดต WIP ID ในฟอร์ม (ครั้งแรก):", wipID);
-
-        // ✅ ใช้ AJAX ดึงข้อมูล WIP Barcode ตาม WIP ID
-        fetch(`/get-wip-barcode/${wipID}`)
-            .then(response => response.json())
-            .then(data => {
-                let barcode = data.barcode || "ไม่มีข้อมูล";
-                
-                console.log("📌 WIP ID ที่ดึงมา:", wipID);
-                console.log("📌 Barcode ที่ดึงมา:", barcode);
-
-                // ✅ คงค่า Barcode ไว้
-                $("#showbarcodewip").text(barcode);
-                $("#selectedWipBarcode").val(barcode);
-            })
-            .catch(error => console.error("❌ Error fetching barcode:", error));
-    });
-
-    // ✅ เมื่อกดปุ่มเลือก WIP ID ใหม่
+    // ✅ เมื่อกดปุ่มเปิด Modal
     $(document).on("click", ".open-ng-modal", function (event) {
         event.preventDefault();
         let wipID = $(this).closest("tr").data("wip-id-ng");
@@ -980,9 +988,14 @@ $(document).ready(function () {
             return;
         }
 
-        // ✅ อัปเดตค่า WIP ID ลงใน `<input>` ที่ซ่อนอยู่
+        // ✅ **บันทึกตำแหน่งปุ่มและ scroll position**
+        let buttonID = $(this).attr("id");
+        localStorage.setItem("lastClickedButton", buttonID);
+        localStorage.setItem("scrollPosition", window.scrollY);
+
+        // ✅ ตั้งค่า WIP ID ใน `<input>`
         $("#selectedWipId").val(wipID);
-        console.log("🔄 อัปเดต WIP ID ใหม่ในฟอร์ม:", wipID);
+        console.log("🔄 อัปเดต WIP ID ในฟอร์ม:", wipID);
 
         // ✅ ใช้ AJAX ดึงข้อมูล WIP Barcode ตาม WIP ID
         fetch(`/get-wip-barcode/${wipID}`)
@@ -1002,11 +1015,33 @@ $(document).ready(function () {
             .catch(error => console.error("❌ Error fetching barcode:", error));
     });
 
-    // ✅ เพิ่ม Event Listener ให้ `<input>` แสดงค่าที่เปลี่ยนใน Console
-    $("#selectedWipId").on("change", function () {
-        console.log("✅ ค่า WIP ID ในฟอร์มเปลี่ยนเป็น:", $(this).val());
-    });
+    // ✅ **โหลดตำแหน่งปุ่มหลังรีเฟรช**
+    let lastButtonID = localStorage.getItem("lastClickedButton");
+    let lastScrollPosition = localStorage.getItem("scrollPosition");
+
+    if (lastButtonID) {
+        $(window).on("load", function () {
+            let lastButton = document.getElementById(lastButtonID);
+            if (lastButton) {
+                lastButton.scrollIntoView({ behavior: "smooth", block: "center" });
+                console.log("🔄 เลื่อนกลับไปที่ปุ่ม:", lastButtonID);
+            }
+
+            // ✅ **บังคับให้ scroll ไปที่ตำแหน่งเดิม**
+            if (lastScrollPosition) {
+                setTimeout(() => {
+                    window.scrollTo(0, parseInt(lastScrollPosition));
+                }, 100); // ให้เวลา DOM โหลดก่อน
+            }
+
+            // ✅ **ล้างค่า LocalStorage หลังใช้งาน**
+            localStorage.removeItem("lastClickedButton");
+            localStorage.removeItem("scrollPosition");
+        });
+    }
 });
+
+
 
 
 
@@ -1077,6 +1112,41 @@ document.addEventListener("DOMContentLoaded", function() {
         // เปิด Popup Window
         window.open(url, 'popupWindow', 'width=800,height=600,scrollbars=yes');
     }
+</script>
+<script>
+$(document).ready(function () {
+    // ✅ ฟังก์ชันอัปเดตปุ่มลบ
+    function updateDeleteButtons() {
+        $('.delete-row').hide(); // ซ่อนปุ่มลบทั้งหมดก่อน
+        $('table tbody tr:last-child .delete-row').show(); // แสดงปุ่มลบเฉพาะแถวสุดท้าย
+    }
+
+    updateDeleteButtons(); // ✅ เรียกใช้ตอนโหลดหน้า
+
+    // ✅ เมื่อคลิกปุ่มลบ (ไม่ลบแถวออกจาก DOM)
+    $(document).on('click', '.delete-row', function () {
+        // ไม่ลบแถวออก แค่ซ่อนปุ่มลบทุกแถว
+        updateDeleteButtons(); // ✅ อัปเดตปุ่มลบใหม่
+    });
+});
+</script>
+
+<script>
+$(document).ready(function () {
+    // ✅ ฟังก์ชันอัปเดตปุ่มลบ
+    function updateDeleteButtons() {
+        $('.deleteBrandBtn').hide(); // ซ่อนปุ่มลบทั้งหมดก่อน
+        $('table tbody tr:last-child .deleteBrandBtn').show(); // แสดงปุ่มลบเฉพาะแถวสุดท้าย
+    }
+
+    updateDeleteButtons(); // ✅ เรียกใช้ตอนโหลดหน้า
+
+    // ✅ เมื่อคลิกปุ่มลบ (ไม่ลบแถวออกจาก DOM)
+    $(document).on('click', '.deleteBrandBtn', function () {
+        // แค่ซ่อนปุ่มลบของแถวอื่น ไม่ลบแถวออก
+        updateDeleteButtons(); // ✅ อัปเดตปุ่มลบใหม่
+    });
+});
 </script>
 
 <div class="container-fluid bg-white">
@@ -1410,28 +1480,31 @@ document.addEventListener("DOMContentLoaded", function() {
                 </div>
             </td>
             <td>
-                <div style="display: flex; gap: 5px; justify-content: center;">
-                    <a href="javascript:void(0);" 
-                        class="btn btn-warning btn-xs open-ng-modal" 
-                        title="แก้ไขข้อมูล" 
-                        style="padding: 5px 10px; font-size: 12px; background-color: #f0ad4e; color: white; border-color: #f0ad4e;">
-                        <i class="fa fa-pencil-square-o"></i>
-                    </a>
-                    <a href="javascript:void(0);" 
-                        class="btn btn-info btn-xs open-noti-amount" 
-                        title="แก้ไขจำนวน" 
-                        style="padding: 5px 10px; font-size: 12px; background-color: #5bc0de; color: white; border-color: #5bc0de;">
-                        <i class="fa fa-sort-numeric-asc"></i>
-                    </a>
-                    <a href="javascript:void(0);" 
-                        class="btn btn-danger btn-xs open-delete-modal" 
-                        title="ลบข้อมูล" 
-                        style="padding: 5px 10px; font-size: 12px; background-color: #d9534f; color: white; border-color: #d9534f;" 
-                        data-toggle="modal" data-target="#notideleteline1">
-                        <i class="fa fa-trash"></i>
-                    </a>
-                </div>
-            </td>
+    <div style="display: flex; gap: 5px; justify-content: center;">
+    <a href="javascript:void(0);" 
+   class="btn btn-warning btn-xs open-ng-modal" 
+   id="editButton1"  
+   title="แก้ไขข้อมูล" 
+   style="padding: 5px 10px; font-size: 12px; background-color: #f0ad4e; color: white; border-color: #f0ad4e;">
+   <i class="fa fa-pencil-square-o"></i>
+</a>
+
+        <a href="javascript:void(0);" 
+            class="btn btn-info btn-xs open-noti-amount" 
+            title="แก้ไขจำนวน" 
+            style="padding: 5px 10px; font-size: 12px; background-color: #5bc0de; color: white; border-color: #5bc0de;">
+            <i class="fa fa-sort-numeric-asc"></i>
+        </a>
+        <a href="javascript:void(0);" 
+            class="btn btn-danger btn-xs delete-row" 
+            title="ลบข้อมูล" 
+            style="padding: 5px 10px; font-size: 12px; background-color: #d9534f; color: white; border-color: #d9534f;" 
+            data-toggle="modal" data-target="#notideleteline1">
+            <i class="fa fa-trash"></i>
+        </a>
+    </div>
+</td>
+
         </tr>
     @empty
         <tr>
@@ -1474,9 +1547,7 @@ document.addEventListener("DOMContentLoaded", function() {
             
             <!-- แสดง brd_id -->
             <td>
-                @if (!empty($lot->brd_lot))
-                    ✅
-                @endif
+               
                 {{ $lot->brd_lot }} </span>
             </td>
 
@@ -1528,6 +1599,7 @@ document.addEventListener("DOMContentLoaded", function() {
         class="deleteBrandBtn">
     <i class="fa fa-trash" style="font-size: 20px; color: red;"></i>
 </button>
+
 
 
                 </div>

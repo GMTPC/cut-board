@@ -118,8 +118,8 @@
                                     <tr>
                                         <td colspan="2" rowspan="2">
                                             <small class="wms-text">สำหรับงานคลัง</small> <br><br>
-                                            {{ QrCode::size(150)->generate("$ww_line $bl_code $peTypeCode $brd_lot $brd_amount") }}
-
+                                            {{ QrCode::size(150)->generate("http://127.0.0.1:8000/?ww_line=$ww_line&bl_code=$bl_code&peTypeCode=$peTypeCode&brd_lot=$brd_lot&brd_amount=$brd_amount") }}
+ 
 <br />
 <small>
     B{{ $ww_line }}{{ $bl_code }}-{{ $peTypeCode }}{{ $brd_lot }}{{ $brd_amount }}
