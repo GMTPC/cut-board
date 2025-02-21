@@ -283,76 +283,7 @@
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
-<script>
-  $(document).ready(function () {
-    console.log('JavaScript Loaded'); // ตรวจสอบว่า JavaScript โหลดสำเร็จ
 
-    const inputContainer = $('#inputContainer'); // ตัวแปรสำหรับคอนเทนเนอร์ช่องกรอกข้อมูล
-
-    // ฟังก์ชันเพิ่มช่องกรอกข้อมูลใหม่
-    $('#addInputBtn').click(function () {
-        if (inputContainer.length > 0) {
-            console.log('เพิ่มช่องกรอกข้อมูล'); // Debugging
-            // เพิ่ม HTML สำหรับช่องกรอกข้อมูลใหม่
-            inputContainer.append(`
-                <div class="d-flex align-items-center mb-2 input-row">
-                    <input type="text" class="form-control me-2 drop-target" placeholder="กรุณาใส่ชื่อพนักงานคนที่1" style="max-width: 200px;">
-                    <span class="me-2">-</span>
-                    <input type="text" class="form-control drop-target" placeholder="กรุณาใส่ชื่อพนักงานคนที่2" style="max-width: 200px;">
-                </div>
-            `);
-        } else {
-            console.error('ไม่พบ inputContainer'); // แสดง Error ในกรณีไม่พบ container
-        }
-    });
-
-    // ฟังก์ชันลบช่องกรอกข้อมูลทีละ 1 แถวจากล่างสุด
-    $('#resetInputsBtn').click(function () {
-        const rows = inputContainer.children('.input-row'); // เลือกแถวทั้งหมดใน inputContainer
-        if (rows.length > 1) { // ตรวจสอบว่ามีแถวมากกว่า 1 แถว
-            console.log('ลบช่องกรอกข้อมูล'); // Debugging
-            rows.last().remove(); // ลบแถวสุดท้าย
-        } else {
-            console.warn('ไม่สามารถลบแถวสุดท้ายได้'); // แสดงคำเตือน
-            Swal.fire({
-                icon: 'info',
-                title: 'ไม่สามารถลบได้',
-                text: 'ต้องมีอย่างน้อย 1 แถว!',
-                confirmButtonText: 'ตกลง'
-            });
-        }
-    });
-
-    // ฟังก์ชัน Drag and Drop สำหรับลากชื่อพนักงานไปยังช่องกรอกข้อมูล
-    $(document).on('dragstart', '.draggable-employee', function (event) {
-        const name = $(this).data('name'); // เก็บชื่อพนักงานจาก attribute data-name
-        console.log(`Dragging: ${name}`); // Debugging
-        event.originalEvent.dataTransfer.setData('text/plain', name); // ใส่ชื่อพนักงานในข้อมูลที่ถูกลาก
-    });
-
-    // อนุญาตให้ Drop ในช่องกรอกข้อมูล
-    $(document).on('dragover', '.drop-target', function (event) {
-        event.preventDefault(); // อนุญาตให้ Drop ได้
-        $(this).addClass('border border-primary'); // เพิ่มเส้นขอบเมื่อกำลังลาก
-    });
-
-    // เมื่อเมาส์ออกจาก Input
-    $(document).on('dragleave', '.drop-target', function () {
-        $(this).removeClass('border border-primary'); // ลบเส้นขอบเมื่อเมาส์ออก
-    });
-
-    // เมื่อปล่อยข้อมูลใน Input
-    $(document).on('drop', '.drop-target', function (event) {
-        event.preventDefault();
-        const name = event.originalEvent.dataTransfer.getData('text/plain'); // รับข้อมูลที่ถูกลาก
-        console.log(`Dropped: ${name}`); // Debugging
-        $(this).val(name); // ใส่ข้อมูลที่ลากมาลงในช่อง Input
-        $(this).removeClass('border border-primary'); // ลบเส้นขอบ
-    });
-});
-
-
-    </script>
 
 <script>
 

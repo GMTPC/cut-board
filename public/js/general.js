@@ -1930,39 +1930,8 @@ $("#emplist e").draggable({
     helper: "clone"
 });
 
-$(document).ready(function () {
-    $("#addempgroup").on('click', function () {
-        // โครงสร้าง input สำหรับกรอกชื่อพนักงาน
-        var div1 = '<div class="employee-group">';
-        var div2 = '</div>';
-        var input1 = '<input style="width:35%;font-size:18px;" class="text-center" type="text" name="eg_emp1[]" placeholder="พนักงานคนที่ 1">';
-        var line = '&nbsp;-&nbsp;';
-        var input2 = '<input style="width:35%;font-size:18px;" class="text-center" type="text" name="eg_emp2[]" placeholder="พนักงานคนที่ 2">';
-        var br = '<br>';
-
-        // เพิ่มช่อง input ลงในฟอร์ม
-        $("#empgroupadded").append(div1 + input1 + line + input2 + div2 + br);
-
-        // ทำให้ input เป็น droppable
-        $('input[name="eg_emp1[]"]').droppable({
-            drop: function (event, ui) {
-                this.value = $(ui.draggable).text();
-            }
-        });
-
-        $('input[name="eg_emp2[]"]').droppable({
-            drop: function (event, ui) {
-                this.value = $(ui.draggable).text();
-            }
-        });
-    });
-});
 
 
-$( "#removegroup" ).click(function() {
-    $("#empgroupadded div").remove();
-    $("br#brgroupemp").remove();
-});
 
 $(document).ready(function(){
     $(".inputng").click(function(e) {

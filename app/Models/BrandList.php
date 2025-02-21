@@ -9,13 +9,12 @@ class BrandList extends Model
 {
     use HasFactory;
 
-    // กำหนดชื่อของตารางในฐานข้อมูล
-    protected $table = 'brandlist';
+    protected $table = 'brandlist'; // กำหนดชื่อตาราง
 
-    // กำหนดคีย์หลัก
-    protected $primaryKey = 'bl_id';
+    protected $primaryKey = 'bl_id'; // กำหนด Primary Key
 
-    // กำหนดให้สามารถเพิ่มหรือแก้ไขคอลัมน์เหล่านี้ได้
+    public $timestamps = true; // ใช้ timestamps
+
     protected $fillable = [
         'bl_name',
         'bl_code',
@@ -24,6 +23,11 @@ class BrandList extends Model
         'updated_at'
     ];
 
-    // หากไม่ใช้ timestamps ให้ปิด
-    public $timestamps = true;
+    /**
+     * ความสัมพันธ์กับ `Brand`
+     */
+    public function brands()
+    {
+        return $this->hasMany(Brand::class, 'brd_brandlist_id', 'bl_id');
+    }
 }

@@ -6,6 +6,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/notif/0.1.0/notif.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/notif/0.1.0/notif.min.js"></script>
+@include('model')
 
 <style>
     /* สไตล์ของปุ่มสลับ */
@@ -462,68 +463,63 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-$(document).ready(function () {
-    $('#formgroupemp').on('submit', function (e) {
-        e.preventDefault(); // ป้องกันการรีเฟรชหน้า
+    $(document).ready(function () {
+        $('#formgroupemp').on('submit', function (e) {
+            e.preventDefault(); // ป้องกันการรีเฟรชหน้า
 
-        // ตรวจสอบข้อมูลในฟอร์ม (หากมี input ว่าง)
-        var isValid = true;
-        $('input[name="eg_emp1[]"], input[name="eg_emp2[]"]').each(function () {
-            if ($(this).val().trim() === '') {
-                isValid = false;
-            }
-        });
-
-        if (!isValid) {
-            Swal.fire({
-                icon: 'error',
-                title: 'กรุณากรอกข้อมูลให้ครบถ้วน',
-                html: '<small style="color:red;">มีช่องข้อมูลที่ยังว่างอยู่</small>',
-                showConfirmButton: true
+            // ตรวจสอบว่า dropdown ถูกเลือกหรือไม่
+            var isValid = true;
+            $('select[name="addempgroup1[]"], select[name="addempgroup2[]"]').each(function () {
+                if ($(this).val() === "0" || $(this).val().trim() === '') {
+                    isValid = false;
+                }
             });
-            return; // หยุดการส่งฟอร์ม
-        }
 
-        // ส่งข้อมูลผ่าน AJAX
-        $.ajax({
-            type: 'POST',
-            url: $(this).attr('action'), // ใช้ URL ที่กำหนดใน action ของฟอร์ม
-            data: $(this).serialize(), // แปลงข้อมูลในฟอร์มเป็นรูปแบบ URL Encoded
-            success: function (response) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'บันทึกเรียบร้อย',
-                    html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
-                    showConfirmButton: false,
-                    timer: 1500
-                });
-
-                setTimeout(function () {
-                    location.reload(); // รีเฟรชหน้า
-                }, 1350);
-            },
-            error: function (xhr, status, error) {
-                var errorMessage = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'เกิดข้อผิดพลาดในการบันทึก';
+            if (!isValid) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'บันทึกข้อมูลไม่สำเร็จ',
-                    html: '<small style="color:red;">' + errorMessage + '</small>',
+                    title: 'กรุณาเลือกพนักงานให้ครบถ้วน',
+                    html: '<small style="color:red;">ห้ามมีช่องว่าง</small>',
                     showConfirmButton: true
                 });
-
-                console.error(xhr.responseText); // สำหรับ Debugging
+                return; // หยุดการส่งฟอร์ม
             }
+
+            // ส่งข้อมูลผ่าน AJAX
+            $.ajax({
+                type: 'POST',
+                url: $(this).attr('action'), // ใช้ URL จาก form action
+                data: $(this).serialize(), // แปลงข้อมูลในฟอร์ม
+                dataType: 'json',
+                success: function (response) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกเรียบร้อย',
+                        html: '<small style="color:green;">ข้อมูลถูกบันทึกเรียบร้อย</small>',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+
+                    setTimeout(function () {
+                        location.reload(); // รีเฟรชหน้า
+                    }, 1350);
+                },
+                error: function (xhr, status, error) {
+                    var errorMessage = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'เกิดข้อผิดพลาด';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'บันทึกไม่สำเร็จ',
+                        html: '<small style="color:red;">' + errorMessage + '</small>',
+                        showConfirmButton: true
+                    });
+
+                    console.error(xhr.responseText); // Debug
+                }
+            });
         });
     });
+</script>
 
-    // ปุ่มทำใหม่ (รีเซ็ตฟอร์ม)
-    $('#removegroup').on('click', function () {
-        $('#formgroupemp')[0].reset(); // รีเซ็ตค่าทั้งหมดในฟอร์ม
-        $('#empgroupadded').empty(); // ล้างข้อมูลใน #empgroupadded (ถ้ามีการเพิ่ม input ไดนามิก)
-    });
-});
-
-    </script>
 <script>
     $(document).ready(function() {
     $('#empgrouptable').on('change', '.toggle-egstatus', function() {
@@ -647,6 +643,111 @@ $(document).ready(function () {
         });
     });
 </script>
+
+
+<script>
+$(document).ready(function() {
+    // เพิ่มแถวใหม่เมื่อกดปุ่ม "+"
+    $("#addempgroup").click(function(e) {
+        e.preventDefault();
+
+        let newDropdownRow = `
+            <div class="d-flex justify-content-center align-items-center gap-2 w-100 mt-1 extra-row">
+                <select name="addempgroup1[]" class="selectpicker show-tick form-control-sm w-100 text-center" data-live-search="true" data-style="btn-info btn-sm text-white" required>
+                    <option value="0">เลือกพนักงาน</option>
+                    @foreach($employees as $employee)
+                        <option value="{{ $employee->name }}" data-id="employee-{{ $loop->index }}">
+                            {{ $employee->name }}
+                        </option>
+                    @endforeach
+                </select>
+
+                <select name="addempgroup2[]" class="selectpicker show-tick form-control-sm w-100 text-center" data-live-search="true" data-style="btn-info btn-sm text-white" required>
+                    <option value="0">เลือกพนักงาน</option>
+                    @foreach($employees as $employee)
+                        <option value="{{ $employee->name }}" data-id="employee-{{ $loop->index }}">
+                            {{ $employee->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+        `;
+
+        $("#dropdownContainer").append(newDropdownRow);
+        $('.selectpicker').selectpicker('refresh');
+    });
+});
+ 
+</script>
+<script>
+    $(document).ready(function() {
+        // ลบเฉพาะแถวที่ถูกเพิ่มโดยปุ่ม "+"
+        $("#removegroup").click(function() {
+            $("#dropdownContainer .extra-row").remove();
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function () {
+        $('#formworking').on('submit', function (e) {
+            e.preventDefault(); // ป้องกันการรีเฟรชหน้า
+
+            Swal.fire({
+                title: 'ยืนยันการเริ่มงานใหม่?',
+                text: "คุณต้องการสร้างงานใหม่ใช่หรือไม่",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'ใช่, เริ่มงานใหม่!',
+                cancelButtonText: 'ยกเลิก',
+                allowOutsideClick: false, // ป้องกันการคลิกข้างนอกแล้วปิด
+                allowEscapeKey: false, // ป้องกันการกด ESC แล้วปิด
+                preConfirm: () => {
+                    return new Promise((resolve) => {
+                        let formData = $('#formworking').serialize(); // ดึงข้อมูลจากฟอร์ม
+
+                        $.ajax({
+                            type: 'POST',
+                            url: $('#formworking').attr('action'),
+                            data: formData,
+                            dataType: 'json',
+                            success: function (response) {
+                                if (response.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'บันทึกสำเร็จ!',
+                                        text: response.date, // ✅ แสดงวันที่แบบไทย
+                                        showConfirmButton: false,
+                                        timer: 3000
+                                    });
+
+                                    // ✅ Redirect ไปยัง datawip หลังจาก SweetAlert หายไป
+                                    setTimeout(function () {
+                                        window.location.href = response.redirect_url;
+                                    }, 3000);
+
+                                    resolve();
+                                } else {
+                                    Swal.showValidationMessage(response.message);
+                                    resolve();
+                                }
+                            },
+                            error: function (xhr) {
+                                Swal.showValidationMessage('เกิดข้อผิดพลาด: ' + xhr.responseJSON.message);
+                                resolve();
+                            }
+                        });
+                    });
+                }
+            });
+        });
+    });
+</script>
+
+
+
 
 
 
@@ -974,111 +1075,140 @@ $(document).ready(function () {
     </div>
 <!-- จบ process modal ของการเพิ่มพนังงาน -->
 <!-- จัดกลุ่มพนักงาน -->
-    <div class="modal fade" id="groupemnoti" tabindex="-1" role="dialog" aria-labelledby="GroupEm" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                    <h3 class="modal-title" id="GroupEm"><b>จัดกลุ่มพนักงาน</b></h3>
-                </div>
-                <div class="container-fluid">
-                    <div class="col-md-5">
-                        <div class="text-center">
-                        <h4 class="text-center"><b><u>รายชื่อพนักงาน</u></b></h4>
-<div class="panel panel-default">
-    <!-- รายชื่อพนักงาน -->
-    <div id="emplist" class="panel-body" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: start; padding: 10px;">
-        @foreach($employees as $employee)
-            <div 
-                style="color: black; font-size: 14px; padding: 5px 10px; border-radius: 3px; border: 1px solid #ddd; box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2); cursor: grab;"
-                draggable="true"
-                ondragstart="drag(event)"
-                data-name="{{ $employee->name }}" 
-                id="employee-{{ $loop->index }}">
-                {{ $employee->name }}
+<div class="modal fade" id="groupemnoti" tabindex="-1" role="dialog" aria-labelledby="GroupEm" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h3 class="modal-title" id="GroupEm"><b>จัดกลุ่มพนักงาน</b></h3>
             </div>
-        @endforeach
-    </div>
-</div>
 
-                            </div>
-                        </div>
-                        <div class="col-md-1">
-                            <br>
-                            <br>
-                            <a class="btn btn-success btn-sm" 
-    style="background-color: #00b5ad; border-color: #00b5ad; color: #fff; font-size:13px;" 
-    id="addempgroup" 
-    href="#" 
-    role="button">
-    <span class="glyphicon glyphicon-plus"></span>
+            <!-- Modal Body -->
+            <div class="container-fluid">
+                <div class="row">
+                    <!-- Group Form Area with Add Button and Dropdowns -->
+                    <div class="col-md-12">
+                        <form id="formgroupemp" class="form-inline form-sm mt-0" method="post" action="{{ route('saveEmpGroup', ['line' => $line]) }}">
+                            @csrf 
+                            <div id="empgroupadded" class="text-center mb-4">
+                                <h4><b><u>กลุ่ม</u></b></h4>
+                                <div class="row mt-3">
+                                    <!-- Add Button Area -->
+                                    <div class="col-md-1">
+                                    <a class="btn btn-success btn-sm" 
+   style="background-color: #00b5ad; border-color: #00b5ad; color: #fff; font-size:13px;" 
+   id="addempgroup" 
+   href="javascript:void(0);" 
+   role="button">
+   <span class="glyphicon glyphicon-plus"></span>
 </a>
 
-                        </div>
-                        <form id="formgroupemp" class="form-inline form-sm mt-0" method="post" action="{{ route('saveEmpGroup', ['line' => $line]) }}">
-    @csrf 
-                            <div class="col-md-6">
-                                <div id="empgroupadded" class="text-center">
-                                    <h4><b><u>กลุ่ม</u></b><br></h4>
-                                </div>
-                                <div class="text-right">
+
+                                    </div>
+                                    <!-- Employee Selection Area -->
+                                    <div class="col-md-11">
+    <div id="dropdownContainer" class="text-center">
+        <!-- แถวเริ่มต้น -->
+        <div class="d-flex justify-content-center align-items-center gap-3 w-100">
+            <!-- First Employee Dropdown -->
+            <select name="addempgroup1[]" 
+    class="selectpicker show-tick form-control-sm w-100 text-center" 
+    data-live-search="true" 
+    data-style="btn-info btn-sm text-white" 
+    required>
+    <option value="0">เลือกพนักงาน</option>
+    @foreach($employees as $employee)
+        <option value="{{ $employee->name }}" data-id="employee-{{ $loop->index }}">
+            {{ $employee->name }}
+        </option>
+    @endforeach
+</select>
+
+
+         <!-- Second Employee Dropdown -->
+<select name="addempgroup2[]" 
+    class="selectpicker show-tick form-control-sm w-100 text-center" 
+    data-live-search="true" 
+    data-style="btn-info btn-sm text-white" 
+    required>
+    <option value="0">เลือกพนักงาน</option>
+    @foreach($employees as $employee)
+        <option value="{{ $employee->name }}" data-id="employee-{{ $loop->index }}">
+            {{ $employee->name }}
+        </option>
+    @endforeach
+</select>
+
+
+
+                            <div class="text-right mt-2">
                                 <button id="removegroup" class="btn btn-warning btn-sm" type="button" name="button">
-        <span class="fas fa-redo-alt"></span>&nbsp;ทำใหม่
-    </button>                                </div>
+                                    <span class="fas fa-redo-alt"></span>&nbsp;ทำใหม่
+                                </button>
                             </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Save Button Area -->
+                <div class="row mt-3">
+                    <div class="col-12 text-center">
+                        <button class="btn btn-success" type="submit" form="formgroupemp">
+                            <i class="fas fa-save"></i>&nbsp;บันทึก
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Area -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="table-responsive">
+                            <table id="empgrouptable" class="table table-striped table-bordered display">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th class="text-center align-middle">#</th>
+                                        <th class="text-center align-middle">กลุ่ม</th>
+                                        <th class="text-center align-middle">สถานะเปิดใช้งาน</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($groupemps as $index => $groupemp)
+                                        <tr>
+                                            <td class="text-center align-middle">{{ $index + 1 }}</td>
+                                            <td class="text-center align-middle">{{ $groupemp->emp1 }} - {{ $groupemp->emp2 }}</td>
+                                            <td class="text-center align-middle">
+                                                <label class="switch">
+                                                    <input type="checkbox" 
+                                                        class="toggle-egstatus" 
+                                                        data-id="{{ $groupemp->id }}" 
+                                                        data-emp1="{{ $groupemp->emp1 }}" 
+                                                        data-emp2="{{ $groupemp->emp2 }}"
+                                                        {{ $groupemp->status ? 'checked' : '' }}>
+                                                    <span class="slider">
+                                                        <span class="text-on">เปิด</span>
+                                                        <span class="text-off">ปิด</span>
+                                                    </span>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="text-center">
-                            <button class="btn btn-success fas fa-save" type="submit" name="button">บันทึก</button>
-                        </div>
-                    </form> 
-
-                    <div class="container-fluid">
-    <div class="table-responsive">
-    <table id="empgrouptable" class="table table-striped table-bordered display">
-    <thead class="thead-dark">
-        <tr>
-            <th class="text-center align-middle">#</th>
-            <th class="text-center align-middle">กลุ่ม</th>
-            <th class="text-center align-middle">สถานะเปิดใช้งาน</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach ($groupemps as $index => $groupemp)
-            <tr>
-                <td class="text-center align-middle">{{ $index + 1 }}</td>
-                <td class="text-center align-middle">{{ $groupemp->emp1 }} - {{ $groupemp->emp2 }}</td>
-                <td class="text-center align-middle">
-                    <label class="switch">
-                    <input 
-    type="checkbox" 
-    class="toggle-egstatus" 
-    data-id="{{ $groupemp->id }}" 
-    data-emp1="{{ $groupemp->emp1 }}" 
-    data-emp2="{{ $groupemp->emp2 }}"
-    {{ $groupemp->status ? 'checked' : '' }}>
-
-                        <span class="slider">
-                            <span class="text-on">เปิด</span>
-                            <span class="text-off">ปิด</span>
-                        </span>
-                    </label>
-                </td>
-            </tr>
-        @endforeach
-    </tbody>
-</table>
-
-    </div>
-</div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
                     </div>
                 </div>
             </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
+            </div>
         </div>
+    </div>
+</div>
 
         <div class="modal fade" id="notideleteemp" tabindex="-1" role="dialog" aria-labelledby="DeleteEmp" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -1107,163 +1237,12 @@ $(document).ready(function () {
 
 <!-- จบ process modal ของจัดกลุ่มพนักงาน -->
 <!-- รายการงานคัดบอร์ดที่ผ่านมา -->
-        <div class="modal fade" id="notiallworked" tabindex="-1" role="dialog" aria-labelledby="AllWorked" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="AllWorked"><b>รายการงานคัดบอร์ดที่ผ่านมา</b></h3>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <div class="table-responsive">
-                            <table id="workedtable" class="table table-striped table-bordered display">
-                                <thead>
-                                    <tr>
-                                        <th class="text-center">#</th>
-                                        <th class="text-center">ชื่อไฟล์</th>
-                                        {{-- <th class="text-center">ชนิดสินค้า</th> --}}
-                                        <th class="text-center">วันที่</th>
-                                        <th class="text-center"><em class="fa fa-cog"></em></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    
-                                        <tr>
-                                            <td class="text-center"></td>
-                                        <!--
-                                            @ if ($worked->wwt_status == '0')
-                                                <td style="color:green;" class="text-center"><b>กำลังคัด</b></td>
-                                            @ else
-                                                <td style="color:red;" class="text-center"><b>จบกะทำงาน</b></td>
-                                            @ endif
-                                        -->
-                                            <td class="text-center">PQC </td> <!-- //$workdetail->value('ww_group') }}(ครั้ง) ----$workpgroup   $workpgrouplot = $workdetail->value('ww_group');-->
-                                            {{-- <td class="text-center"></td> --}}
-                                            <td class="text-center"></td>
-                                            <td class="text-center">
-                                                <a href="" class="btn btn-success btn-sm fas fa-file-import" data-toggle="tooltip" title="เข้าสู่งาน" style="font-size:15px;"></a>
-                                            </td>
-                                        </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+       
 <!-- จบ process modal รายการงานคัดบอร์ดที่ผ่านมา -->
 <!-- สรุปข้อมูลต่อวัน -->
-        <div class="modal fade" id="notiwipperday" tabindex="-1" role="dialog" aria-labelledby="Wipperday" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="Wipperday"><b>สรุปข้อมูลต่อวัน</b></h3>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <div class="table-responsive">
-                        @php
-    // จัดกลุ่มข้อมูลตามวันที่ และนับจำนวนรายการ
-    $groupedData = $workProcessQC->groupBy('date')->map(function ($items) {
-        return count($items);
-    });
-@endphp
-
-<table id="wipperdaytable" class="table table-striped table-bordered display">
-    <thead>
-        <tr>
-            <th class="text-center">วันที่</th>
-            <th class="text-center">จำนวน</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($groupedData as $date => $count)
-        <tr>
-            <td class="text-center">{{ \Carbon\Carbon::parse($date)->format('d-m-Y') }}</td> {{-- แสดงวันที่ --}}
-            <td class="text-center">{{ $wpqc->total_wip_amount ?? 0 }}</td> {{-- แสดงจำนวนของรายการในวันนั้น --}}
-        </tr>
-        @endforeach
-    </tbody>
-</table>
-
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+      
 <!-- จบ process modal สรุปข้อมูลต่อวัน -->
-        <div class="modal fade" id="endworktimenoti" tabindex="-1" role="dialog" aria-labelledby="Endworktime" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <h3 class="modal-title" id="Endworktime"><b>จบกะการทำงาน</b></h3>
-                        <p style="color:red;font-size:15px;">เมื่อกดยืนยัน ข้อมูลจะถูกบันทึกและเป็นการ<u>จบกะการทำงาน</u> ข้อมูลทั้งหมดจะไม่สามารถแก้ไขได้ โปรดตรวจสอบข้อมูลให้เรียบร้อยก่อนกดยืนยัน</p>
-                        <div class="modal-body">
-                            <div class="panel panel-gmt">
-                                <div class="panel-heading text-center" style="font-size:18px;">สรุปรายการ</div>
-                                <div class="panel-body" style="
-                                padding-top: 0px;
-                                padding-left: 0px;
-                                ">
-                                <div class="col-md-3 col-xs-3">
-                                    <h4 class="text-center">จำนวนแผ่นเข้า</h4>
-                                </div>
-                                <div class="col-md-3 col-xs-3">
-                                    <h4 class="text-center">จำนวนแผ่นออก</h4>
-                                </div>
-                                <div class="col-md-3 col-xs-3">
-                                    <h4 class="text-center">คงค้าง (HD)</h4>
-                                </div>
-                                <div class="col-md-3 col-xs-3">
-                                    <h4 class="text-center">เสีย (NG)</h4>
-                                </div>
-                            </div>
-                            <div class="panel-body" style="
-                            padding-top: 0px;
-                            padding-left: 0px;
-                            ">
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center"></h4>
-                            </div>
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center"></h4>
-                            </div>
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center"></h4>
-                            </div>
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center"></h4>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-                <form id="endworktimeform" class="md-form">
-                    <div class="text-center">
-                        <h4><b><u>ใส่จำนวน END TAPE</u></b></h4>
-                        <input style="width:30%;font-size:25px;" class="text-center" id="endtape" step='0.0001' type="number" name="wz_amount" value="" placeholder="ใส่จำนวน END TAPE" min="1"required>
-                        <input type="hidden" name="wwd_amount" value="">
-                    </div>
-                    
-                    <div class="modal-footer">
-                            <input type="hidden" name="wwt_status" value="1">
-                            <button type="submit" class="btn btn-success" name="button">ยืนยัน</button>
-                            <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                    </div>
-                </form>
-
-                    </div>
-                </div>
-        </div>
+        
         
 
         <script type="text/javascript">

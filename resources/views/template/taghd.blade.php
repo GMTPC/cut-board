@@ -162,13 +162,28 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                         </div> </br>
                                                     </td>
                                                 </tr>
-                                        
-                                                   
-                                                        <td colspan="4"><center></center> 
-                                                        <small></small>
- 
-                                                    <td colspan="4"><center></center> 
-                                                        <small></small>
+                                                <td colspan="4">
+    <center>
+        {!! DNS1D::getBarcodeHTML("123456789", 'C128', 2, 35) !!}
+    </center> 
+    <small></small>
+    <div class="fix-row-center">
+    <div class="fix-grid-left">
+        <small>{!! DNS1D::getBarcodeHTML("123456789", 'C128', 1, 35) !!}</small>
+        <small>123456789</small>
+    </div>
+    <div class="fix-grid-right">
+        <small>{!! DNS1D::getBarcodeHTML("LOT12345", 'C128', 1, 35) !!}</small>
+        <small>LOT12345</small>
+    </div>
+</div>
+</td>
+
+</br>
+
+
+
+                      
                                                  
                                                    
                                                     </br>
@@ -274,15 +289,24 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </div> </br>
                                             </td>
                                         </tr>
-                                        <tr> <!--DNS1D::getBarcodeHTML('C128',1,35)-->
-                                            <td colspan="4"><center></center><small></small>
-                                            </br>
-                                            <div class="fix-row-center">
-                                                <div class="fix-grid-left"><small></small><small></small></div>
-                                                <div class="fix-grid-right"><small></small><small></small></div>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                        <td colspan="4">
+    <center>
+        {!! DNS1D::getBarcodeHTML("123456789", 'C128', 2, 35) !!}
+    </center> 
+    <small></small>
+    <div class="fix-row-center">
+    <div class="fix-grid-left">
+        <small>{!! DNS1D::getBarcodeHTML("123456789", 'C128', 1, 35) !!}</small>
+        <small>123456789</small>
+    </div>
+    <div class="fix-grid-right">
+        <small>{!! DNS1D::getBarcodeHTML("LOT12345", 'C128', 1, 35) !!}</small>
+        <small>LOT12345</small>
+    </div>
+</div>
+</td>
+
+</br>
                                     <tr>
                                         <th class="wip-fix-fontsize-output"><b style="font-size:19px;">รหัสสินค้า</b></th>
                                         <td colspan="3" ><b style="font-size:19px;"> {{ substr($wipHoldings->first()->wh_barcode ?? 'ไม่มีข้อมูล', 0, 4) }} - {{ $peTypeCode ?? 'ไม่มีข้อมูล' }}</b></td>

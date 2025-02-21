@@ -11,34 +11,41 @@ class WipWorking extends Model
 {
     use HasFactory;
 
-    // ชื่อตารางในฐานข้อมูล
-    protected $table = 'wip_working';
+    protected $table = 'wip_working'; // ชื่อตาราง
 
-    // ชื่อ Primary Key
-    protected $primaryKey = 'ww_id';
+    protected $primaryKey = 'ww_id'; // Primary Key
 
-    // ตารางไม่มี timestamps (created_at, updated_at)
-    public $timestamps = false;
+    public $timestamps = false; // ปิด timestamps
 
-    // ฟิลด์ที่สามารถกรอกข้อมูลได้
     protected $fillable = [
         'ww_id',
         'ww_line',
-        'ww_end_date', // ✅ เพิ่มฟิลด์ที่สามารถบันทึกค่าได้
-        // เพิ่มฟิลด์อื่น ๆ ตามที่ต้องการ
+        'ww_end_date',
     ];
 
-    // เพิ่ม Global Scope เพื่อเรียงลำดับตาม `ww_id`
+    /**
+     * ความสัมพันธ์กับ `Brand`
+     */
+    public function brands()
+    {
+        return $this->hasMany(Brand::class, 'brd_working_id', 'ww_id');
+    }
+
+    /**
+     * Global Scope เพื่อเรียงลำดับตาม `ww_id`
+     */
     protected static function boot()
     {
         parent::boot();
 
         static::addGlobalScope('orderById', function (Builder $builder) {
-            $builder->orderBy('ww_id', 'asc'); // เรียงจากน้อยไปมาก
+            $builder->orderBy('ww_id', 'asc');
         });
     }
 
-    // ✅ Mutator: กำหนดให้ `ww_end_date` ใช้วันที่ปัจจุบันของประเทศไทยเมื่อมีการอัปเดต
+    /**
+     * Mutator: ตั้งค่า `ww_end_date` เป็นเวลาปัจจุบัน (โซนเวลาไทย)
+     */
     public function setWwEndDateAttribute($value)
     {
         $this->attributes['ww_end_date'] = Carbon::now('Asia/Bangkok')->format('Y-m-d H:i:s');

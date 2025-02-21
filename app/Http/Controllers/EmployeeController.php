@@ -141,42 +141,32 @@ public function employeesaveline1(Request $request)
     public function saveEmpGroup(Request $request, $line)
     {
         try {
-            // รับข้อมูลจากฟอร์ม
-            $emp1List = $request->input('eg_emp1'); // ชื่อพนักงานคนที่ 1
-            $emp2List = $request->input('eg_emp2'); // ชื่อพนักงานคนที่ 2
+            $request->validate([
+                'addempgroup1' => 'required|array',
+                'addempgroup2' => 'required|array',
+            ]);
     
-            // ตรวจสอบข้อมูล
-            if (empty($emp1List) || empty($emp2List) || count($emp1List) !== count($emp2List)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'ข้อมูลพนักงานไม่ครบถ้วน'
-                ], 400);
+            foreach ($request->addempgroup1 as $key => $emp1) {
+                $emp2 = $request->addempgroup2[$key] ?? null;
+    
+                if ($emp1 && $emp2) {
+                    GroupEmp::create([
+                        'line' => $line,
+                        'emp1' => $emp1,
+                        'emp2' => $emp2,
+                        'status' => 1,
+                        'date' => now(), // ✅ เพิ่มค่านี้เพื่อไม่ให้เป็น NULL
+                    ]);
+                }
             }
     
-            $date = now();
+            return response()->json(['success' => true, 'message' => 'บันทึกสำเร็จ!']);
     
-            // วนลูปเพื่อบันทึกข้อมูล
-            foreach ($emp1List as $index => $emp1) {
-                GroupEmp::create([
-                    'emp1' => $emp1,
-                    'emp2' => $emp2List[$index],
-                    'line' => $line,
-                    'date' => $date,
-                    'status' => 1 // กำหนดให้เปิดใช้งานทันที
-                ]);
-            }
-    
-            return response()->json([
-                'success' => true,
-                'message' => 'บันทึกข้อมูลสำเร็จ'
-            ], 200);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+    
     
     public function toggleStatus(Request $request)
     {
@@ -213,7 +203,7 @@ public function employeesaveline1(Request $request)
         return view('datawip', compact('empGroups'));
     }
 
-    
+ 
     }
     
     

@@ -1,12 +1,14 @@
 <?php
 
 namespace App\Models;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\BrandList;
 use App\Models\EmpInOut;
 use App\Models\WipWorking;
+use App\Models\CheckCsvWh;
 
 class Brand extends Model
 {
@@ -71,4 +73,8 @@ class Brand extends Model
     {
         return $this->belongsTo(WipWorking::class, 'brd_working_id', 'ww_id');
     }
+    public function checkCsvWh(): HasOne
+{
+    return $this->hasOne(CheckCsvWh::class, 'ccw_lot', 'brd_lot');
+}
 }

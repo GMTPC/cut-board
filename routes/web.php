@@ -7,6 +7,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\WipController;
 use App\Models\AmountNg;
 use App\Models\Wipbarcode;
+use App\Models\Brand;
 
 
 /*
@@ -129,6 +130,16 @@ Route::get('/get-amount-ng/{wip_id}', function ($wip_id) {
     return Response::json(['status' => 'success', 'amg_amount' => $totalAmount]);
 });
 
+Route::get('/qrcodeinterface/{qrcode}', [WipController::class, 'qrcodeinterface'])->name('qrcodeinterface');
+Route::post('/insertcheckcsvqrcode', [WipController::class, 'insertcheckcsvqrcode'])->name('insertcheckcsvqrcode');
+Route::post('/insertcheckcsvqrcodewithdefect', [WipController::class, 'insertcheckcsvqrcodewithdefect'])->name('insertcheckcsvqrcodewithdefect');
 
+
+Route::get('/get-brd-status/{brd_lot}', function ($brd_lot) {
+    $status = Brand::where('brd_lot', $brd_lot)->value('brd_status');
+    return response()->json(['brd_lot' => $brd_lot, 'brd_status' => $status]);
+});
+
+Route::get('/check-duplicate-barcode/{barcode}', [WipController::class, 'checkDuplicateBarcode']);
 
 require __DIR__.'/auth.php';

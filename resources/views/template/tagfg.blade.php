@@ -118,7 +118,20 @@
                                     <tr>
                                         <td colspan="2" rowspan="2">
                                             <small class="wms-text">สำหรับงานคลัง</small> <br><br>
-                                            {{ QrCode::size(150)->generate("http://127.0.0.1:8000/?ww_line=$ww_line&bl_code=$bl_code&peTypeCode=$peTypeCode&brd_lot=$brd_lot&brd_amount=$brd_amount") }}
+                                            @php
+    if ($brd_amount < 10) {
+        $formattedAmount = '00' . $brd_amount; // เติม 00 ข้างหน้า
+    } elseif ($brd_amount < 100) {
+        $formattedAmount = '0' . $brd_amount; // เติม 0 ข้างหน้า
+    } else {
+        $formattedAmount = $brd_amount; // ใช้ค่าปกติ
+    }
+@endphp
+
+{{ QrCode::size(150)->generate(route('qrcodeinterface',
+"B".$ww_line.$bl_code."-".$peTypeCode.$brd_lot.$formattedAmount)) }}
+
+
  
 <br />
 <small>

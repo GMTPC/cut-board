@@ -18,6 +18,10 @@ use App\Models\WipWorking;
 use App\Models\Brand;
 use App\Models\WipHolding;
 use App\Models\WipSummary;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\App; // ✅ เพิ่มบรรทัดนี้เพื่อแก้ปัญหา
+
+
 
 class MainmenuController extends Controller
 {
@@ -46,12 +50,15 @@ class MainmenuController extends Controller
             return $query->where('line', $line);
         })->get();
     
-        // ดึงข้อมูลจาก WorkProcessQC เฉพาะไลน์ที่ระบุ พร้อม 'date' และเชื่อมกับ ProductTypeEmp
-        $workProcessQC = WorkProcessQC::when($line, function ($query, $line) {
-                return $query->where('line', $line);
-            })
-            ->leftJoin('product_type_emps', 'workprocess_qc.id', '=', 'product_type_emps.pe_working_id') // เชื่อมกับ ProductTypeEmp
-            ->leftJoin('wipbarcodes', 'workprocess_qc.id', '=', 'wipbarcodes.wip_working_id') // เชื่อมกับ Wipbarcode
+        // ✅ 1. ดึง id ทั้งหมดที่ line ตรงกันใน workprocess_qc
+        $workProcessIDs = WorkProcessQC::where('line', $line)->pluck('id');
+    
+        // ✅ 2. ค้นหา wip_working_id ใน wipbarcodes โดยใช้ id ที่ได้จาก workprocess_qc
+        $totalWipAmount = Wipbarcode::whereIn('wip_working_id', $workProcessIDs)->sum('wip_amount');
+    
+        // ✅ 3. ดึงข้อมูล WorkProcessQC พร้อมเชื่อม product_type_emps
+        $workProcessQC = WorkProcessQC::where('line', $line)
+            ->leftJoin('product_type_emps', 'workprocess_qc.id', '=', 'product_type_emps.pe_working_id')
             ->select(
                 'workprocess_qc.id',
                 'workprocess_qc.line',
@@ -59,7 +66,7 @@ class MainmenuController extends Controller
                 'workprocess_qc.status',
                 'workprocess_qc.date',
                 'product_type_emps.pe_type_name',
-                \DB::raw('SUM(wipbarcodes.wip_amount) as total_wip_amount') // รวมค่าของ wip_amount
+                \DB::raw("$totalWipAmount as total_wip_amount") // ✅ รวมค่า wip_amount ทั้งหมด
             )
             ->groupBy(
                 'workprocess_qc.id',
@@ -71,80 +78,106 @@ class MainmenuController extends Controller
             )
             ->get();
     
+        // ✅ 4. ดึงข้อมูล WorkProcessQC และรวม total_wip_amount ตามวันที่
+        $groupedData = WorkProcessQC::where('line', $line)
+            ->leftJoin('wipbarcodes', 'workprocess_qc.id', '=', 'wipbarcodes.wip_working_id')
+            ->select(
+                'workprocess_qc.date',
+                \DB::raw('SUM(wipbarcodes.wip_amount) as total_wip_amount') // ✅ รวมค่า wip_amount ตามวันที่
+            )
+            ->groupBy('workprocess_qc.date') // ✅ จัดกลุ่มตามวันที่
+            ->orderBy('workprocess_qc.date', 'asc')
+            ->get();
+    
         // ตรวจสอบว่ามีข้อมูลหรือไม่
-        if ($groupemps->isEmpty() && $groups->isEmpty() && $employees->isEmpty() && $workProcessQC->isEmpty()) {
+        if ($groupemps->isEmpty() && $groups->isEmpty() && $employees->isEmpty() && $workProcessQC->isEmpty() && $groupedData->isEmpty()) {
             $message = 'ไม่พบข้อมูลสำหรับ ' . ($line ? 'Line ' . $line : 'ทุก Line');
         } else {
             $message = null;
         }
     
         // ส่งข้อมูลไปยัง view
-        return view('manufacture', compact('groups', 'groupemps', 'lineheader', 'employees', 'line', 'message', 'workProcessQC'));
+        return view('manufacture', compact('groups', 'groupemps', 'lineheader', 'employees', 'line', 'message', 'workProcessQC', 'groupedData'))
+            ->with('model', view('model', compact('groups', 'groupemps', 'lineheader', 'employees', 'line', 'message', 'workProcessQC', 'groupedData')));
     }
-    
     
     public function workgroup(Request $request)
-{
-    // ตรวจสอบค่าจาก Request
-    if (!$request->has('ww_line') || !$request->has('ww_group')) {
-        return back()->withErrors('Line and Group are required.');
-    }
-
-    // ตรวจสอบว่าค่า ww_group มีหรือไม่
-    $group = $request->input('ww_group');
-    if (empty($group)) {
-        return back()->withErrors('Group is required.');
-    }
-
-    // กำหนดวันที่ปัจจุบัน
-    $currentDate = now(); // เวลาปัจจุบันในไทย (Asia/Bangkok)
-
-    // ตรวจสอบ Group และปรับวันที่ตามเงื่อนไข
-    if ($group === 'B') {
-        if ($currentDate->hour < 8) {
-            $currentDate->subDay(); // ลบ 1 วัน
+    {
+        try {
+            // ✅ ตั้งค่าภาษาไทยให้ Carbon
+            App::setLocale('th'); // ✅ ตอนนี้ใช้งานได้แน่นอน
+            Carbon::setLocale('th');
+    
+            // ตรวจสอบค่าจาก Request
+            if (!$request->has('ww_line') || !$request->has('ww_group')) {
+                return response()->json(['success' => false, 'message' => 'Line and Group are required.'], 400);
+            }
+    
+            // ตรวจสอบว่าค่า ww_group มีหรือไม่
+            $group = $request->input('ww_group');
+            if (empty($group)) {
+                return response()->json(['success' => false, 'message' => 'Group is required.'], 400);
+            }
+    
+            // ✅ ตั้งค่าโซนเวลาเป็นประเทศไทย
+            $currentDate = Carbon::now('Asia/Bangkok');
+    
+            // ✅ ตรวจสอบ Group และปรับวันที่ตามเงื่อนไข
+            if ($group === 'B' && $currentDate->hour < 8) {
+                $currentDate->subDay(); // ลบ 1 วัน ถ้า Group เป็น B และเวลายังไม่ถึง 08:00
+            }
+    
+            // ✅ ใช้วันที่และเวลาปัจจุบัน หรือปรับตามเงื่อนไข
+            $dateForWork = $currentDate->format('Y-m-d H:i:s'); // วันที่พร้อมเวลา
+            $lotDate = $currentDate->format('Y-m-d') . ' 00:00:00'; // วันที่เริ่มต้น 00:00:00
+    
+            // ✅ แปลงวันที่เป็น "1 พฤศจิกายน 2568 14:30 น."
+            $thaiDate = $currentDate->translatedFormat('j F Y H:i') . ' น.';
+    
+            // ✅ บันทึกข้อมูลลงใน work_process_qc
+            $workprocess = WorkProcessQC::create([
+                'line' => $request->input('ww_line'),
+                'group' => $group,
+                'date' => $dateForWork,
+                'status' => 'กำลังคัด',
+            ]);
+    
+            $line = $request->input('ww_line'); // Line
+            $id = $workprocess->id; // ID จาก work_process_qc
+            $wwGroupFormatted = $line . $group;
+            $wwWwtIndex = DB::table('wip_working')->max('ww_wwt_index') + 1;
+    
+            // ✅ บันทึกข้อมูลลงใน wip_working
+            DB::table('wip_working')->insert([
+                'ww_id' => $id,
+                'ww_line' => 'L' . $line,
+                'ww_group' => $wwGroupFormatted,
+                'ww_division' => 'QC',
+                'ww_start_date' => $dateForWork,
+                'ww_lot_date' => $lotDate,
+                'ww_status' => 'W',
+                'ww_wwt_index' => $wwWwtIndex,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+    
+            // ✅ เพิ่ม Log
+            Log::info("Data for line $line and group $group has been saved successfully.");
+    
+            // ✅ ส่ง JSON Response กลับไปให้ AJAX พร้อม URL สำหรับ redirect
+            return response()->json([
+                'success' => true,
+                'date' => $thaiDate, // ส่งวันที่ไทยกลับไปแสดงใน SweetAlert
+                'redirect_url' => route('datawip', ['line' => $line, 'id' => $id]) // ส่ง URL กลับไปให้ AJAX redirect
+            ]);
+    
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-
-    // ใช้วันที่และเวลาปัจจุบันหรือปรับตามเงื่อนไข
-    $dateForWork = $currentDate->format('Y-m-d H:i:s'); // วันที่พร้อมเวลา
-    $lotDate = $currentDate->format('Y-m-d') . ' 00:00:00'; // วันที่เวลา 00:00:00
-
-    // บันทึกข้อมูลลงใน work_process_qc
-    $workprocess = WorkProcessQC::create([
-        'line' => $request->input('ww_line'),
-        'group' => $group,
-        'date' => $dateForWork,
-        'status' => 'กำลังคัด',
-    ]);
-
-    $line = $request->input('ww_line'); // Line
-    $id = $workprocess->id; // ID จาก work_process_qc
-    $wwGroupFormatted = $line . $group;
-    $wwWwtIndex = DB::table('wip_working')->max('ww_wwt_index') + 1;
-
-    // เปิดใช้งาน IDENTITY_INSERT
-
-    DB::table('wip_working')->insert([
-        'ww_id' => $id, // ระบุค่า id ที่ต้องการ
-        'ww_line' => 'L' . $line,
-        'ww_group' => $wwGroupFormatted,
-        'ww_division' => 'QC',
-        'ww_start_date' => $dateForWork,
-        'ww_lot_date' => $lotDate,
-        'ww_status' => 'W',
-        'ww_wwt_index' => $wwWwtIndex,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
     
     
-    // เพิ่ม Log หรือกระบวนการอื่น
-    Log::info("Data for line $line and group $group has been saved successfully.");
-
-    return redirect()->route('datawip', ['line' => $line, 'id' => $id]);
-}
-
+    
 
 
 public function datawip($line, $id, $brd_id = null)

@@ -4,13 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Wipbarcode;
 
 class ProductTypeEmp extends Model
 {
     use HasFactory;
 
-    protected $table = 'product_type_emps'; // ชื่อจริงของตารางในฐานข้อมูล
+    protected $table = 'product_type_emps'; // ชื่อตาราง
 
     protected $fillable = [
         'pe_working_id',
@@ -21,9 +20,11 @@ class ProductTypeEmp extends Model
         'updated_at',
     ];
 
-    public function wipBarcode()
+    /**
+     * ความสัมพันธ์กับ `WipWorking`
+     */
+    public function wipWorking()
     {
-        return $this->belongsTo(Wipbarcode::class, 'pe_working_id', 'wip_working_id');
+        return $this->belongsTo(WipWorking::class, 'pe_working_id', 'ww_id');
     }
 }
-

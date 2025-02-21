@@ -472,7 +472,7 @@ $(document).ready(function () {
 
 <script>
 $(document).ready(function () {
-    // ดึงค่า line และ workId จาก URL
+    // ✅ ดึงค่า line และ workId จาก URL
     const urlParts = window.location.pathname.split('/');
     const line = urlParts[urlParts.length - 2].replace('L', ''); // แปลง L2 เป็น 2
     const workId = urlParts[urlParts.length - 1]; // ดึง workId เช่น 30053
@@ -490,7 +490,7 @@ $(document).ready(function () {
         return;
     }
 
-    // ดักจับการ Submit ฟอร์ม
+    // ✅ ดักจับการ Submit ฟอร์ม
     $('#insertwipline1').on('submit', function (e) {
         e.preventDefault();
 
@@ -516,6 +516,7 @@ $(document).ready(function () {
         $.ajax({
             type: 'GET',
             url: `/check-sku/${skuCode}`, // Route เช็ค SKU
+            dataType: "json",
             success: function (response) {
                 if (response.status === 'not_found') {
                     Swal.fire({
@@ -527,8 +528,22 @@ $(document).ready(function () {
                     return;
                 }
 
-                // ✅ ถ้า SKU มีอยู่ ให้ส่งฟอร์มต่อไป
-                sendDataToServer(formData, line, workId);
+                // ✅ ถ้า SKU มีอยู่ ให้เช็คบาร์โค้ดซ้ำก่อนส่งฟอร์ม
+                checkDuplicateBarcode(barcode, function (isDuplicate) {
+                    if (isDuplicate) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'บาร์โค้ดซ้ำ',
+                            text: 'บาร์โค้ดนี้มีอยู่ในระบบแล้ว กรุณาลองใหม่',
+                            timer: 2000,
+                            showConfirmButton: false,
+                        });
+                        return;
+                    }
+
+                    // ✅ ถ้าไม่ซ้ำ ให้ส่งฟอร์มต่อไป
+                    sendDataToServer(formData, line, workId);
+                });
             },
             error: function () {
                 Swal.fire({
@@ -541,7 +556,26 @@ $(document).ready(function () {
         });
     });
 
-    // ฟังก์ชันส่งข้อมูลไปยังเซิร์ฟเวอร์
+    // ✅ ฟังก์ชันเช็คบาร์โค้ดซ้ำ
+    function checkDuplicateBarcode(barcode, callback) {
+        $.ajax({
+            type: 'GET',
+            url: `/check-duplicate-barcode/${barcode}`, // ✅ ใช้ route แยกต่างหาก
+            dataType: "json",
+            success: function (response) {
+                if (response.status === 'duplicate') {
+                    callback(true); // ✅ บาร์โค้ดซ้ำ
+                } else {
+                    callback(false); // ✅ ไม่ซ้ำ
+                }
+            },
+            error: function () {
+                callback(false); // ถ้ามีปัญหาในการเช็ค ให้ถือว่าไม่ซ้ำ
+            }
+        });
+    }
+
+    // ✅ ฟังก์ชันส่งข้อมูลไปยังเซิร์ฟเวอร์
     function sendDataToServer(formData, line, workId) {
         formData.push({ name: 'line', value: line });
         formData.push({ name: 'work_id', value: workId });
@@ -559,8 +593,10 @@ $(document).ready(function () {
             type: 'POST',
             url: `/insert-barcode/L/${line}/${workId}`,
             data: formData,
+            dataType: "json", // ✅ บังคับให้ AJAX คาดหวัง JSON
             success: function (response) {
                 Swal.close();
+                console.log("✅ Response จาก Server:", response); // ✅ Debug ค่าที่ได้รับ
                 if (response.status === 'success') {
                     Swal.fire({
                         icon: 'success',
@@ -570,17 +606,25 @@ $(document).ready(function () {
                         showConfirmButton: false,
                     });
                     setTimeout(() => location.reload(), 1500);
+                } else if (response.status === 'duplicate') { // ✅ เช็คสถานะซ้ำ
+                    Swal.fire({
+                        icon: 'warning',
+                        title: response.title,
+                        text: response.message,
+                        showConfirmButton: true,
+                    });
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'ข้อผิดพลาด',
+                        title: response.title || 'ข้อผิดพลาด',
                         text: response.message || 'ไม่สามารถบันทึกข้อมูลได้',
                         showConfirmButton: true,
                     });
                 }
             },
-            error: function (xhr) {
+            error: function (xhr, textStatus, errorThrown) {
                 Swal.close();
+                console.error("AJAX Error:", textStatus, errorThrown, xhr.responseText); // ✅ Debug Error
                 Swal.fire({
                     icon: 'error',
                     title: 'บันทึกข้อมูลไม่สำเร็จ',
@@ -592,6 +636,7 @@ $(document).ready(function () {
     }
 });
 </script>
+
 
 
 
@@ -1149,6 +1194,84 @@ $(document).ready(function () {
 });
 </script>
 
+<script>
+$(document).ready(function() {
+    let allValidStatus = true; // ตรวจสอบว่า brd_status = 2 ครบทุกแถวหรือไม่
+    let hasData = false; // ตรวจสอบว่ามีข้อมูลในตารางหรือไม่
+    let rowCount = 0; // นับจำนวนแถวที่มีข้อมูล
+    let totalChecked = 0; // นับจำนวนแถวที่มี brd_status = 2
+    let hasBarcodeData = false; // ตรวจสอบว่ามีค่า barcode หรือไม่
+
+    let requests = []; // ใช้เก็บ AJAX request ทั้งหมด
+
+    // ตรวจสอบว่ามีข้อมูลใน barcodeValue หรือไม่
+    $("td.barcodeValue").each(function() {
+        let barcodeText = $(this).text().trim(); // ดึงค่าข้อความและตัดช่องว่าง
+        if (barcodeText !== "") {
+            hasBarcodeData = true; // ถ้ามีค่า barcode อย่างน้อย 1 ช่อง ถือว่ามีข้อมูล
+        }
+    });
+
+    $("td.brd-lot").each(function() {
+        let $td = $(this);
+        let brd_lot = $td.data("lot");
+
+        if (brd_lot) {
+            hasData = true;
+            rowCount++;
+        }
+
+        let request = $.ajax({
+            url: "/get-brd-status/" + brd_lot,
+            method: "GET",
+            success: function(response) {
+                console.log("✅ ดึง brd_status สำเร็จ:", response);
+
+                if (response.brd_status !== null && response.brd_status == 2) {
+                    $td.find(".status-icon").html("✅ "); // แสดงเครื่องหมายถูก
+                    totalChecked++; // เพิ่มจำนวนแถวที่ผ่านเงื่อนไข
+                } else {
+                    allValidStatus = false; // ถ้ามีแถวไหนไม่ใช่ brd_status = 2 ถือว่าไม่ผ่าน
+                }
+            },
+            error: function(xhr) {
+                console.error("❌ เกิดข้อผิดพลาดในการดึงข้อมูล", xhr);
+                allValidStatus = false; // กันกรณี API ล้มเหลว
+            }
+        });
+
+        requests.push(request);
+    });
+
+    // รอให้ทุก AJAX รันเสร็จ แล้วค่อยเช็คเงื่อนไข
+    $.when.apply($, requests).done(function() {
+        console.log("🔄 ตรวจสอบเงื่อนไขการแสดงปุ่ม");
+        console.log("มีข้อมูล? ", hasData);
+        console.log("จำนวนแถวที่มี brd_status = 2: ", totalChecked);
+        console.log("จำนวนแถวทั้งหมด: ", rowCount);
+        console.log("มี barcode หรือไม่? ", hasBarcodeData);
+
+        // ✅ เงื่อนไขการแสดงปุ่ม:
+        // 1. ถ้ามีข้อมูลใน barcodeValue (hasBarcodeData = true)
+        // 2. ถ้า brd_status = 2 ครบทุกแถว หรือ ตารางว่าง
+        if (hasBarcodeData && (rowCount === 0 || totalChecked === rowCount)) {
+            $("#btn-end-process").removeClass("d-none").show(); // ✅ แสดงปุ่ม
+        } else {
+            $("#btn-end-process").hide(); // ❌ ซ่อนปุ่ม
+        }
+    });
+
+    // ถ้าไม่มี barcodeValue เลย → ซ่อนปุ่ม
+    if (!hasBarcodeData) {
+        $("#btn-end-process").hide();
+    }
+});
+
+
+</script>
+
+
+
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
             <div class="panel-body">
@@ -1546,10 +1669,15 @@ $(document).ready(function () {
             <td>{{ $index + 1 }}</td>
             
             <!-- แสดง brd_id -->
-            <td>
-               
-                {{ $lot->brd_lot }} </span>
-            </td>
+            <td class="brd-lot" data-lot="{{ $lot->brd_lot }}">
+    <span class="status-icon"></span> <!-- ไว้สำหรับแสดง ✅ -->
+    {{ $lot->brd_lot }} 
+</td>
+
+
+
+
+
 
             <td>{{ $lot->brd_amount }}</td>
 
@@ -1629,11 +1757,19 @@ $(document).ready(function () {
        
         <!--ปิดปุ่มgขียว 27/05/21  -->
         
-        
-        
         <div class="text-center">
-            <a class="btn btn-success" data-target="#inputend" data-toggle="modal" name="button" ><b>บันทึกจบ (END) <i class="fas fa-file-export"></i></b></a>
-        </div>
+    <a class="btn btn-success d-none" id="btn-end-process" data-target="#inputend" data-toggle="modal" name="button">
+        <b>บันทึกจบ (END) <i class="fas fa-file-export"></i></b>
+    </a>
+</div>
+
+
+
+
+
+
+
+
 
         @endif
 
