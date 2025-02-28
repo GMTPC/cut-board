@@ -9,7 +9,7 @@ class ProductTypeEmp extends Model
 {
     use HasFactory;
 
-    protected $table = 'product_type_emps'; // ชื่อตาราง
+    protected $table = 'product_type_emps';
 
     protected $fillable = [
         'pe_working_id',
@@ -20,9 +20,6 @@ class ProductTypeEmp extends Model
         'updated_at',
     ];
 
-    /**
-     * ความสัมพันธ์กับ `WipWorking`
-     */
     public function wipWorking()
     {
         return $this->belongsTo(WipWorking::class, 'pe_working_id', 'ww_id');

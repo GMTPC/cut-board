@@ -195,7 +195,7 @@ $(document).ready(function () {
                             @endforeach`;
 
         let newRow = `
-            <tr data-wip-id="${wipID}">
+            <tr class="added-row" data-wip-id="${wipID}">
                 <td class="text-left">
                     <select name="amg_ng_id[]" class="btn btn-info btn-sm" style="font-size:16px;">
                         <option value="">เลือกของเสีย</option>
@@ -211,59 +211,65 @@ $(document).ready(function () {
         $("#wipline1awaste").append(newRow);
     });
 
-    $('#inputngform').on('submit', function (e) {
-    e.preventDefault();
-
-    let isValid = true;
-
-    $('#wipline1awaste').find('select, input[type="number"]').each(function () {
-        if ($(this).val() === '') {
-            isValid = false;
-            $(this).addClass('is-invalid');
-        } else {
-            $(this).removeClass('is-invalid');
-        }
+    // ✅ ลบแถวที่เพิ่มจาก #addl1a โดยไม่ต้องมี Alert
+    $(document).on("click", "#removelistng", function () {
+        $(".added-row").remove(); // ✅ ลบเฉพาะ <tr> ที่มี class="added-row"
     });
 
-    if (!isValid) {
-        Swal.fire({
-            icon: 'error',
-            title: 'ข้อมูลไม่ครบถ้วน',
-            text: 'กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึก',
+    $('#inputngform').on('submit', function (e) {
+        e.preventDefault();
+
+        let isValid = true;
+
+        $('#wipline1awaste').find('select, input[type="number"]').each(function () {
+            if ($(this).val() === '') {
+                isValid = false;
+                $(this).addClass('is-invalid');
+            } else {
+                $(this).removeClass('is-invalid');
+            }
         });
-        return;
-    }
 
-    // ✅ **เก็บ WIP ID ลง LocalStorage ก่อนรีเฟรช**
-    let selectedWipID = $("#selectedWipId").val();
-    localStorage.setItem("lastSelectedWipID", selectedWipID);
-
-    // ✅ **ส่งข้อมูลผ่าน AJAX**
-    $.ajax({
-        type: "POST",
-        url: "{{ route('addng') }}",
-        data: $(this).serialize(),
-        success: function () {
-            Swal.fire({
-                icon: 'success',
-                title: 'บันทึกข้อมูลแล้ว',
-                text: 'โปรดรอสักครู่...',
-                timer: 1500
-            });
-
-            // ✅ **รีเฟรชหน้าเว็บหลังจาก 1.2 วินาที**
-            setTimeout(() => location.reload(), 1200);
-        },
-        error: function () {
+        if (!isValid) {
             Swal.fire({
                 icon: 'error',
-                title: 'บันทึกข้อมูลไม่สำเร็จ',
-                text: 'โปรดรีเฟรชหน้าแล้วลองอีกครั้ง',
+                title: 'ข้อมูลไม่ครบถ้วน',
+                text: 'กรุณากรอกข้อมูลให้ครบถ้วนก่อนบันทึก',
             });
+            return;
         }
+
+        // ✅ **เก็บ WIP ID ลง LocalStorage ก่อนรีเฟรช**
+        let selectedWipID = $("#selectedWipId").val();
+        localStorage.setItem("lastSelectedWipID", selectedWipID);
+
+        // ✅ **ส่งข้อมูลผ่าน AJAX**
+        $.ajax({
+            type: "POST",
+            url: "{{ route('addng') }}",
+            data: $(this).serialize(),
+            success: function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'บันทึกข้อมูลแล้ว',
+                    text: 'โปรดรอสักครู่...',
+                    timer: 1500
+                });
+
+                // ✅ **รีเฟรชหน้าเว็บหลังจาก 1.2 วินาที**
+                setTimeout(() => location.reload(), 1200);
+            },
+            error: function () {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    text: 'โปรดรีเฟรชหน้าแล้วลองอีกครั้ง',
+                });
+            }
+        });
     });
 });
-});
+
 
     </script>
 
@@ -1270,6 +1276,41 @@ $(document).ready(function() {
 
 </script>
 
+<script>
+$(document).ready(function () {
+    $(document).on("click", ".open-noti-amount", function () {
+        let barcode = $(this).data("barcode"); // ✅ ดึงค่า barcode จากปุ่มที่กด
+
+        if (!barcode) {
+            console.error("❌ ไม่พบ Barcode");
+            return;
+        }
+
+        console.log("📌 ค้นหา WIP ID สำหรับ Barcode:", barcode);
+
+        // ✅ ค้นหา WIP ID, Barcode, และ Amount จากฐานข้อมูลผ่าน AJAX
+        $.ajax({
+            type: "GET",
+            url: "/get-wip-id", // ✅ ใช้ Route สำหรับดึงข้อมูล
+            data: { barcode: barcode },
+            success: function (response) {
+                console.log("✅ ข้อมูลที่พบ:", response);
+
+                // ✅ อัปเดตค่าในฟอร์ม `#editamountform` โดยตรง
+                $("#wipidamount").val(response.wip_id); // ✅ ใส่ WIP ID ใน `<input type="hidden">`
+                $("#showwipbarcode2").text(response.wip_barcode); // ✅ อัปเดต `<span>` ที่แสดง Barcode
+                $("#wipnewamount").val(response.wip_amount); // ✅ ใส่ WIP Amount ใน `<input>`
+                $("#wipbarcodechange").val(response.wip_barcode); // ✅ อัปเดตค่าที่ใช้ในการแก้ไข
+            },
+            error: function () {
+                console.error("❌ ไม่พบข้อมูล WIP ID");
+            }
+        });
+    });
+});
+
+
+    </script>
 
 
 <div class="container-fluid bg-white">
@@ -1612,12 +1653,13 @@ $(document).ready(function() {
    <i class="fa fa-pencil-square-o"></i>
 </a>
 
-        <a href="javascript:void(0);" 
-            class="btn btn-info btn-xs open-noti-amount" 
-            title="แก้ไขจำนวน" 
-            style="padding: 5px 10px; font-size: 12px; background-color: #5bc0de; color: white; border-color: #5bc0de;">
-            <i class="fa fa-sort-numeric-asc"></i>
-        </a>
+<a href="javascript:void(0);" 
+                class="btn btn-info btn-xs open-noti-amount" 
+                title="แก้ไขจำนวน"
+                data-barcode="{{ $barcode->wip_barcode }}"
+                style="padding: 5px 10px; font-size: 12px; background-color: #5bc0de; color: white; border-color: #5bc0de;">
+                <i class="fa fa-sort-numeric-asc"></i>
+            </a>
         <a href="javascript:void(0);" 
             class="btn btn-danger btn-xs delete-row" 
             title="ลบข้อมูล" 
@@ -1823,23 +1865,38 @@ $(document).ready(function () {
     
 </script>    
 <script>       
-document.addEventListener("DOMContentLoaded", function() {
-    document.querySelectorAll(".edit-btn").forEach(button => {
-        button.addEventListener("click", function() {
-            let wipId = this.getAttribute("data-wip-id");
+$(document).ready(function () {
+    $(document).on("click", ".open-noti-amount", function () {
+        let barcode = $(this).data("barcode"); // ✅ ดึงค่า barcode จากปุ่มที่กด
 
-            console.log("📌 WIP ID ที่เลือก:", wipId); // ตรวจสอบว่าค่า WIP ID ถูกต้อง
+        if (!barcode) {
+            console.error("❌ ไม่พบ Barcode");
+            return;
+        }
 
-            fetch(`/get-wip-barcode/${wipId}`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log("📌 Barcode ที่ได้รับจาก API:", data); // Debug Response API
-                    document.getElementById("showbarcodewip").innerText = data.barcode ?? "ไม่มีข้อมูล";
-                })
-                .catch(error => console.error("❌ Error fetching barcode:", error));
+        console.log("📌 ค้นหา WIP ID สำหรับ Barcode:", barcode);
+
+        // ✅ ค้นหา WIP ID, Barcode, และ Amount จากฐานข้อมูลผ่าน AJAX
+        $.ajax({
+            type: "GET",
+            url: "/get-wip-id", // ✅ ใช้ Route สำหรับดึงข้อมูล
+            data: { barcode: barcode },
+            success: function (response) {
+                console.log("✅ ข้อมูลที่พบ:", response);
+
+                // ✅ อัปเดตค่าในฟอร์ม `#editamountform`
+                $("#wipidamount").val(response.wip_id); // ✅ ใส่ WIP ID ใน `<input type="hidden">`
+                $("#showwipbarcode2").text(response.wip_barcode); // ✅ อัปเดต `<span>` ที่แสดง Barcode
+                $("#wipnewamount").val(response.wip_amount); // ✅ ใส่ WIP Amount ใน `<input>`
+                $("#wipbarcodechange").val(response.wip_barcode); // ✅ อัปเดตค่าที่ใช้ในการแก้ไข
+            },
+            error: function () {
+                console.error("❌ ไม่พบข้อมูล WIP ID");
+            }
         });
     });
 });
+
 
 
 
@@ -2162,21 +2219,21 @@ document.addEventListener("DOMContentLoaded", function() {
             <form id="editamountform" method="POST" action="{{ route('editwipamg', ['id' => $wipBarcodes->last()->wip_id ?? 0]) }}" class="form-inline md-form form-sm mt-0 text-center">
     {{ csrf_field() }}
     {{ method_field('PUT') }}
-    
+
     <input id="wipidamount" type="hidden" name="wip_id" value="{{ $wipBarcodes->last()->wip_id ?? 0 }}">
-    
+
     <div class="modal-body">
         <!-- Barcode -->
         <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 15px;">
             <h4 style="margin-right: 15px; width: 180px; text-align: right;"><b>Barcode :</b></h4>
-            <span style="font-size: 17px;"><u id="showwipbarcode2">{{ $wipBarcodes->last()->wip_barcode ?? '-' }}</u></span>
+            <span style="font-size: 17px;"><u id="showwipbarcode2"></u></span> 
         </div>
 
         <!-- จำนวนที่ต้องการแก้ไข -->
         <div style="display: flex; align-items: center; justify-content: center;">
             <b style="font-size: 17px; margin-right: 15px; width: 180px; text-align: right;">จำนวนที่ต้องการแก้ไข :</b>
             <input type="number" id="wipnewamount" class="text-center" name="wip_amount"
-                   value="{{ $totalWipAmount ?? '0' }}"
+                   value="" 
                    style="width: 100px; text-align: center;">
             <input type="hidden" id="wipbarcodechange" class="text-center" name="wip_barcode" value="{{ $wipBarcodes->last()->wip_barcode ?? '-' }}">
         </div>
@@ -2187,6 +2244,7 @@ document.addEventListener("DOMContentLoaded", function() {
         <button type="submit" class="btn btn-success">บันทึก</button>
     </div>
 </form>
+
 
 
 

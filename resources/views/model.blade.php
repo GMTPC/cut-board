@@ -1,4 +1,5 @@
 <!-- modals.blade.php -->
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 <!-- Modal: notiwipperday -->
 <div class="modal fade" id="notiwipperday" tabindex="-1" role="dialog" aria-labelledby="Wipperday" aria-hidden="true">
@@ -62,15 +63,23 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td class="text-center"></td>
-                                <td class="text-center">PQC </td>
-                                <td class="text-center"></td>
-                                <td class="text-center">
-                                    <a href="" class="btn btn-success btn-sm fas fa-file-import" data-toggle="tooltip" title="เข้าสู่งาน" style="font-size:15px;"></a>
-                                </td>
-                            </tr>
-                        </tbody>
+    @foreach($worked as $index => $work)
+        <tr>
+            <td class="text-center">{{ $index + 1 }}</td>
+            <td class="text-center">PQC{{ date('dmYHi', strtotime($work->wwt_date)) }}</td>
+            <td class="text-center">{{ date('d-m-Y H:i', strtotime($work->wwt_date)) }}</td>
+            <td class="text-center">
+    <a href="{{ route('workedprevious', ['line' => 'L' . $line, 'wwt_id' => $work->wwt_id]) }}" 
+       class="btn btn-success btn-sm fas fa-file-import" 
+       data-toggle="tooltip" title="เข้าสู่งาน" style="font-size:15px;">
+    </a>
+</td>
+
+        </tr>
+    @endforeach
+</tbody>
+
+
                     </table>
                 </div>
             </div>
@@ -115,35 +124,57 @@
                             padding-top: 0px;
                             padding-left: 0px;
                             ">
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center"></h4>
-                            </div>
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center"></h4>
-                            </div>
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center"></h4>
-                            </div>
-                            <div class="col-md-3 col-xs-3">
-                                <h4 class="text-center"></h4>
-                            </div>
+                      @php
+    $totalWIP = 0;
+    $totalFG  = 0;
+    $totalNG  = 0;
+    $totalHD  = 0;
+@endphp
+
+@foreach($workProcessQC as $wpqc)
+    @php
+        $totalWIP += $wpqc->sumwipendtime;
+        $totalFG  += $wpqc->sumfgendtime;
+        $totalNG  += $wpqc->sumngendtime;
+        $totalHD  += $wpqc->sumhdendtime;
+    @endphp
+@endforeach
+
+<div class="col-md-3 col-xs-3">
+    <h4 class="text-center">{{ $totalWIP }}</h4>
+</div>
+<div class="col-md-3 col-xs-3">
+    <h4 class="text-center">{{ $totalFG }}</h4>
+</div>
+<div class="col-md-3 col-xs-3">
+    <h4 class="text-center">{{ $totalHD }}</h4>
+</div>
+<div class="col-md-3 col-xs-3">
+    <h4 class="text-center">{{ $totalNG }}</h4>
+</div>
+
+
+
                         </div>
                     </div>
                 </div>
             </div>
-                <form id="endworktimeform" class="md-form">
-                    <div class="text-center">
-                        <h4><b><u>ใส่จำนวน END TAPE</u></b></h4>
-                        <input style="width:30%;font-size:25px;" class="text-center" id="endtape" step='0.0001' type="number" name="wz_amount" value="" placeholder="ใส่จำนวน END TAPE" min="1"required>
-                        <input type="hidden" name="wwd_amount" value="">
-                    </div>
-                    
-                    <div class="modal-footer">
-                            <input type="hidden" name="wwt_status" value="1">
-                            <button type="submit" class="btn btn-success" name="button">ยืนยัน</button>
-                            <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                    </div>
-                </form>
+            <form id="endworktimeform" class="md-form" method="POST" action="{{ route('endworktime', ['line' => 'L1']) }}">
+    @csrf  <!-- 🔹 ต้องมี CSRF Token -->
+    <input type="hidden" id="line" name="line" value="{{ $line }}">
+    <div class="text-center">
+        <h4><b><u>ใส่จำนวน END TAPE</u></b></h4>
+        <input style="width:30%;font-size:25px;" class="text-center" id="endtape" step="0.0001" type="number" name="wz_amount" placeholder="ใส่จำนวน END TAPE" min="1" required>
+        <input type="hidden" name="wwd_amount" id="wwd_amount" value="0">
+        <input type="hidden" name="wwt_status" value="1">
+    </div>
+    
+    <div class="modal-footer">
+        <button type="submit" class="btn btn-success" name="button">ยืนยัน</button>
+        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
+    </div>
+</form>
+
 
                     </div>
                 </div>

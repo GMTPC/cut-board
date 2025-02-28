@@ -25,12 +25,11 @@ use Illuminate\Support\Facades\App; // ✅ เพิ่มบรรทัดน�
 
 class MainmenuController extends Controller
 {
-    public function mainmenu()
-    {
-        return view('mainmenu'); // ตรวจสอบว่ามีไฟล์ `resources/views/mainmenu.blade.php`
+    public function mainmenu() {
+        return view('mainmenu');
     }
     
-    public function manufacture($line = null) 
+    public function manufacture($line = null)
     {
         // ดึงข้อมูลพนักงานเฉพาะไลน์ หรือทั้งหมดถ้า $line เป็น null
         $employees = Employee::when($line, function ($query, $line) {
@@ -50,14 +49,32 @@ class MainmenuController extends Controller
             return $query->where('line', $line);
         })->get();
     
-        // ✅ 1. ดึง id ทั้งหมดที่ line ตรงกันใน workprocess_qc
-        $workProcessIDs = WorkProcessQC::where('line', $line)->pluck('id');
+        // เติม 'L' หน้า $line เพื่อให้ตรงกับค่าในตาราง wip_working (เช่น L1, L2, L3)
+        $prefixedLine = 'L' . $line;
+    
+        // ✅ ดึงข้อมูลจาก WipWorktime โดยใช้ `$prefixedLine`
+        $worked = WipWorktime::select('wwt_id', 'wwt_status', 'wwt_date')
+        ->where('wwt_line', '=', $line)
+        ->get();
+    
+    
+    
+        // ✅ 1. ดึง id ของ WorkProcessQC ที่มีค่า line เท่ากับ $line
+        //    พร้อมตรวจสอบว่าในตาราง wip_working ที่เกี่ยวข้องมี ww_line ตรงกับ $prefixedLine
+        $workProcessIDs = WorkProcessQC::join('wipbarcodes', 'workprocess_qc.id', '=', 'wipbarcodes.wip_working_id')
+            ->join('wip_working', 'wip_working.ww_id', '=', 'wipbarcodes.wip_working_id')
+            ->where('workprocess_qc.line', $line)
+            ->where('wip_working.ww_line', $prefixedLine)
+            ->distinct()
+            ->pluck('workprocess_qc.id');
     
         // ✅ 2. ค้นหา wip_working_id ใน wipbarcodes โดยใช้ id ที่ได้จาก workprocess_qc
         $totalWipAmount = Wipbarcode::whereIn('wip_working_id', $workProcessIDs)->sum('wip_amount');
     
         // ✅ 3. ดึงข้อมูล WorkProcessQC พร้อมเชื่อม product_type_emps
+        // เพิ่มเงื่อนไข where เพื่อกรอง record ที่ status_qc ไม่เท่ากับ "จบกะทำงาน"
         $workProcessQC = WorkProcessQC::where('line', $line)
+            ->where('status_qc', '<>', 'จบกะทำงาน')
             ->leftJoin('product_type_emps', 'workprocess_qc.id', '=', 'product_type_emps.pe_working_id')
             ->select(
                 'workprocess_qc.id',
@@ -66,7 +83,7 @@ class MainmenuController extends Controller
                 'workprocess_qc.status',
                 'workprocess_qc.date',
                 'product_type_emps.pe_type_name',
-                \DB::raw("$totalWipAmount as total_wip_amount") // ✅ รวมค่า wip_amount ทั้งหมด
+                \DB::raw("$totalWipAmount as total_wip_amount")
             )
             ->groupBy(
                 'workprocess_qc.id',
@@ -83,9 +100,9 @@ class MainmenuController extends Controller
             ->leftJoin('wipbarcodes', 'workprocess_qc.id', '=', 'wipbarcodes.wip_working_id')
             ->select(
                 'workprocess_qc.date',
-                \DB::raw('SUM(wipbarcodes.wip_amount) as total_wip_amount') // ✅ รวมค่า wip_amount ตามวันที่
+                \DB::raw('SUM(wipbarcodes.wip_amount) as total_wip_amount')
             )
-            ->groupBy('workprocess_qc.date') // ✅ จัดกลุ่มตามวันที่
+            ->groupBy('workprocess_qc.date')
             ->orderBy('workprocess_qc.date', 'asc')
             ->get();
     
@@ -96,10 +113,81 @@ class MainmenuController extends Controller
             $message = null;
         }
     
-        // ส่งข้อมูลไปยัง view
-        return view('manufacture', compact('groups', 'groupemps', 'lineheader', 'employees', 'line', 'message', 'workProcessQC', 'groupedData'))
-            ->with('model', view('model', compact('groups', 'groupemps', 'lineheader', 'employees', 'line', 'message', 'workProcessQC', 'groupedData')));
+        // **** คำนวณยอดต่าง ๆ สำหรับแต่ละ record ใน WorkProcessQC และรวมยอดทั้งหมด ****
+        // ประกาศตัวแปรสะสม
+        $totalWip = 0;
+        $totalFg  = 0;
+        $totalNg  = 0;
+        $totalHd  = 0;
+    
+        foreach ($workProcessQC as $wpqc) {
+            // คำนวณยอด WIP สำหรับ record ที่มี id ตรงกับ $wpqc->id
+            $wpqc->sumwipendtime = Wipbarcode::select(DB::raw('SUM(wip_amount) as wip_amount'))
+                ->join('wip_working', 'wip_working.ww_id', '=', 'wipbarcodes.wip_working_id')
+                ->where('wip_working.ww_line', $prefixedLine)
+                ->where('wip_working.ww_id', $wpqc->id)
+                ->value('wip_amount');
+    
+            // คำนวณยอด Finished Goods (FG)
+            $wpqc->sumfgendtime = Brand::select(DB::raw('SUM(brd_amount) as brd_amount'))
+                ->join('wip_working', 'wip_working.ww_id', '=', 'brands.brd_working_id')
+                ->where('wip_working.ww_line', $prefixedLine)
+                ->where('wip_working.ww_id', $wpqc->id)
+                ->value('brd_amount');
+    
+            // คำนวณยอด Not Good (NG)
+            $wpqc->sumngendtime = AmountNg::select(DB::raw('SUM(amg_amount) as amg_amount'))
+                ->join('wipbarcodes', 'wipbarcodes.wip_id', '=', 'amount_ngs.amg_wip_id')
+                ->join('wip_working', 'wip_working.ww_id', '=', 'wipbarcodes.wip_working_id')
+                ->where('wip_working.ww_line', $prefixedLine)
+                ->where('wip_working.ww_id', $wpqc->id)
+                ->value('amg_amount');
+    
+            // คำนวณยอด Hold Down (HD)
+            $wpqc->sumhdendtime = $wpqc->sumwipendtime - $wpqc->sumfgendtime - $wpqc->sumngendtime;
+    
+            // รวมค่าจากแต่ละ record
+            $totalWip += $wpqc->sumwipendtime;
+            $totalFg  += $wpqc->sumfgendtime;
+            $totalNg  += $wpqc->sumngendtime;
+            $totalHd  += $wpqc->sumhdendtime;
+        }
+    
+        // ส่งข้อมูลไปยัง view พร้อมตัวแปรยอดต่าง ๆ ที่คำนวณได้ รวมถึงยอดรวมทั้งหมด
+        return view('manufacture', compact(
+                'groups',
+                'groupemps',
+                'lineheader',
+                'employees',
+                'line',
+                'message',
+                'workProcessQC',
+                'groupedData',
+                'totalWip',
+                'totalFg',
+                'totalNg',
+                'totalHd',
+                'worked' // ✅ เพิ่มตัวแปร worked ส่งไปยัง View
+            ))
+            ->with('model', view('model', compact(
+                'groups',
+                'groupemps',
+                'lineheader',
+                'employees',
+                'line',
+                'message',
+                'workProcessQC',
+                'groupedData',
+                'totalWip',
+                'totalFg',
+                'totalNg',
+                'totalHd',
+                'worked' // ✅ เพิ่มตัวแปร worked ส่งไปยัง View
+            )));
     }
+    
+    
+    
     
     public function workgroup(Request $request)
     {
@@ -140,14 +228,14 @@ class MainmenuController extends Controller
                 'group' => $group,
                 'date' => $dateForWork,
                 'status' => 'กำลังคัด',
+                'status_qc' => 'เริ่มกะทำงาน'
             ]);
     
             $line = $request->input('ww_line'); // Line
             $id = $workprocess->id; // ID จาก work_process_qc
             $wwGroupFormatted = $line . $group;
-            $wwWwtIndex = DB::table('wip_working')->max('ww_wwt_index') + 1;
     
-            // ✅ บันทึกข้อมูลลงใน wip_working
+            // ✅ บันทึกข้อมูลลงใน wip_working (เว้น `ww_wwt_index` ไว้)
             DB::table('wip_working')->insert([
                 'ww_id' => $id,
                 'ww_line' => 'L' . $line,
@@ -156,10 +244,18 @@ class MainmenuController extends Controller
                 'ww_start_date' => $dateForWork,
                 'ww_lot_date' => $lotDate,
                 'ww_status' => 'W',
-                'ww_wwt_index' => $wwWwtIndex,
+                'ww_wwt_index' => 0, // ใช้ค่าเริ่มต้นเป็น 0
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+    
+            // ✅ คำนวณค่าของ ww_wwt_index และอัปเดตทีหลัง
+            $wwWwtIndex = DB::table('wip_working')->max('ww_wwt_index') + 1;
+           // ✅ ตั้งค่า ww_wwt_index เป็น 0 สำหรับรายการที่มี ww_id ตรงกับ $id
+DB::table('wip_working')
+->where('ww_id', $id)
+->update(['ww_wwt_index' => 0]);
+
     
             // ✅ เพิ่ม Log
             Log::info("Data for line $line and group $group has been saved successfully.");

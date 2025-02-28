@@ -746,6 +746,114 @@ $(document).ready(function() {
     });
 </script>
 
+<script>
+$(document).ready(function () {
+    $('#endworktimeform').on('submit', function (e) {
+        e.preventDefault();
+
+        let formData = $(this).serialize();
+        let line = $("#line").val();
+        let ww_id = $("#ww_id").val() || null;
+
+        // ✅ ตรวจสอบว่า line มีค่าหรือไม่
+        if (!line) {
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: "ไม่พบค่า Line กรุณาตรวจสอบ",
+                showConfirmButton: true
+            });
+            return;
+        }
+
+        // ✅ เปิด popup ล่วงหน้าเพื่อป้องกันการบล็อกของเบราว์เซอร์
+        let popupEndtime = window.open('', 'endtimeWindow', 'width=800,height=600');
+        let popupCSV = ww_id ? window.open('', 'csvDownloadWindow', 'width=600,height=400') : null;
+
+        if (!popupEndtime) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'เบราว์เซอร์บล็อก popup!',
+                text: 'กรุณาอนุญาตให้เว็บไซต์เปิดหน้าต่าง popup',
+                showConfirmButton: true
+            });
+            return;
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "/endworktime/" + line,
+            data: formData,
+            headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+            success: function (result) {
+                console.log("✅ Response Data:", result);
+
+                if (result.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'บันทึกเรียบร้อย',
+                        html: '<small style="color:green;">ถ้าไม่มีการเปลี่ยนแปลงโปรดรีเฟรชหน้าใหม่อีกครั้ง</small>',
+                        showConfirmButton: false,
+                        timer: 1500
+                    });
+
+                    if (result.wwt_index && result.workprocess_ids && result.workprocess_ids.length > 0) {
+                        let workprocessParam = result.workprocess_ids.join(',');
+                        let urlEndtime = `/endtimeinterface/${line}/${result.wwt_index}/${workprocessParam}`;
+
+                        console.log("✅ เปิดหน้าต่าง endtimeinterface:", urlEndtime);
+                        popupEndtime.location.href = urlEndtime;
+                        popupEndtime.focus();
+
+                        if (ww_id && popupCSV) {
+                            let urlCSV = `/csvendtime/${line}/${result.wwt_index}/${workprocessParam}`;
+                            console.log("✅ เปิดหน้าต่าง CSV:", urlCSV);
+                            popupCSV.location.href = urlCSV;
+                            popupCSV.focus();
+                        }
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: "ไม่พบ wwt_index หรือ Workprocess IDs กรุณาตรวจสอบระบบ",
+                            showConfirmButton: true
+                        });
+                        popupEndtime.close();
+                        if (popupCSV) popupCSV.close();
+                    }
+
+                    setTimeout(() => { location.reload(); }, 2000);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        text: result.error || "ไม่สามารถบันทึกข้อมูลได้",
+                        showConfirmButton: true
+                    });
+                    popupEndtime.close();
+                    if (popupCSV) popupCSV.close();
+                }
+            },
+            error: function (xhr) {
+                console.error("❌ AJAX Error:", xhr.responseText);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'บันทึกข้อมูลไม่สำเร็จ',
+                    text: xhr.responseJSON ? xhr.responseJSON.message : "เกิดข้อผิดพลาด กรุณาลองใหม่",
+                    showConfirmButton: true
+                });
+                popupEndtime.close();
+                if (popupCSV) popupCSV.close();
+            }
+        });
+    });
+});
+
+
+</script>
+
+
+
 
 
 
@@ -808,7 +916,6 @@ $(document).ready(function() {
        data-line="{{ $wpqc->line }}">
     </a>
 @endif
-
 
 
 

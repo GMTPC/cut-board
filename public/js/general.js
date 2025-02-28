@@ -1571,9 +1571,7 @@ $(document).ready(function(){
     });
 });
 
-$("#removelistng").click(function() {
-    $("#wipline1awaste td").remove();
-});
+
 
 $('#save-excel').each(function(){
     var showOrder = $('.showoderno').text().substr(12,2);

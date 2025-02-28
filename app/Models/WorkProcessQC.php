@@ -5,12 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Wipbarcode;
+
 class WorkProcessQC extends Model
 {
     use HasFactory;
 
     protected $table = 'workprocess_qc';
-    protected $fillable = ['line', 'group', 'date', 'status'];
+    protected $fillable = ['line', 'group', 'date', 'status', 'status_qc'];
 
     // เชื่อมกับ Wipbarcode
     public function wipBarcodes()
@@ -20,4 +21,3 @@ class WorkProcessQC extends Model
     }
     
 }
-

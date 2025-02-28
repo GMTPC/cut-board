@@ -6,18 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class WipWorktime extends Model
 {
-    // ชื่อตาราง
     protected $table = 'wip_worktimes';
 
-    // Primary Key
     protected $primaryKey = 'wwt_id';
 
-    // ป้องกันฟิลด์ที่ไม่อนุญาตให้ Mass Assignment
-    protected $guarded = [];
+    // เปิดใช้งาน timestamps และกำหนดชื่อฟิลด์ถ้าจำเป็น
+    public $timestamps = true;
 
-    // ฟิลด์ที่อนุญาตให้ทำ Mass Assignment
+    // หากต้องการอนุญาตให้ Mass Assignment สำหรับฟิลด์ที่ระบุ
     protected $fillable = [
-        'wwt_id',
         'wwt_index',
         'wwt_status',
         'wwt_line',
@@ -25,11 +22,4 @@ class WipWorktime extends Model
         'created_at',
         'updated_at',
     ];
-
-    // Timestamps (เปิดใช้งาน created_at, updated_at)
-    public $timestamps = true;
-
-    // กำหนดชื่อของ created_at และ updated_at หากใช้ชื่อที่ต่างจากค่าเริ่มต้น
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = 'updated_at';
 }

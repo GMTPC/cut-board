@@ -141,5 +141,18 @@ Route::get('/get-brd-status/{brd_lot}', function ($brd_lot) {
 });
 
 Route::get('/check-duplicate-barcode/{barcode}', [WipController::class, 'checkDuplicateBarcode']);
+Route::post('/endworktime/{line}', [WipController::class, 'endworktime'])->name('endworktime');
+Route::get('/endtimeinterface/{line}/{index}/{workprocess}',[WipController::class, 'endtimeinterface'])->name('endtimeinterface');
+Route::get('/csvendtime/{line}/{index}/{workprocess}', [WipController::class, 'csvendtime'])
+    ->where('workprocess', '.*') // ✅ อนุญาตให้รับ workprocess หลายค่า (รองรับ comma-separated values)
+    ->name('csvendtime');
+
+
+// ✅ Route ใหม่สำหรับดาวน์โหลด CSV โดยไม่ใช้ index
+Route::get('/dowloadcsvendtime/{line}/{wwt_id}', [WipController::class, 'dowloadcsvendtime'])
+->name('dowloadcsvendtime');
+
+Route::get('/workedprevious/{line}/{wwt_id}', [WipController::class, 'workedprevious'])->name('workedprevious');
+Route::get('/get-wip-id', [WipController::class, 'getWipId']);
 
 require __DIR__.'/auth.php';
