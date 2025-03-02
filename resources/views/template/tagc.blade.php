@@ -244,8 +244,8 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 <th class="wip-fix-fontsize-output" style="font-size:17px;">หมวดสินค้า</th>
                                                 <td style="font-size:17px;width:30%;">แผ่น C</td>
                                                 <td style="font-size:17px;width:20%;">ไลน์ผลิต</td>
-                                                <td style="font-size:17px;width:30%;">{{ substr($line,1,1) }}</td>
-                                            </tr>
+                                                <td style="font-size:17px;width:30%;">{{ $line }}</td>
+                                                </tr>
                                             <tr>
                                                 <th style="font-size:17px;" class="wip-fix-fontsize-output">Lot.</th>
                                                 <td style="font-size:17px;">{{ $tagc->wwd_lot }}</td>

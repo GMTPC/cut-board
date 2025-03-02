@@ -29,7 +29,7 @@
         'workprocess' => implode(',', $workprocess) // ส่งเป็น String
     ]) }}" 
     class="btn btn-warning btn-lg">
-        พิมพ์ TAG แผ่นเสีย (WWT ID: {{ $wwt_id }})
+        พิมพ์ TAG แผ่นเสีย 
     </a>
 @endforeach
 
