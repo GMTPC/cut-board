@@ -144,19 +144,56 @@ scratch. This page gets rid of all links and provides the needed markup only.
                 <div class="panel-body">
                         <div class="container-fluid">
                             <div class="text-center">
-                                <a href="{{ route('endtimeinterface',[$line,$ws_index]) }}" class="btn btn-warning fa fa-long-arrow-left" style="font-size:15px;"><b>  กลับไปก่อนหน้า</b></a>
+                            <a href="{{ route('endtimeinterface', [
+    'line' => session('prev_line', $line),
+    'index' => session('prev_index', 'default_index'),
+    'workprocess' => session('prev_workprocess', 'default_workprocess')
+]) }}" 
+   class="btn btn-warning fa fa-long-arrow-left" style="font-size:15px;">
+    <b> กลับไปก่อนหน้า</b>
+</a>
+
                                 <a id="printtagwipline1a" class="btn btn-success fa fa-print tagsumprint" data-toggle="tooltip" title="พิมพ์" style="font-size:15px;">  พิมพ์</a>
                             </div>
                             <div class="table-responsive">
                                 <div class="container">
                                     <div class="print-output">
-                                        @foreach ($tagc as $tagc)
                                             <input type="hidden" name="" id="output1aid" value="">
                                             <table style="width:100%;" class="table-output">
                                                 <tr>
-                                                    <td style="background-color: {{ $colorline }};" colspan="4" class="underlineheader">
+                                                    <td style="background-color: {{ $colorline }}; " colspan="4" class="underlineheader">
                                                         <div class="col-6-md">
-                                                            <u style="color:black;"><h2 style="text-align: left;" class="text-left"><b >{{ $thmonth[substr($tagc->wwd_lot,3,1)] }} {{ date('Y',strtotime(substr($tagc->wwd_lot,0,6))) }}</b></h2></u>
+
+                                                        @php
+    // ตรวจสอบว่ามีค่า $tagc->wwd_lot หรือไม่
+    $wwd_lot = isset($tagc->wwd_lot) ? $tagc->wwd_lot : '';
+
+    // ดึงค่าปี (2 ตัวแรก) และเดือน (2 ตัวถัดไป)
+    $yearPrefix = substr($wwd_lot, 0, 2); // 2 ตัวแรก -> ปี
+    $monthIndex = substr($wwd_lot, 2, 2); // ตัวที่ 3-4 -> เดือน
+
+    // แปลงปี ค.ศ. โดยใช้เลขศตวรรษปัจจุบัน (เช่น "25" -> 2025)
+    $currentYear = date('Y'); // ปีปัจจุบัน เช่น 2024
+    $century = substr($currentYear, 0, 2); // ดึง "20"
+    $year = (int)($century . $yearPrefix); // รวมเป็นปี ค.ศ.
+
+    // ตรวจสอบว่าค่าปีที่ได้อยู่ในช่วงที่ถูกต้อง (2000-2099)
+    if ($year < 2000) {
+        $year += 100;
+    }
+
+    // ตรวจสอบว่าเดือนอยู่ในช่วงที่ถูกต้อง (01-12)
+    $monthName = isset($thmonth[$monthIndex]) ? $thmonth[$monthIndex] : 'ไม่ทราบเดือน';
+@endphp
+
+<u style="color:black;">
+    <h2 style="text-align: left;" class="text-left">
+        <b>{{ $monthName }} {{ $year }}</b>
+    </h2>
+</u>
+
+
+
                                                         </div>
                                                         <div class="col-6-md">
                                                             <u style="color:black;"><h2 style="text-align: right;" class="text-right"><b >TAG แผ่น C</b></h2></u>
@@ -164,25 +201,42 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                     </td>
                                                 </tr>
                                                 <tr> <!--DNS1D::getBarcodeHTML('C128',1,35)-->
-                                                    <td colspan="4"><center>{!! DNS1D::getBarcodeHTML($tagc->wwd_barcode,'C128',1,35)  !!}</center><small>{!! substr($tagc->wwd_barcode,0,11).":".$sizearr[substr($tagc->wwd_barcode,9,2)].":".$tagc->wwd_lot !!}</small>
+                                                <td colspan="4">
+    <center>
+        {!! DNS1D::getBarcodeHTML($tagc->wwd_barcode, 'C128', 1, 35) !!}
+    </center>
+    <small>
+        {!! substr($tagc->wwd_barcode, 0, 11) . ":" . ($sizearr[substr($tagc->wwd_barcode, 9, 2)] ?? 'N/A') . ":" . $tagc->wwd_lot !!}
+    </small>
+    
+    <div class="fix-grid-left">
+        <small>{!! DNS1D::getBarcodeHTML(substr($tagc->wwd_barcode, 0, 11), 'C128', 1, 35) !!}</small>
+        <small>{!! substr($tagc->wwd_barcode, 0, 11) !!}</small>
+    </div>
+
+    <div class="fix-grid-right">
+        <small>{!! DNS1D::getBarcodeHTML($tagc->wwd_lot, 'C128', 1, 35) !!}</small>
+        <small>{{ $tagc->wwd_lot }}</small>
+    </div>
+</td>
                                                     </br></br>
-                                                    <div class="fix-row-center">
-                                                        <div class="fix-grid-left"><small>{!! DNS1D::getBarcodeHTML(substr($tagc->wwd_barcode,0,11),'C128',1,35) !!}</small><small>{!! substr($tagc->wwd_barcode,0,11) !!}</small></div>
-                                                        <div class="fix-grid-right"><small>{!! DNS1D::getBarcodeHTML($tagc->wwd_lot,'C128',1,35) !!}</small><small>{{ $tagc->wwd_lot }}</small></div>
+                                                   
+                                                   
                                                     </div>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <th style="background-color: {{ $colorline }};" class="wip-fix-fontsize-output"><b style="font-size:19px;">รหัสสินค้า</b></th>
-                                                <td style="background-color: {{ $colorline }};" colspan="3" class=""><b style="font-size:19px;">{{ substr($tagc->wwd_barcode,0,11) }}</b></td>
+                                                <th style="background-color:{{ $colorline }}; " class="wip-fix-fontsize-output"><b style="font-size:19px;">รหัสสินค้า</b></th>
+                                                <td style="background-color:{{ $colorline }}; " colspan="3" class=""><b style="font-size:19px;">{{ substr($tagc->wwd_barcode,0,11) }}</b></td>
                                             </tr>
                                             <tr>
-                                                <th style="background-color: {{ $colorline }};" class="wip-fix-fontsize-output"><b style="font-size:19px;">ชื่อสินค้า</b></th>
-                                                <td style="background-color: {{ $colorline }};" colspan="3" class=""><b style="font-size:19px;">แผ่น C {{ $tagc->pe_type_name }}</b></td>
+                                                <th style="background-color:{{ $colorline }}; ;" class="wip-fix-fontsize-output"><b style="font-size:19px;">ชื่อสินค้า</b></th>
+                                                <td style="background-color:{{ $colorline }};" colspan="3" class=""><b style="font-size:19px;">แผ่น C {{ $tagc->pe_type_name }} </b></td>
                                             </tr>
                                             <tr>
-                                                <th style="background-color: {{ $colorline }};" class="wip-fix-fontsize-output"><b style="font-size:19px;">เดือนผลิต</b></th>
-                                                <td style="background-color: {{ $colorline }};" colspan="3" class=""><b style="font-size:19px;">{{ $thmonth[substr($tagc->wwd_lot,3,1)] }} {{ date('Y',strtotime(substr($tagc->wwd_lot,0,6))) }}</b></td>
+                                                <th style="background-color:{{ $colorline }}; " class="wip-fix-fontsize-output"><b style="font-size:19px;">เดือนผลิต</b></th>
+                                                <td style="background-color:{{ $colorline }}; " colspan="3" class=""><b style="font-size:19px;">{{ $thmonth[str_pad(substr($tagc->wwd_lot,3,1), 2, '0', STR_PAD_LEFT)] ?? 'N/A' }}
+                                                </b></td>
                                             </tr>
                                             <tr>
                                                 <th class="wip-fix-fontsize-output" style="font-size:17px;">หมวดสินค้า</th>
@@ -194,11 +248,17 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 <th style="font-size:17px;" class="wip-fix-fontsize-output">Lot.</th>
                                                 <td style="font-size:17px;">{{ $tagc->wwd_lot }}</td>
                                                 <td style="font-size:17px;">เดือน ปี</td>
-                                                <td style="font-size:17px;">{{ $thmonth[substr($tagc->wwd_lot,3,1)] }} {{ date('Y',strtotime(substr($tagc->wwd_lot,0,6))) }}</td>
+                                                <td style="font-size:17px;">
+                                                {{ $thmonth[substr($tagc->wwd_lot, 2, 2)] ?? 'N/A' }} 
+{{ '20' . substr($tagc->wwd_lot, 0, 2) }}
+
+
+</td>
+
                                             </tr>
                                             <tr>
                                                 <th style="font-size:17px;" class="wip-fix-fontsize-output">จำนวน</th>
-                                                <td style="font-size:17px;">{{ $tagc->wwd_amount }}</td>
+                                                <td style="font-size:17px;">{{ $tagc->wwd_amount ?? 'N/A' }}</td>
                                                 <td style="font-size:17px;">ผู้ตรวจสอบ</td>
                                                 <td style="font-size:17px;"></td>
                                             </tr>
@@ -216,7 +276,6 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                             </tr>
                                         </table>
                                         </br></br></br>
-                                    @endforeach
                                 </div>
                             </div>
                         </div>

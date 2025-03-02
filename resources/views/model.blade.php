@@ -165,7 +165,7 @@
     <div class="text-center">
         <h4><b><u>ใส่จำนวน END TAPE</u></b></h4>
         <input style="width:30%;font-size:25px;" class="text-center" id="endtape" step="0.0001" type="number" name="wz_amount" placeholder="ใส่จำนวน END TAPE" min="1" required>
-        <input type="hidden" name="wwd_amount" id="wwd_amount" value="0">
+        <input type="hidden" name="wwd_amount" id="wwd_amount" value="{{ $totalNG }}">
         <input type="hidden" name="wwt_status" value="1">
     </div>
     

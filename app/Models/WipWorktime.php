@@ -7,13 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class WipWorktime extends Model
 {
     protected $table = 'wip_worktimes';
-
     protected $primaryKey = 'wwt_id';
-
-    // เปิดใช้งาน timestamps และกำหนดชื่อฟิลด์ถ้าจำเป็น
     public $timestamps = true;
 
-    // หากต้องการอนุญาตให้ Mass Assignment สำหรับฟิลด์ที่ระบุ
     protected $fillable = [
         'wwt_index',
         'wwt_status',
@@ -22,4 +18,10 @@ class WipWorktime extends Model
         'created_at',
         'updated_at',
     ];
+
+    // 🔹 เชื่อมกับ WipWasteDetail (หนึ่ง WipWorktime มีหลาย WipWasteDetail)
+    public function wasteDetails()
+    {
+        return $this->hasMany(WipWasteDetail::class, 'wwt_id', 'wwt_id');
+    }
 }

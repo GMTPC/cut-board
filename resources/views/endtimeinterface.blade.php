@@ -21,7 +21,18 @@
             </div>
             <div class="col-xs-6">
                 <div class="text-left">
-                    <a href="" class="btn btn-warning btn-lg" name="button">พิมพ์ TAG แผ่นเสีย</a>
+                @foreach ($wwt_ids as $wwt_id)
+    <a href="{{ route('tagc', [
+        'line' => $line,
+        'wwt_id' => $wwt_id,
+        'index' => $index,
+        'workprocess' => implode(',', $workprocess) // ส่งเป็น String
+    ]) }}" 
+    class="btn btn-warning btn-lg">
+        พิมพ์ TAG แผ่นเสีย (WWT ID: {{ $wwt_id }})
+    </a>
+@endforeach
+
                 </div>
             </div>
         </div>

@@ -162,24 +162,49 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                         </div> </br>
                                                     </td>
                                                 </tr>
-                                                <td colspan="4">
-    <center>
-        {!! DNS1D::getBarcodeHTML("123456789", 'C128', 2, 35) !!}
-    </center> 
-    <small></small>
-    <div class="fix-row-center">
-    <div class="fix-grid-left">
-        <small>{!! DNS1D::getBarcodeHTML("123456789", 'C128', 1, 35) !!}</small>
-        <small>123456789</small>
-    </div>
-    <div class="fix-grid-right">
-        <small>{!! DNS1D::getBarcodeHTML("LOT12345", 'C128', 1, 35) !!}</small>
-        <small>LOT12345</small>
-    </div>
-</div>
-</td>
+                                                @foreach ($wipHoldings as $taghd)
+<tr>
+    @if ($wsHoldingAmount == 10)
+        <td colspan="4">
+            <center>
+                {!! DNS1D::getBarcodeHTML(substr($taghd->wh_barcode, 0, 21)."0".substr($taghd->wh_barcode, 21, 2), 'C128', 1, 35) !!}
+            </center> 
+            <small>
+    {!! substr($taghd->wh_barcode, 0, 11) . ":" . 
+        (isset($sizearr[$peTypeCode]) ? $sizearr[$peTypeCode] : 'N/A') . 
+        ":" . $taghd->wh_lot . $wsHoldingAmount !!}
+</small>
 
-</br>
+    @else
+        <td colspan="4">
+            <center>
+                {!! DNS1D::getBarcodeHTML($taghd->wh_barcode, 'C128', 1, 35) !!}
+            </center> 
+            <small>
+    {!! substr($taghd->wh_barcode, 0, 11) . ":" . 
+        (isset($sizearr[substr($peTypeCode, 2, 2)]) ? $sizearr[substr($peTypeCode, 2, 2)] : 'N/A') . 
+        ":" . $taghd->wh_lot . $wsHoldingAmount !!}
+</small>
+
+
+
+    @endif
+    <br/>
+    <div class="fix-row-center">
+        <div class="fix-grid-left">
+            <small>{!! DNS1D::getBarcodeHTML(substr($taghd->wh_barcode, 0, 11), 'C128', 1, 35) !!}</small>
+            <small>{!! substr($taghd->wh_barcode, 0, 11) !!}</small>
+        </div>
+        <div class="fix-grid-right">
+            <small>{!! DNS1D::getBarcodeHTML($taghd->wh_lot, 'C128', 1, 35) !!}</small>
+            <small>{{ $taghd->wh_lot }}</small>
+        </div>
+    </div>
+</td>
+</tr>
+@endforeach
+
+
 
 
 
@@ -289,22 +314,47 @@ scratch. This page gets rid of all links and provides the needed markup only.
                                                 </div> </br>
                                             </td>
                                         </tr>
-                                        <td colspan="4">
-    <center>
-        {!! DNS1D::getBarcodeHTML("123456789", 'C128', 2, 35) !!}
-    </center> 
-    <small></small>
+                                        @foreach ($wipHoldings as $taghd)
+<tr>
+    @if ($wsHoldingAmount == 10)
+        <td colspan="4">
+            <center>
+                {!! DNS1D::getBarcodeHTML(substr($taghd->wh_barcode, 0, 21)."0".substr($taghd->wh_barcode, 21, 2), 'C128', 1, 35) !!}
+            </center> 
+            <small>
+    {!! substr($taghd->wh_barcode, 0, 11) . ":" . 
+        (isset($sizearr[$peTypeCode]) ? $sizearr[$peTypeCode] : 'N/A') . 
+        ":" . $taghd->wh_lot . $wsHoldingAmount !!}
+</small>
+
+    @else
+        <td colspan="4">
+            <center>
+                {!! DNS1D::getBarcodeHTML($taghd->wh_barcode, 'C128', 1, 35) !!}
+            </center> 
+            <small>
+    {!! substr($taghd->wh_barcode, 0, 11) . ":" . 
+        (isset($sizearr[substr($peTypeCode, 2, 2)]) ? $sizearr[substr($peTypeCode, 2, 2)] : 'N/A') . 
+        ":" . $taghd->wh_lot . $wsHoldingAmount !!}
+</small>
+
+
+
+    @endif
+    <br/>
     <div class="fix-row-center">
-    <div class="fix-grid-left">
-        <small>{!! DNS1D::getBarcodeHTML("123456789", 'C128', 1, 35) !!}</small>
-        <small>123456789</small>
+        <div class="fix-grid-left">
+            <small>{!! DNS1D::getBarcodeHTML(substr($taghd->wh_barcode, 0, 11), 'C128', 1, 35) !!}</small>
+            <small>{!! substr($taghd->wh_barcode, 0, 11) !!}</small>
+        </div>
+        <div class="fix-grid-right">
+            <small>{!! DNS1D::getBarcodeHTML($taghd->wh_lot, 'C128', 1, 35) !!}</small>
+            <small>{{ $taghd->wh_lot }}</small>
+        </div>
     </div>
-    <div class="fix-grid-right">
-        <small>{!! DNS1D::getBarcodeHTML("LOT12345", 'C128', 1, 35) !!}</small>
-        <small>LOT12345</small>
-    </div>
-</div>
 </td>
+</tr>
+@endforeach
 
 </br>
                                     <tr>

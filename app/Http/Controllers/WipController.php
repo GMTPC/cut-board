@@ -867,6 +867,7 @@ public function taghd($line, $work_id)
 {
     // ✅ ตัดอักษร 'L' ออกจาก `$line` (เช่น 'L1' -> '1')
     $line_con = str_replace('L', '', $line);
+    $sizearr = $this->productsize();
 
     // ✅ กำหนดสีของไลน์
     $lineColor = $this->colorline($line_con);
@@ -948,6 +949,9 @@ public function taghd($line, $work_id)
         'brdChecker'       => $brdChecker,
         'wsHoldingAmount'  => $wsHoldingAmount, 
         'wsNgAmount'       => $wsNgAmount,
+        'peTypeCode' => $peTypeCode, // ✅ ส่ง `$peTypeCode` ไปด้วย
+        'sizearr' => $sizearr, // ✅ ส่ง `$sizearr` ไปที่ Blade
+
     ]);
 }
 
@@ -955,7 +959,10 @@ public function taghd($line, $work_id)
 
 public function colorline($line_con)
 {
-    switch ($line_con) {
+    // ✅ แปลงค่าให้เป็นตัวพิมพ์ใหญ่ และลบ 'L' ถ้ามี
+    $cleanLine = strtoupper(str_replace('L', '', $line_con));
+
+    switch ($cleanLine) {
         case '1':
             return '#92d050'; // สีเขียวอ่อน
         case '2':
@@ -966,6 +973,7 @@ public function colorline($line_con)
             return ''; // ไม่มีสี
     }
 }
+
 
 
 public function endprocess(Request $request, $line, $work_id)
@@ -1090,10 +1098,22 @@ public function endprocess(Request $request, $line, $work_id)
 
 
 public function thaimonth(){
-
-    $thmonth = Array("","มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤษจิกายน","ธันวาคม");
-    return $thmonth;
+    return [
+        "01" => "มกราคม",
+        "02" => "กุมภาพันธ์",
+        "03" => "มีนาคม",
+        "04" => "เมษายน",
+        "05" => "พฤษภาคม",
+        "06" => "มิถุนายน",
+        "07" => "กรกฎาคม",
+        "08" => "สิงหาคม",
+        "09" => "กันยายน",
+        "10" => "ตุลาคม",
+        "11" => "พฤศจิกายน",
+        "12" => "ธันวาคม"
+    ];
 }
+
 public function typeofproduct(){
 
     $typearr = [
@@ -1554,15 +1574,39 @@ public function qrcodeinterface($qrcode)
 
     public function endtimeinterface(Request $request, $line, $index, $workprocess)
     {
+        // ✅ ตรวจสอบว่ามีค่า $workprocess หรือไม่
+        if (empty($workprocess)) {
+            return back()->with('error', 'ไม่พบค่า workprocess');
+        }
+    
         // ✅ แปลงค่าที่ส่งมาให้เป็น Array ถ้ามีหลายค่า
         $workprocessIds = explode(',', $workprocess);
     
+        // ✅ ตรวจสอบว่า $workprocessIds แปลงถูกต้องหรือไม่
+        if (empty($workprocessIds) || count($workprocessIds) == 0) {
+            return back()->with('error', 'ไม่พบ workprocess ที่ถูกต้อง');
+        }
+    
+        // ✅ ค้นหา WorkprocessTemp ตาม line และ workprocess_id ที่ตรงกัน
+        $wwt_ids = WorkprocessTemp::where('line', $line)
+            ->whereIn('workprocess_id', $workprocessIds)
+            ->pluck('wwt_id')
+            ->unique()
+            ->values(); 
+    
+        // ✅ ตรวจสอบว่า $wwt_ids มีค่าหรือไม่
+        if ($wwt_ids->isEmpty()) {
+            return back()->with('error', 'ไม่พบ WWT ID ที่ตรงกับเงื่อนไข');
+        }
+    
         return view('endtimeinterface', [
-            'line'         => $line,
-            'index'        => $index,
-            'workprocess'  => $workprocessIds // ✅ ส่งค่าเป็น Array ไปที่ View
+            'line'        => $line,
+            'index'       => $index,
+            'workprocess' => $workprocessIds,
+            'wwt_ids'     => $wwt_ids
         ]);
     }
+    
     
     
     
@@ -1797,11 +1841,12 @@ return response()->json(['error' => 'Product type not found'], 404);
             $tagc = new WipWasteDetail();
             $tagc->wwd_line = $lineFormatted;
             $tagc->wwd_index = $checktimeindex;
+            $tagc->wwt_id = $wwt_id;
             $wwd_amount = $request->wwd_amount;
     
             // ✅ ตรวจสอบค่า wwd_amount ก่อนสร้าง barcode
             $amountFormatted = str_pad($wwd_amount, 3, '0', STR_PAD_LEFT);
-            $tagc->wwd_barcode = 'B' . substr($lineFormatted, 1, 1) . '09-' . $getproduct->pe_type_code . $lotc . $amountFormatted;
+            $tagc->wwd_barcode = 'B' . $line . '09-' . $getproduct->pe_type_code . $lotc . $amountFormatted;
     
             $tagc->wwd_lot = $lotc;
             $tagc->wwd_amount = $wwd_amount;
@@ -1834,6 +1879,8 @@ return response()->json(['error' => 'Product type not found'], 404);
 
     public function workedprevious($line, $wwt_id)
     {
+        $cleanLine = str_starts_with($line, 'L') ? substr($line, 1) : $line;
+
         // ✅ ตรวจสอบและตัดตัวอักษร 'L' ออกจาก $line (ถ้ามี)
         $cleanLine = str_starts_with($line, 'L') ? substr($line, 1) : $line;
     
@@ -1861,7 +1908,7 @@ return response()->json(['error' => 'Product type not found'], 404);
             $workProcessQC = collect();
         }
     
-        return view('workedprevious', compact('line', 'wwt_id', 'workProcessQC'));
+        return view('workedprevious', compact('line', 'wwt_id', 'workProcessQC','cleanLine'));
     }
     public function getWipId(Request $request)
     {
@@ -1884,7 +1931,87 @@ return response()->json(['error' => 'Product type not found'], 404);
         ]);
     }
     
-
+    public function tagc(Request $request, $line, $wwt_id)
+    {
+        $thmonth = $this->thaimonth();
+        $typearr = $this->typeofproduct();
+        $sizearr = $this->productsize();
+        $thicknessarr = $this->thickness();
+        $colorline = $this->colorline($line);
+    
+        // ✅ แปลงค่า line -> ถอดตัวอักษร 'L' ออก
+        $cleanLine = strtoupper($line);
+        if (str_starts_with($cleanLine, 'L')) {
+            $cleanLine = substr($cleanLine, 1);
+        }
+    
+        // ✅ ค้นหา workprocess_id ที่ตรงกับ line และ wwt_id
+        $workprocessIds = WorkprocessTemp::where('line', $cleanLine)
+            ->where('wwt_id', $wwt_id)
+            ->pluck('workprocess_id')
+            ->toArray();
+    
+        // ✅ ค้นหา wwt_index ที่ตรงกับ wwt_id และ wwt_line (ไม่มี L)
+        $wwtIndex = WipWorktime::where('wwt_id', $wwt_id)
+            ->where('wwt_line', $cleanLine)
+            ->value('wwt_index'); // ดึงค่าเดียว
+    
+        // ✅ ดึงข้อมูลจาก WorkProcessQC
+        $tagc = WipWasteDetail::where('wwt_id', $wwt_id)
+            ->where('wwd_line', $cleanLine)
+            ->first();
+    
+        if (!empty($workprocessIds)) {
+            $workProcessQC = WorkProcessQC::whereIn('id', $workprocessIds)
+                ->where('line', $cleanLine)
+                ->leftJoin('product_type_emps', 'workprocess_qc.id', '=', 'product_type_emps.pe_working_id')
+                ->select(
+                    'workprocess_qc.id',
+                    'workprocess_qc.line',
+                    'workprocess_qc.group',
+                    'workprocess_qc.status',
+                    'workprocess_qc.date',
+                    'product_type_emps.pe_type_name'
+                )
+                ->get()
+                ->unique('id');
+        } else {
+            $workProcessQC = collect();
+        }
+    
+        // ✅ ตรวจสอบค่าที่ได้
+        if (!$wwtIndex) {
+            return back()->with('error', 'ไม่พบ wwt_index ที่ตรงกัน');
+        }
+    
+        if (empty($workprocessIds)) {
+            return back()->with('error', 'ไม่พบ workprocess_id ที่ตรงกัน');
+        }
+    
+        // ✅ เก็บค่าก่อนหน้า (line, index, workprocess) ลงใน Session (ถ้ามี)
+        session([
+            'prev_line' => $cleanLine,
+            'prev_index' => $wwtIndex, // ใช้ค่าที่หาได้จาก WipWorktime
+            'prev_workprocess' => implode(',', $workprocessIds) // แปลงเป็น String
+        ]);
+    
+        return view('template.tagc', [
+            'thmonth'       => $thmonth,
+            'typearr'       => $typearr,
+            'sizearr'       => $sizearr,
+            'thicknessarr'  => $thicknessarr,
+            'colorline'     => $colorline,
+            'line'          => $line,
+            'wwt_id'        => $wwt_id,
+            'workProcessQC' => $workProcessQC,
+            'tagc'          => $tagc
+        ]);
+    }
+    
+    
+    
+    
+    
 
 
 

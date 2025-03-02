@@ -155,4 +155,7 @@ Route::get('/dowloadcsvendtime/{line}/{wwt_id}', [WipController::class, 'dowload
 Route::get('/workedprevious/{line}/{wwt_id}', [WipController::class, 'workedprevious'])->name('workedprevious');
 Route::get('/get-wip-id', [WipController::class, 'getWipId']);
 
+Route::get('/get-line', [MainmenuController::class, 'getLine'])->name('getLine');
+Route::get('/tagc/{line}/{wwt_id}', [WipController::class, 'tagc'])->name('tagc');
+
 require __DIR__.'/auth.php';

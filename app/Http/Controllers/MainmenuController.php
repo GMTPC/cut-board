@@ -435,6 +435,17 @@ public function deleteWorkProcess(Request $request, $id)
         return response()->json(['message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()], 500, [], JSON_UNESCAPED_UNICODE);
     }
 }
+public function getLine(Request $request)
+{
+    // ✅ ดึงค่า line จาก session หรือจาก request
+    $line = session('line'); // หรือ $request->input('line');
+
+    if (!$line) {
+        return response()->json(['error' => 'Line not found'], 400);
+    }
+
+    return response()->json(['line' => $line]);
+}
 
 
     }

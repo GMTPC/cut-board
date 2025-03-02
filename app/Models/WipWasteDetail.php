@@ -9,22 +9,23 @@ class WipWasteDetail extends Model
 {
     use HasFactory;
 
-    // กำหนดชื่อของตาราง
     protected $table = 'wip_waste_detail';
-
-    // กำหนด Primary Key
     protected $primaryKey = 'wwd_id';
-
-    // เปิดใช้งาน timestamps
     public $timestamps = true;
 
-    // กำหนดฟิลด์ที่อนุญาตให้ทำ Mass Assignment
     protected $fillable = [
         'wwd_line',
         'wwd_index',
         'wwd_barcode',
         'wwd_lot',
         'wwd_amount',
-        'wwd_date'
+        'wwd_date',
+        'wwt_id', // ✅ เพิ่ม wwt_id ให้สามารถใช้ Mass Assignment ได้
     ];
+
+    // 🔹 เชื่อมกับ WipWorktime (แต่ละ WipWasteDetail มี WipWorktime หนึ่งรายการ)
+    public function worktime()
+    {
+        return $this->belongsTo(WipWorktime::class, 'wwt_id', 'wwt_id');
+    }
 }
