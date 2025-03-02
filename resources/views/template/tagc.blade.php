@@ -206,8 +206,10 @@ scratch. This page gets rid of all links and provides the needed markup only.
         {!! DNS1D::getBarcodeHTML($tagc->wwd_barcode, 'C128', 1, 35) !!}
     </center>
     <small>
-        {!! substr($tagc->wwd_barcode, 0, 11) . ":" . ($sizearr[substr($tagc->wwd_barcode, 9, 2)] ?? 'N/A') . ":" . $tagc->wwd_lot !!}
+        {!! substr($tagc->wwd_barcode, 0, 11) . ":" .($sizearr[substr($tagc->wwd_barcode, 7, 2)] ?? 'N/A') . ":" . $tagc->wwd_lot !!}
     </small>
+    
+
     
     <div class="fix-grid-left">
         <small>{!! DNS1D::getBarcodeHTML(substr($tagc->wwd_barcode, 0, 11), 'C128', 1, 35) !!}</small>
