@@ -891,7 +891,7 @@ $(document).ready(function () {
                 <td class="text-center">{{ $index + 1 }}</td> {{-- ลำดับที่ (loop index) --}}
                 <td class="text-center">{{ $wpqc->line }}{{ $wpqc->group }}</td> {{-- ดึง line --}}
                 <td class="text-center">{{ $wpqc->pe_type_name ?? '-' }}</td>
-                <td class="text-center">
+                <td class="text-center"> 
     @if ($wpqc->status == 'กำลังคัด')
         <span class="text-success"><b>{{ $wpqc->status }}</b></span>
     @else
@@ -1340,7 +1340,49 @@ $(document).ready(function () {
     </div>
 </div>
 
+<div class="modal fade" id="notiwipperday" tabindex="-1" role="dialog" aria-labelledby="Wipperday" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title" id="Wipperday"><b>สรุปข้อมูลต่อวัน</b></h3>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <div class="table-responsive">
+                      
+<table id="wipperdaytable" class="table table-striped table-bordered display">
+    <thead>
+        <tr>
+            <th class="text-center">วันที่</th>
+            <th class="text-center">จำนวน</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            
+        @foreach($groupedData as $data)
+        <tr>
+            <td class="text-center">{{ \Carbon\Carbon::parse($data->date)->format('d-m-Y') }}</td> {{-- ✅ แสดงวันที่ --}}
+            <td class="text-center">{{ $data->total_wip_amount ?? 0 }}</td> {{-- ✅ แสดงผลรวม wip_amount --}}
+        </tr>
+        @endforeach
+    </tbody>
+</table>  
+        </tr>
+    </tbody>
+</table>
 
+
+
+
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
 <!-- จบ process modal ของจัดกลุ่มพนักงาน -->
 <!-- รายการงานคัดบอร์ดที่ผ่านมา -->

@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
+@include('model')
+
 <!--<meta HTTP-EQUIV="Refresh"  CONTENT="3600">-->
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -2073,40 +2075,7 @@ $(document).ready(function () {
 </div>
 
 <!-- Modal ลบข้อมูลบาร์โค้ด -->
-<div class="modal fade" id="notideleteline1" tabindex="-1" role="dialog" aria-labelledby="DeleteBarcodeLine1" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title" id="DeleteBarcodeLine1">ลบข้อมูลบาร์โค้ด</h3>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form id="deletfieldline1" method="POST">
-    {{ csrf_field() }}
-    {{ method_field('DELETE') }}
 
-    <input type="hidden" name="workid" id="workid" value="{{ $work_id }}">
-    <input type="hidden" name="id" id="delete_line1id" value="{{ $wipBarcodes->last()->wip_id ?? 0 }}">
-
-    <div class="modal-body">
-        <h4 style="color:red;">
-            คุณต้องการลบข้อมูลบาร์โค้ด 
-            <b style="color:red;"><u>{{ $wipBarcodes->last()->wip_barcode ?? '-' }}</u></b>
-            หรือไม่?
-        </h4>
-    </div>
-
-    <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
-        <button type="submit" class="btn btn-danger">ลบบาร์โค้ด</button>
-    </div>
-</form>
-
-
-        </div>
-    </div>
-</div>
 
 
 
@@ -2622,6 +2591,41 @@ $(document).ready(function () {
     </div>
 </div>
 
+
+<div class="modal fade" id="notideleteline1" tabindex="-1" role="dialog" aria-labelledby="DeleteBarcodeLine1" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="DeleteBarcodeLine1">ลบข้อมูลบาร์โค้ด</h3>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="deletfieldline1" method="POST">
+    {{ csrf_field() }}
+    {{ method_field('DELETE') }}
+
+    <input type="hidden" name="workid" id="workid" value="{{ $work_id }}">
+    <input type="hidden" name="id" id="delete_line1id" value="{{ $wipBarcodes->last()->wip_id ?? 0 }}">
+
+    <div class="modal-body">
+        <h4 style="color:red;">
+            คุณต้องการลบข้อมูลบาร์โค้ด 
+            <b style="color:red;"><u>{{ $wipBarcodes->last()->wip_barcode ?? '-' }}</u></b>
+            หรือไม่?
+        </h4>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">ปิด</button>
+        <button type="submit" class="btn btn-danger">ลบบาร์โค้ด</button>
+    </div>
+</form>
+
+
+        </div>
+    </div>
+</div>
 
 <script type="text/javascript">
 

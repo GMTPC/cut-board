@@ -153,37 +153,40 @@ class MainmenuController extends Controller
             $totalHd  += $wpqc->sumhdendtime;
         }
     
-        // ส่งข้อมูลไปยัง view พร้อมตัวแปรยอดต่าง ๆ ที่คำนวณได้ รวมถึงยอดรวมทั้งหมด
         return view('manufacture', compact(
-                'groups',
-                'groupemps',
-                'lineheader',
-                'employees',
-                'line',
-                'message',
-                'workProcessQC',
-                'groupedData',
-                'totalWip',
-                'totalFg',
-                'totalNg',
-                'totalHd',
-                'worked' // ✅ เพิ่มตัวแปร worked ส่งไปยัง View
-            ))
-            ->with('model', view('model', compact(
-                'groups',
-                'groupemps',
-                'lineheader',
-                'employees',
-                'line',
-                'message',
-                'workProcessQC',
-                'groupedData',
-                'totalWip',
-                'totalFg',
-                'totalNg',
-                'totalHd',
-                'worked' // ✅ เพิ่มตัวแปร worked ส่งไปยัง View
-            )));
+            'groups',
+            'groupemps',
+            'lineheader',
+            'employees',
+            'line',
+            'message',
+            'workProcessQC',
+            'groupedData',
+            'totalWip',
+            'totalFg',
+            'totalNg',
+            'totalHd',
+            'worked' // ✅ ต้องมีตัวแปรนี้
+        ))->with('model', view('model', compact(
+            'groups',
+            'groupemps',
+            'lineheader',
+            'employees',
+            'line',
+            'message',
+            'workProcessQC',
+            'groupedData',
+            'totalWip',
+            'totalFg',
+            'totalNg',
+            'totalHd',
+            'worked' // ✅ ต้องมีตัวแปรนี้
+        ))->render());
+        
+        
+        
+        
+        
     }
     
     

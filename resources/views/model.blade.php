@@ -2,44 +2,7 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
 <!-- Modal: notiwipperday -->
-<div class="modal fade" id="notiwipperday" tabindex="-1" role="dialog" aria-labelledby="Wipperday" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="Wipperday"><b>สรุปข้อมูลต่อวัน</b></h3>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                        <div class="table-responsive">
-                      
-<table id="wipperdaytable" class="table table-striped table-bordered display">
-    <thead>
-        <tr>
-            <th class="text-center">วันที่</th>
-            <th class="text-center">จำนวน</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($groupedData as $data)
-        <tr>
-            <td class="text-center">{{ \Carbon\Carbon::parse($data->date)->format('d-m-Y') }}</td> {{-- ✅ แสดงวันที่ --}}
-            <td class="text-center">{{ $data->total_wip_amount ?? 0 }}</td> {{-- ✅ แสดงผลรวม wip_amount --}}
-        </tr>
-        @endforeach
-    </tbody>
-</table>
 
-
-
-
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
-                    </div>
-                </div>
-            </div>
-        </div>
 
 <!-- Modal: notiallworked -->
 <div class="modal fade" id="notiallworked" tabindex="-1" role="dialog" aria-labelledby="AllWorked" aria-hidden="true">
@@ -63,6 +26,7 @@
                             </tr>
                         </thead>
                         <tbody>
+                        @isset($worked)
     @foreach($worked as $index => $work)
         <tr>
             <td class="text-center">{{ $index + 1 }}</td>
@@ -76,7 +40,8 @@
 </td>
 
         </tr>
-    @endforeach
+        @endforeach
+@endisset
 </tbody>
 
 
@@ -131,14 +96,16 @@
     $totalHD  = 0;
 @endphp
 
-@foreach($workProcessQC as $wpqc)
+@isset($workProcessQC)
+    @foreach($workProcessQC as $wpqc)
     @php
         $totalWIP += $wpqc->sumwipendtime;
         $totalFG  += $wpqc->sumfgendtime;
         $totalNG  += $wpqc->sumngendtime;
         $totalHD  += $wpqc->sumhdendtime;
     @endphp
-@endforeach
+    @endforeach
+@endisset
 
 <div class="col-md-3 col-xs-3">
     <h4 class="text-center">{{ $totalWIP }}</h4>
@@ -179,4 +146,5 @@
                     </div>
                 </div>
         </div>
+        
         
