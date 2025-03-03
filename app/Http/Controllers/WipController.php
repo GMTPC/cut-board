@@ -2008,7 +2008,9 @@ return response()->json(['error' => 'Product type not found'], 404);
         ]);
     }
     
-    
+    public function checkcsvtobplus() {
+        return view ('checkcsvtobplus');
+    }
     
     
     

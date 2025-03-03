@@ -157,5 +157,6 @@ Route::get('/get-wip-id', [WipController::class, 'getWipId']);
 
 Route::get('/get-line', [MainmenuController::class, 'getLine'])->name('getLine');
 Route::get('/tagc/{line}/{wwt_id}', [WipController::class, 'tagc'])->name('tagc');
+Route::get('/checkcsvtobplus', [WipController::class, 'checkcsvtobplus'])->name('checkcsvtobplus');
 
 require __DIR__.'/auth.php';

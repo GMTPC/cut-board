@@ -121,7 +121,7 @@ function openPopup(url) {
                             {{ $wpqc->status == 'กำลังคัด' ? 'กำลังคัด' : 'จบการทำงาน' }}
                         </b>
                     </td>
-                    <td class="text-center">{{ date('d-m-Y H:i', strtotime($wpqc->date)) }}</td>
+                    <td class="text-center">{{ date('d-m-Y', strtotime($wpqc->date)) }}</td>
                     <td class="text-center">
                     <a href="#" 
    class="btn btn-success btn-sm fas fa-file-import btn-navigate-datawip"

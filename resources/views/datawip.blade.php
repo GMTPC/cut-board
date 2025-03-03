@@ -408,19 +408,34 @@ $(document).ready(function() {
 
 <script>
 $(document).ready(function () {
+    // แก้ปัญหา dropdown ไม่พับเมื่อเลือกค่าครั้งที่สอง
+    $('.selectpicker').on('changed.bs.select', function () {
+        $(this).selectpicker('toggle'); // บังคับให้ dropdown ปิด
+    });
+
     // เปิด Modal และตั้งค่า
     $(document).on('click', '.open-edit-modal', function () {
         const workingId = $(this).data('working-id');
+        const wipBarcode = $(this).data('barcode'); // ดึงค่า wip_barcode
+
+        console.log("🆔 Working ID:", workingId);
+        console.log("📌 WIP Barcode:", wipBarcode);
+
+        // อัปเดตค่า Working ID และ Barcode ลงใน Modal
         $('#empwipid').val(workingId);
+        $('#empwipbarcode').text(wipBarcode); // แสดง Barcode ใน UI
         $('#editempwipform').attr('action', `/update-empgroup/${workingId}`);
+        
         $('#editempwip').modal('show');
     });
 
     // ปิด Modal และรีเซ็ตค่า
     $('#editempwip').on('hidden.bs.modal', function () {
-        $('#wip_empgroup_id_1 option').prop('selected', false); // ล้างตัวเลือกทั้งหมด
-        $('#wip_empgroup_id_1').val('0'); // ตั้งค่าเริ่มต้น
-        $('#wip_empgroup_id_1').selectpicker('refresh'); // รีเฟรช Dropdown
+        $('#wip_empgroup_id_1 option').prop('selected', false);
+        $('#wip_empgroup_id_1').val('0');
+        $('#wip_empgroup_id_1').selectpicker('refresh');
+
+        $('#empwipbarcode').text(''); // เคลียร์ค่า Barcode เมื่อปิด Modal
     });
 
     // ส่งฟอร์มด้วย AJAX
@@ -428,7 +443,7 @@ $(document).ready(function () {
         e.preventDefault();
 
         const form = $(this)[0];
-        const formData = new FormData(form); // ใช้ FormData เพื่อให้รองรับ `_method=PUT`
+        const formData = new FormData(form);
         const actionUrl = $(this).attr('action');
 
         console.log("📤 ส่งข้อมูลไปที่:", actionUrl);
@@ -436,10 +451,10 @@ $(document).ready(function () {
 
         $.ajax({
             url: actionUrl,
-            type: 'POST', // ใช้ POST + `_method=PUT`
+            type: 'POST',
             data: formData,
-            processData: false, // สำคัญ: ปิด processData เพื่อให้ส่ง `FormData` ได้ถูกต้อง
-            contentType: false, // สำคัญ: ปิด contentType
+            processData: false,
+            contentType: false,
             headers: {
                 "X-CSRF-TOKEN": document.querySelector('input[name="_token"]').value
             },
@@ -474,7 +489,6 @@ $(document).ready(function () {
     });
 });
 </script>
-
 
 <script>
 $(document).ready(function () {
@@ -1631,18 +1645,19 @@ $(document).ready(function () {
             <td class="barcodeValue" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
     {{ $barcode->wip_barcode }}
 </td>
-            <td>
-                <div style="display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; height: 100%;">
-                    <span>{{ $barcode->groupEmp->emp1 }} - {{ $barcode->groupEmp->emp2 }}</span>
-                    <a href="javascript:void(0);" 
-                        class="btn btn-black btn-xs open-edit-modal" 
-                        title="แก้ไขข้อมูล" 
-                        data-working-id="{{ $barcode->wip_working_id }}" 
-                        style="padding: 5px 10px; font-size: 12px; background-color: black; color: white; border-color: black;">
-                        <i class="fa fa-pencil-square-o"></i>
-                    </a>
-                </div>
-            </td>
+<td>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; height: 100%;">
+        <span>{{ $barcode->groupEmp->emp1 }} - {{ $barcode->groupEmp->emp2 }}</span>
+        <a href="javascript:void(0);" 
+            class="btn btn-black btn-xs open-edit-modal" 
+            title="แก้ไขข้อมูล" 
+            data-working-id="{{ $barcode->wip_working_id }}" 
+            data-barcode="{{ $barcode->wip_barcode }}"
+            style="padding: 5px 10px; font-size: 12px; background-color: black; color: white; border-color: black;">
+            <i class="fa fa-pencil-square-o"></i>
+        </a>
+    </div>
+</td>
             <td>
     <div style="display: flex; gap: 5px; justify-content: center;">
     <a href="javascript:void(0);" 
@@ -2578,19 +2593,19 @@ $(document).ready(function () {
 
     <div class="modal-body">
         <div class="text-center">
-            <select name="wip_empgroup_id_1" class="margin-select selectpicker show-tick form-control"
-                    aria-required="true" data-size="9" data-dropup-auto="true" data-live-search="true"
-                    data-style="btn-info btn-md text-white" data-width="fit" data-container="body" required>
-                <option style="font-size:15px;" value="0">เลือกผู้คัด</option>
-                @foreach ($empGroups as $group)
-                    <option style="font-size:15px;" 
-                            value="{{ $group->id }}" 
-                            data-emp1="{{ $group->emp1 }}" 
-                            data-emp2="{{ $group->emp2 }}">
-                        {{ $group->emp1 }} - {{ $group->emp2 }}
-                    </option>
-                @endforeach
-            </select>
+        <select name="wip_empgroup_id_1" class="margin-select selectpicker show-tick form-control"
+    aria-required="true" data-size="9" data-dropup-auto="true" data-live-search="true"
+    data-style="btn-info btn-md text-white" data-width="fit" data-container="body" required>
+    <option style="font-size:15px;" value="0">เลือกผู้คัด</option>
+    @foreach ($empGroups as $group)
+        <option style="font-size:15px;" 
+                value="{{ $group->id }}" 
+                data-emp1="{{ $group->emp1 }}" 
+                data-emp2="{{ $group->emp2 }}">
+            {{ $group->emp1 }} - {{ $group->emp2 }}
+        </option>
+    @endforeach
+</select>
         </div>
         <input type="hidden" name="id" id="empwipid">
         <input type="hidden" name="wip_empgroup_id_old" id="empgropidwip">

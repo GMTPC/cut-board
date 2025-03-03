@@ -229,14 +229,14 @@
                 <div class="container-fluid">
                     <div class="row">
                         <div class="col-lg-4 col-xs-12 text-white">
-                            <a href="">
+                            <a href="{{ route('warehouse.nk') }}">
                                 <div class="small-box bg-orange card-shadow">
                                     <div class="inner">
                                         <br>
                                         <h3 class="text-center" style="font-size:1.5vw;">นครสวรรค์</h3>
                                         <p class="text-center">การทำงานในส่วนของคลังนครสวรรค์</p>
                                     </div>
-                                    <a href="" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                                    <a href="{{ route('warehouse.nk') }}" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                                 </div>
                             </a>
                         </div>

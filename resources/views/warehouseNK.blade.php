@@ -1,128 +1,239 @@
-@extends('dashboard')
-
-@section('title', 'ระบบ QC')
+@extends('layouts.app')
 
 @section('content')
+@include('modelwarehouse')
 
+<div id="app">
+    <lodingspinner></lodingspinner>
+</div>
 <style>
-    body {
-        font-family: 'Prompt', sans-serif;
-        background-color: #f8f9fa;
-    }
+.bg-darkteal {
+    background-color: #0E766D !important; /* ใช้สีเขียวอมฟ้าตามภาพ */
+    color: white !important;
+}
+.bg-tomato {
+    background-color: #F05039 !important; /* สีแดงตามภาพ */
+    color: white !important;
+}
+.text-white {
+    color: white !important;
+}
 
-    .container {
-        margin-top: 50px;
-        margin-bottom: 50px;
-    }
+    </style>
+    <div class="container-fluid bg-white">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <h2 class="header-select"><b>เลือกคลังสินค้า</b></h2>
+                <p class="text-danger">เรียนแจ้งผู้ใช้ระบบทุกท่าน : เพื่อการทำงานที่สมบูรณ์ กรุณาใช้ google chrome ในการใช้ระบบ</p>
+            </br>
+            <div class="text-left">
+                <a href="{{ route('mainmenu') }}" class="btn btn-warning"  name="button"><em class="text-white fas fa-th"><b>  กลับไปยังเมนูหลัก</b></em></a>
+            </div>
+            <div class="container-fluid" style="width:90%;">
+                <h2 class="header-select"><b>นครสวรรค์</b></h2>
+                <div class="row">
+                    <div class="col-lg-4 text-white">
+                        <!-- small box -->
+                        <a data-target="#so_search" data-toggle="modal">
+                            <div class="small-box bg-aqua card-shadow">
+                                <div class="inner">
+                                    <br>
+                                    <h2 class="text-center text-so-white" >แปรรหัสออกของในประเทศ</h2>
+                                    <p class="text-so-white text-center">เลือกข้อมูลใบจองรหัส SO</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-dolly" style='font-size:70px;'></i>
+                                </div>
+                                <a data-target="#so_search" data-toggle="modal" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                            </div>
+                        </a>
+                    </div>
+                    <!-- ./col -->
+                    <div class="col-lg-4">
+                        <!-- small box -->
+                        <a data-target="#se_search" data-toggle="modal">
+                            <div class="small-box bg-green card-shadow">
+                                <div class="inner">
+                                    <br>
+                                    <h2 class="text-center text-so-white" >แปรรหัสออกของต่างประเทศ</h2>
+                                    <p class="text-center text-so-white">เลือกข้อมูลใบจองรหัส SE</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-globe-asia" style='font-size:70px;'></i>
+                                </div>
+                                <a data-target="#se_search" data-toggle="modal" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-lg-4 text-white">
+                        <!-- small box -->
+                        <a data-target="#rntobp_search" data-toggle="modal"> {{--  --}}
+                            <div class="small-box bg-yellow card-shadow">
+                                <div class="inner">
+                                    <br>
+                                    <h2 class="text-center text-so-white">โอนย้ายไปยังบางพลี</h2>
+                                    
+                                    <p class="text-so-white text-center">จากนครสวรรค์ไปบางพลี</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-truck" style='font-size:60px;'></i>
+                                </div>
+                                <a data-target="#rntobp_search" data-toggle="modal" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-4 text-white">
+                        <!-- small box -->
+                        <a data-target="#rntotoa_search" data-toggle="modal">
+                            <div class="small-box bg-darkteal card-shadow">
+                                <div class="inner">
+                                    <br>
+                                    <h2 class="text-center text-so-white">โอนย้ายไปยัง TOA(นครสวรรค์)</h2>
+                                    <p class="text-so-white text-center">จากนครสวรรค์ไป TOA</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-truck" style='font-size:60px;'></i>
+                                </div>
+                                <a data-target="#rntotoa_search" data-toggle="modal" daata-toggle="modal" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                            </div>
+                        </a>
+                    </div>
+                    <!-- ./col -->
 
-    .header-section {
-        margin-bottom: 30px; /* เพิ่มช่องว่างระหว่างหัวข้อและส่วนถัดไป */
-    }
+                    <div class="col-lg-4 text-white">
+                        <!-- small box -->
+                        <a data-target="#fcnw_search" data-toggle="modal"> {{--  --}}
+                            <div class="small-box bg-tomato card-shadow">
+                                <div class="inner">
+                                    <br>
+                                    <h2 class="text-center text-so-white">งานรับของ(นครสวรรค์)</h2>
+                                    <p class="text-so-white text-center">งานรับของนครสวรรค์</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-boxes" style='font-size:60px;'></i>
+                                </div>
+                                <a data-target="#fcnw_search" data-toggle="modal" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-lg-4 text-white">
+                        <!-- small box -->
+                        <a href="{{ route('checkcsvtobplus') }}">
+                            <div class="small-box bg-purple card-shadow">
+                                <div class="inner">
+                                    <br>
+                                    <h2 class="text-center text-white">ตรวจสอบสินค้าเข้าสู่ระบบ</h2>
+                                    <p class="text-white text-center">ตรวจสอบสินค้าและเพื่อนำเข้าสู่ระบบ</p>
+                                    </div>
+                                <div class="icon">
+                                    <i class="fa fa-check-square-o" style='font-size:60px;'></i>
+                                </div>
+                                <a href="{{ route('checkcsvtobplus') }}" class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                            </div>
+                        </a>
+                    </div>
 
-    .main-menu-button {
-        margin-bottom: 50px; /* เพิ่มระยะห่างระหว่างปุ่มและการ์ด */
-    }
-
-    .card-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 40px; /* เพิ่มระยะห่างระหว่างการ์ด */
-    }
-
-    .card {
-        border: none;
-        border-radius: 8px;
-        background-color: #ffffff;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        height: 220px; /* เพิ่มความสูงของการ์ดเล็กน้อย */
-    }
-
-    .card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
-    }
-
-    .card h4 {
-        font-size: 1.25rem;
-        font-weight: bold;
-        color: #007bff;
-        margin-bottom: 10px;
-    }
-
-    .card p {
-        font-size: 0.9rem;
-        color: #6c757d;
-        margin-bottom: 15px; /* เพิ่มช่องว่างด้านล่างของข้อความ */
-    }
-
-    .btn {
-        color: #007bff;
-        font-weight: bold;
-        background-color: transparent;
-        border: 1px solid #007bff;
-        padding: 8px 15px;
-        font-size: 0.85rem;
-        text-align: center;
-        align-self: center;
-        transition: all 0.3s ease;
-        margin-top: auto; /* ดันปุ่มลงล่างสุด */
-    }
-
-    .btn:hover {
-        background-color: #007bff;
-        color: #fff;
-    }
-</style>
-
-<div class="container">
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <div class="header-section text-center">
-        <h1 class="my-4">เลือกคลังสินค้า</h1>
-        <p class="text-danger mb-5">เรียนแจ้งผู้ใช้งานทุกท่าน : เพื่อการทำงานที่สมบูรณ์ กรุณาใช้ Google Chrome ในการใช้ระบบ</p>
+                    <div class="col-lg-4">
+    <!-- small box -->
+    <a href="">
+    <div class="small-box bg-green card-shadow text-white">
+        <div class="inner">
+            <br>
+            <h2 class="text-center text-white">โฟล์คลิฟท์รับเข้าและย้ายสินค้า</h2>
+            <p class="text-center text-white">สแกนบาร์โค้ด เพื่อระบุจุดจัดเก็บ</p>
+        </div>
+        <div class="icon">
+            <i class="fas fa-dolly icon-shadow"></i> <!-- ใช้ class ใหม่ -->
+        </div>
+        <a href="" class="small-box-footer text-white">More info <i class="fa fa-arrow-circle-right"></i></a>
     </div>
+</a>
 
-    <div class="text-center main-menu-button">
-        <a href="#" class="btn btn-warning btn-lg">กลับไปยังเมนูหลัก</a>
-    </div>
 
-    <div class="card-container">
-        <div class="card">
-            <h4>แปรรหัสออกของในประเทศ</h4>
-            <p>เลือกข้อมูลในออกรหัส SO</p>
-            <a href="#" class="btn mb-3" data-bs-toggle="modal" data-bs-target="#modalWarehouseSupport">More info</a>
-        </div>
-        <div class="card">
-            <h4>แปรรหัสออกของต่างประเทศ</h4>
-            <p>เลือกข้อมูลในออกรหัส SE</p>
-            <a href="#" class="btn mb-3" data-bs-toggle="modal" data-bs-target="#modalForeignSupport">More info</a>
-        </div>
-        <div class="card">
-            <h4>โอนย้ายไปยังบางพลี</h4>
-            <p>จากนครสวรรค์ไปบางพลี</p>
-            <a href="#" class="btn mb-3" data-bs-toggle="modal" data-bs-target="#modalTransferBangplee">More info</a>
-        </div>
-        <div class="card">
-            <h4>โอนย้ายไปยัง TOA</h4>
-            <p>จากนครสวรรค์ไป TOA</p>
-            <a href="#" class="btn mb-3" data-bs-toggle="modal" data-bs-target="#modalTransferTOA">More info</a>
-        </div>
-        <div class="card">
-            <h4>งานรับของ</h4>
-            <p>งานรับของนครสวรรค์</p>
-            <a href="#" class="btn mb-3" data-bs-toggle="modal" data-bs-target="#modalReceiving">More info</a>
-        </div>
-        <div class="card">
-            <h4>ตรวจสอบสินค้าเข้าสู่ระบบ</h4>
-            <p>ตรวจสอบสินค้าเพื่อเข้าสู่ระบบ</p>
-            <a href="#" class="btn mb-3" data-bs-toggle="modal" data-bs-target="#modalCheck">More info</a>
+
+
+                    -- <div class="col-lg-4 text-white">
+                        <!-- small box - ->
+                        <a href="" > 
+                            <div class="small-box bg-yellow card-shadow">
+                                <div class="inner">
+                                    <br>
+                                    <h3 class="text-center text-so-white"">โฟล์คลิฟท์ย้ายสินค้า</h3>
+                                    <p class="text-so-white text-center">สแกนบาร์โค้ด เพื่อระบุจุดย้าย</p>
+                                </div>
+                                <div class="icon">
+                                    <i class="fas fa-truck" style='font-size:60px;'></i>
+                                </div>
+                                <a href=""  class="small-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                            </div>
+                        </a>
+                    </div> --}}
+
+
+                    
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
+ ./col -->
+<div class="modal fade" id="so_search">
+    <div class="modal-dialog modal-lg" style="width:90%; height:100%;">
+        <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h4 class="modal-title">ค้นหาใบจองภายในประเทศ</h4>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <p class="text-danger">สามารถค้นหาด้วยเลขที่ใบจอง หรือชื่อลูกค้าได้ในช่องค้นหา</p>
+            </div>
+
+            <!-- Modal body -->
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered display" id="sotable">
+                        <thead>
+                            <tr class="text-table-so">
+                                <th class="text-center">#</th>
+                                <th class="text-center">เลขที่ใบจอง</th>
+                                <th class="text-center">ชื่อลูกค้า</th>
+                                <th class="text-center"><em class="fa fa-cog"></em></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                <tr>
+                                    <td class="text-center"></td>
+                                    <td class="text-center"><a href=""></a></td>
+                                    <td class="text-center"></td>
+                                    <td aligr="center">
+                                    <a href="" class="btn btn-default btn-sm"><em class="fa fa-file-text" style="font-size:18px;" data-toggle="tooltip" data-placement="left" title="ดูข้อมูล"></em></a>
+                                    </td>
+                                </tr>
+                        </tbody>
+                    </table>
+              
+            </div>
+            <!-- Modal footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
 @endsection
+

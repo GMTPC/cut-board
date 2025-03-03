@@ -211,9 +211,10 @@ class MainmenuController extends Controller
             $currentDate = Carbon::now('Asia/Bangkok');
     
             // ✅ ตรวจสอบ Group และปรับวันที่ตามเงื่อนไข
-            if ($group === 'B' && $currentDate->hour < 8) {
-                $currentDate->subDay(); // ลบ 1 วัน ถ้า Group เป็น B และเวลายังไม่ถึง 08:00
+            if ($group === 'B' && ($currentDate->hour < 20 || ($currentDate->hour == 20 && $currentDate->minute == 0))) {
+                $currentDate->subDay(); // ลบ 1 วัน ถ้า Group เป็น B และเวลายังไม่ถึง 19:59 น.
             }
+            
     
             // ✅ ใช้วันที่และเวลาปัจจุบัน หรือปรับตามเงื่อนไข
             $dateForWork = $currentDate->format('Y-m-d H:i:s'); // วันที่พร้อมเวลา
@@ -446,7 +447,9 @@ public function getLine(Request $request)
 
     return response()->json(['line' => $line]);
 }
-
+public function warehousenk() {
+    return view('warehouseNK');
+}
 
     }
     
