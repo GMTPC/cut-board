@@ -293,8 +293,8 @@ public function updateEmpGroup(Request $request, $id)
 
 public function deleteWipLine1($work_id, $id)
 {
-    
     try {
+        // ✅ ตรวจสอบว่ามี Wipbarcode หรือไม่
         $checkWip = Wipbarcode::where('wip_id', $id)->first();
 
         if (!$checkWip) {
@@ -303,11 +303,12 @@ public function deleteWipLine1($work_id, $id)
 
         $empGroup = $checkWip->wip_empgroup_id;
         $amount = $checkWip->wip_amount;
+        $wipIndex = $checkWip->wip_index; // ✅ ดึงค่า wip_index 
 
         // ✅ กำหนดค่าเริ่มต้นให้ $eioOutput = 0
         $eioOutput = 0;
 
-        // ค้นหาข้อมูลเข้า-ออกของพนักงาน
+        // ✅ ค้นหาข้อมูลเข้า-ออกของพนักงาน
         $eio = EmpInOut::where('eio_working_id', $work_id)
                        ->where('eio_emp_group', $empGroup)
                        ->first();
@@ -318,36 +319,49 @@ public function deleteWipLine1($work_id, $id)
             $eioOutput = $eio->eio_output_amount;
         }
 
-        // ลบข้อมูลบาร์โค้ด
-        $checkWip->delete();
+        DB::beginTransaction(); // ✅ ใช้ Transaction ป้องกันข้อมูลไม่สมบูรณ์
 
-        // เช็คข้อมูลในกลุ่มพนักงาน
+        // ✅ ลบข้อมูลบาร์โค้ด
+        $checkWip->delete();
+        Log::info('✅ ลบ Wipbarcode สำเร็จ', ['wip_id' => $id, 'wip_index' => $wipIndex]);
+
+        // ✅ ลบข้อมูล product_type_emps ที่มี pe_index ตรงกับ wip_index
+        $deletedProductTypeEmp = ProductTypeEmp::where('pe_index', $wipIndex)->delete();
+        Log::info('✅ ลบข้อมูล ProductTypeEmp สำเร็จ', ['pe_index' => $wipIndex, 'deleted_rows' => $deletedProductTypeEmp]);
+
+        // ✅ เช็คข้อมูลในกลุ่มพนักงาน
         $checkEmpGroup = Wipbarcode::where('wip_working_id', $work_id)
                                    ->where('wip_empgroup_id', $empGroup)
-                                   ->get();
+                                   ->exists(); // ✅ ใช้ exists() เพื่อลดการโหลดข้อมูล
 
-        if ($checkEmpGroup->isEmpty() && $eioOutput <= 0) {
+        if (!$checkEmpGroup && $eioOutput <= 0) {
             // ถ้าไม่มีข้อมูลบาร์โค้ดในกลุ่มนี้ และไม่มีการเบิกจ่าย ให้ลบข้อมูลการเข้า-ออก
             if ($eio) {
                 $eio->delete();
+                Log::info('✅ ลบข้อมูล EmpInOut สำเร็จ', ['eio_id' => $eioId]);
             }
         } else {
             // ถ้ามีข้อมูล ให้ลดจำนวนสินค้าใน eio_input_amount
             if ($eio) {
                 $eio->update(['eio_input_amount' => $eioInput - $amount]);
+                Log::info('✅ อัปเดต eio_input_amount สำเร็จ', ['eio_id' => $eioId, 'new_amount' => $eioInput - $amount]);
             }
         }
+
+        DB::commit(); // ✅ ยืนยันการลบ
 
         return response()->json(['success' => true, 'message' => 'ลบข้อมูลสำเร็จ'], 200);
 
     } catch (\Exception $e) {
+        DB::rollBack(); // ❌ ย้อนค่าหากเกิดปัญหา
+        Log::error('❌ เกิดข้อผิดพลาดในการลบข้อมูล', ['error' => $e->getMessage()]);
         return response()->json(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()], 500);
     }
 }
 
+
 public function datawip($line, $id, $brd_id = null)
 {
-
     $lineColor = $this->colorline($line);
 
     // ✅ ค้นหา WorkProcess ตาม id และ line
@@ -375,47 +389,65 @@ public function datawip($line, $id, $brd_id = null)
     $totalWipAmount = $wipBarcodes->sum('wip_amount');
     $listNgAll = Listngall::where('lng_status', 1)->get();
     $productTypes = ProductTypeEmp::where('pe_working_id', $id)->first();
-    $peTypeCode = $productTypes ? $productTypes->pe_type_code : null;
-    $brandLists = BrandList::select('bl_id', 'bl_name')->get();
+    $peTypeCode = optional($productTypes)->pe_type_code;
+
+    // ✅ ปรับปรุงการดึง brandLists
+    $brandIds = Brand::where('brd_working_id', $id)
+        ->pluck('brd_brandlist_id')
+        ->filter()
+        ->toArray();
+
+        $brandLists = collect();
+
+if (!empty($brandIds)) {
+    $brandLists = DB::table(DB::raw('dbo.brandlist'))
+        ->whereIn('bl_id', $brandIds)
+        ->where('bl_status', '=', 1) // ✅ บังคับให้ดึงเฉพาะ bl_status = 1
+        ->select('bl_id', 'bl_name', 'bl_status') // ✅ ดึง bl_status มาด้วย
+        ->get();
+}
+
+dd($brandLists); // ✅ ตรวจสอบข้อมูลก่อนแสดงผล
+
+        
+
     $wipSkuNames = Wipbarcode::where('wip_working_id', $id)->pluck('wip_sku_name');
 
     // ✅ ดึงข้อมูล `brands`
     $brandsLots = Brand::where('brd_working_id', $id)
-    ->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date', 'brd_status') // ✅ ดึง brd_status
-    ->get();
+        ->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date', 'brd_status')
+        ->get();
 
-
-
-    // ✅ ตรวจสอบว่ามี `$brd_id` หรือไม่
+    // ✅ ตรวจสอบ `$brd_id`
     $lot = $brd_id 
-    ? Brand::where('brd_id', $brd_id)
+        ? Brand::where('brd_id', $brd_id)
             ->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date', 'brd_status')
             ->first()
-    : $brandsLots->where('brd_id', $brd_id)->first();
+        : $brandsLots->where('brd_id', $brd_id)->first();
 
-
-// ดึงค่า brd_status ที่ตรงกับ brd_lot โดยใช้ first()
-$brd_lot = $lot ? $lot->brd_lot : null;
-$brd_status = $lot ? Brand::where('brd_lot', $lot->brd_lot)->value('brd_status') : null;
-
+    // ✅ แก้ไข `brd_lot`
+    $brd_lot = optional($lot)->brd_lot;
+    $brd_status = $brd_lot ? Brand::where('brd_lot', $brd_lot)->value('brd_status') : null;
 
     // ✅ ดึง `bl_code` ตาม `brd_id`
-    $brand = $lot 
+    $brand = optional($lot)->brd_id
         ? Brand::where('brd_id', $lot->brd_id)->first()
         : Brand::where('brd_working_id', $id)->first();
 
-    $brandList = $brand 
+    $brandList = optional($brand)->brd_brandlist_id
         ? BrandList::where('bl_id', $brand->brd_brandlist_id)->first()
         : null;
 
-    $brdAmount = $brand ? $brand->brd_amount : null;
+    $brdAmount = optional($brand)->brd_amount;
 
     // ✅ ค้นหา Wipbarcode ที่มี wip_working_id ตรงกับ $id
     $wipBarcodesByWorkingId = Wipbarcode::where('wip_working_id', $id)->pluck('wip_id')->toArray();
 
     // ✅ ดึง Wipbarcode ตาม wip_id ที่ได้มา
     $wipBarcodesFiltered = Wipbarcode::whereIn('wip_id', $wipBarcodesByWorkingId)->get();
-    dd($brandsLots);
+
+    // ✅ Debug ข้อมูล (แสดงใน Log แทน `dd()`)
+    logger()->info('Brand Lists:', $brandLists->toArray());
 
     return view('datawip', [
         'workprocess'       => $workprocess,
@@ -438,11 +470,8 @@ $brd_status = $lot ? Brand::where('brd_lot', $lot->brd_lot)->value('brd_status')
         'brd_status'        => $brd_status, // ✅ ส่งค่า brd_status ไปยัง Blade
         'wipBarcodesFiltered' => $wipBarcodesFiltered,
         'lineColor' => $lineColor // ✅ ส่งค่าสีไปยัง View
-
     ]);
 }
-
-
 
 
 
@@ -2012,9 +2041,75 @@ return response()->json(['error' => 'Product type not found'], 404);
         return view ('checkcsvtobplus');
     }
     
-    
-    
+    public function addbrandslist(){
 
+        $count = 1;
+        $brandslist = Brandlist::all();
+
+        $view = view('mainside.qcfn.addbrandslist',[
+        'count'             =>  $count,
+        'brandslist'        =>  $brandslist,
+        ]);
+        return $view;
+    }
+
+    public function inputbrandslist(Request $request)
+    {
+        try {
+            // ✅ Validate ข้อมูล
+            $request->validate([
+                'bl_name' => 'required|string|max:255',
+                'bl_code' => 'required|string|max:50|unique:brandlist,bl_code', // ห้ามซ้ำ
+            ]);
+    
+            // ✅ บันทึกข้อมูล
+            $brand = BrandList::create([
+                'bl_name'   => $request->bl_name,
+                'bl_code'   => $request->bl_code,
+                'bl_status' => 1,
+            ]);
+    
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'บันทึกข้อมูลสำเร็จ',
+                'data'    => $brand
+            ], 200);
+    
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    public function updateBrandStatus(Request $request)
+    {
+        try {
+            // ✅ ตรวจสอบว่ามี ID ที่ส่งมาหรือไม่
+            $brand = BrandList::findOrFail($request->bl_id);
+    
+            // ✅ อัปเดตสถานะ bl_status (เปิด = 1, ปิด = 0)
+            $brand->bl_status = $request->bl_status;
+            $brand->save();
+    
+            return response()->json([
+                'status'    => 'success',
+                'message'   => 'อัปเดตสถานะสำเร็จ',
+                'bl_id'     => $brand->bl_id,
+                'bl_code'   => $brand->bl_code,
+                'bl_name'   => $brand->bl_name,
+                'bl_status' => $brand->bl_status
+            ], 200);
+    
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
 
 
 

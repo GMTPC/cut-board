@@ -8,6 +8,8 @@ use App\Http\Controllers\WipController;
 use App\Models\AmountNg;
 use App\Models\Wipbarcode;
 use App\Models\Brand;
+use App\Models\BrandList;
+use App\Http\Controllers\WeightBabyController;
 
 
 /*
@@ -158,5 +160,26 @@ Route::get('/get-wip-id', [WipController::class, 'getWipId']);
 Route::get('/get-line', [MainmenuController::class, 'getLine'])->name('getLine');
 Route::get('/tagc/{line}/{wwt_id}', [WipController::class, 'tagc'])->name('tagc');
 Route::get('/checkcsvtobplus', [WipController::class, 'checkcsvtobplus'])->name('checkcsvtobplus');
+Route::get('/addbrandslist',[WipController::class, 'addbrandslist'])->name('addbrandslist');
+Route::post('/inputbrandslist', [WipController::class, 'inputbrandslist'])->name('inputbrandslist');
+Route::get('/blstatus', [WipController::class, 'updateBrandStatus'])->name('updateBrandStatus');
+
+Route::get('/get-brand-status/{id}', function ($id) {
+    $brand = BrandList::where('bl_id', $id)->first();
+    return response()->json([
+        'bl_status' => $brand ? $brand->bl_status : null
+    ]);
+});
+
+
+Route::get('/get-active-brands', function () {
+    $brands = BrandList::where('bl_status', 1)->select('bl_id', 'bl_name')->get();
+    return response()->json($brands);
+});
+
+Route::post('/send-weightbaby', [WeightBabyController::class, 'sendWeightBabyData'])->name('send.weightbaby');
+Route::get('/weightbaby', function () {
+    return view('weightbaby');
+});
 
 require __DIR__.'/auth.php';

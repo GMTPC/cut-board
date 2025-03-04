@@ -1359,13 +1359,16 @@ $(document).ready(function () {
     </thead>
     <tbody>
         <tr>
-            
+        @isset($groupedData)
+ 
         @foreach($groupedData as $data)
         <tr>
             <td class="text-center">{{ \Carbon\Carbon::parse($data->date)->format('d-m-Y') }}</td> {{-- ✅ แสดงวันที่ --}}
             <td class="text-center">{{ $data->total_wip_amount ?? 0 }}</td> {{-- ✅ แสดงผลรวม wip_amount --}}
         </tr>
         @endforeach
+        @endisset
+
     </tbody>
 </table>  
         </tr>

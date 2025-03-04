@@ -1328,6 +1328,78 @@ $(document).ready(function () {
 
     </script>
 
+<script>
+$(document).ready(function () {
+    $('#brd_brandlist_id').change(function () {
+        var selectedOption = $(this).find(":selected"); // ดึง <option> ที่ถูกเลือก
+        var brandId = selectedOption.val(); // ดึงค่า bl_id
+        var brandName = selectedOption.text(); // ดึงชื่อแบรนด์
+        var blStatus = selectedOption.attr("data-status"); // ✅ ใช้ attr() แทน data()
+
+        // แสดงผลใน Console
+        console.log("Brand ID: " + brandId);
+        console.log("Brand Name: " + brandName);
+        console.log("BL Status: " + blStatus);
+    });
+});
+</script>
+
+<script>
+$(document).ready(function () {
+    $('#brd_brandlist_id').change(function () {
+        var selectedOption = $(this).find(":selected");
+        var brandId = selectedOption.val(); // ดึงค่า bl_id
+        var brandName = selectedOption.text().trim(); // ดึงชื่อแบรนด์
+        
+        // ตรวจสอบว่าเลือกแบรนด์หรือไม่
+        if (brandId !== "0") {
+            // เรียก AJAX ไปที่ Route
+            $.ajax({
+                url: '/get-brand-status/' + brandId,
+                type: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    console.log("Brand ID: " + brandId);
+                    console.log("Brand Name: " + brandName);
+                    console.log("BL Status: " + response.bl_status);
+                },
+                error: function () {
+                    console.log("ไม่สามารถดึงข้อมูล BL Status ได้");
+                }
+            });
+        } else {
+            console.log("กรุณาเลือกแบรนด์");
+        }
+    });
+});
+</script>
+
+
+<script>
+$(document).ready(function () {
+    // โหลดแบรนด์ที่มี bl_status = 1 เมื่อหน้าเว็บโหลดขึ้นมา
+    $.ajax({
+        url: '/get-active-brands', // เรียก API Route
+        type: 'GET',
+        dataType: 'json',
+        success: function (response) {
+            var brandSelect = $('#brd_brandlist_id'); // ดึง element <select>
+            brandSelect.empty(); // เคลียร์ค่าเก่าทั้งหมด
+            brandSelect.append('<option value="0">เลือกแบรนด์</option>'); // เพิ่มตัวเลือกแรก
+
+            // วนลูปเพิ่ม <option> ลงใน <select>
+            $.each(response, function (index, brand) {
+                brandSelect.append('<option value="' + brand.bl_id + '">' + brand.bl_name + '</option>');
+            });
+
+            console.log("แบรนด์ทั้งหมดถูกโหลดแล้ว:", response);
+        },
+        error: function () {
+            console.log("ไม่สามารถโหลดรายการแบรนด์ได้");
+        }
+    });
+});
+</script>
 
 <div class="container-fluid bg-white">
         <div class="panel panel-default">
@@ -2115,22 +2187,21 @@ $(document).ready(function () {
                         title="กรอกจำนวน" 
                         placeholder="กรอกจำนวน" 
                         required>
-                    <select name="brd_brandlist_id" 
-                            id="brd_brandlist_id"
-                            class="margin-select selectpicker show-tick form-control move-up" 
-                            aria-required="true" 
-                            data-size="9" 
-                            data-dropup-auto="true" 
-                            data-live-search="true" 
-                            data-style="btn-info btn-md text-white" 
-                            data-width="fit" 
-                            data-container="body" 
-                            required>
-                        <option value="0">เลือกแบรนด์</option>
-                        @foreach ($brandLists as $brand)
-                            <option data-tokens="{{ $brand->bl_name }}" value="{{ $brand->bl_id }}">{{ $brand->bl_name }}</option>
-                        @endforeach
-                    </select>
+                        <select name="brd_brandlist_id" 
+        id="brd_brandlist_id"
+        class="margin-select selectpicker show-tick form-control move-up" 
+        aria-required="true" 
+        data-size="9" 
+        data-dropup-auto="true" 
+        data-live-search="true" 
+        data-style="btn-info btn-md text-white" 
+        data-width="fit" 
+        data-container="body" 
+        required>
+        <option value="0">กำลังโหลด...</option> <!-- ให้มีค่าเริ่มต้น -->
+</select>
+
+                
                     &nbsp;&nbsp;
                     <select id="select_emp_id" 
                             name="brd_eg_id" 
@@ -2153,7 +2224,7 @@ $(document).ready(function () {
                             </option>
                         @endforeach
                     </select>
-                    &nbsp;&nbsp;
+                    &nbsp;&nbsp; 
                     <input style="width:30%;" 
                            class="form-control text-center" 
                            name="brd_checker" 

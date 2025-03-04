@@ -31,7 +31,7 @@
                     <li><a class="fas fa-truck-loading" href="">&nbsp;WPS</a></li>
                     <li><a class="fa fa-fw fa-sort-numeric-desc" href="">&nbsp;คัดบอร์ดเปลี่ยนสเตตัส</a></li>
                     {{-- <li><a class="fas fa-camera" href="">&nbsp;Pruksa รูปงานช่าง</a></li> --}}
-                    <li><a class="fas fa-certificate" href="">&nbsp;รายการแบรนด์</a></li>
+                    <li><a class="fas fa-certificate" href="{{ route('addbrandslist') }}">&nbsp;รายการแบรนด์</a></li>
                     <li><a class="fas fa-file-alt" href="">&nbsp;รายการของเสีย</a></li>
                     <li><a class="fa fa-adjust" href="}">&nbsp;สีวันที่ผลิต</a></li>
                     <li><a class="fa fa-adjust" href="{">&nbsp;สีชนิดสินค้า</a></li>

@@ -9,7 +9,7 @@ class BrandList extends Model
 {
     use HasFactory;
 
-    protected $table = 'brandlist'; // กำหนดชื่อตาราง
+    protected $table = 'brandlist'; // ✅ แก้ให้ตรงกับฐานข้อมูล
 
     protected $primaryKey = 'bl_id'; // กำหนด Primary Key
 
