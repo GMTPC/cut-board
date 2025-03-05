@@ -7,9 +7,32 @@
     <link rel="stylesheet" href="{{ asset('AdminLTE-master/bower_components/bootstrap/dist/css/bootstrap.css') }}">
     <link rel="stylesheet" href="{{ asset('AdminLTE-master/dist/css/AdminLTE.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/notifIt.min.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 </head>
 
 <body>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    @if (session('success'))
+        Swal.fire({
+            title: "สำเร็จ!",
+            text: "{{ session('success') }}",
+            icon: "success",
+            confirmButtonText: "ตกลง"
+        });
+    @endif
+
+    @if (session('error'))
+        Swal.fire({
+            title: "ผิดพลาด!",
+            text: "{{ session('error') }}",
+            icon: "error",
+            confirmButtonText: "ตกลง"
+        });
+    @endif
+});
+</script>
     <div class="container-fluid bg-white">
         <div class="panel-body">
 

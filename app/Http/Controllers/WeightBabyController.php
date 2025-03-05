@@ -42,5 +42,4 @@ class WeightBabyController extends Controller
             ], 500);
         }
     }
-    public function w
 }

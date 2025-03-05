@@ -738,8 +738,34 @@ $(document).ready(function () {
         let actionUrl = $(this).attr('action'); // ดึง URL จาก form
         let formData = $(this).serialize(); // ดึงค่าจาก form
 
-        console.log("🚀 ส่งคำขอไปยัง:", actionUrl);
+        let brandId = $('#brd_brandlist_id').val(); // ดึงค่าแบรนด์
+        let empGroupId = $('#select_emp_id').val(); // ดึงค่ากลุ่มพนักงาน
+
+        console.log("📌 ก่อนส่งข้อมูล ตรวจสอบค่าที่ต้องมี:");
+        console.log("🚀 Action URL:", actionUrl);
         console.log("📄 Form Data:", formData);
+        console.log("📌 Brand ID:", brandId);
+        console.log("📌 Employee Group ID:", empGroupId);
+
+        // ✅ ตรวจสอบว่าเลือกแบรนด์หรือไม่
+        if (!brandId || brandId === "0") {
+            Swal.fire({
+                icon: 'error',
+                title: 'กรุณาเลือกแบรนด์',
+                text: 'คุณต้องเลือกแบรนด์ก่อนบันทึกข้อมูล',
+            });
+            return;
+        }
+
+        // ✅ ตรวจสอบว่ากลุ่มพนักงานถูกเลือกหรือไม่
+        if (!empGroupId || empGroupId === "0") {
+            Swal.fire({
+                icon: 'error',
+                title: 'กรุณาเลือกกลุ่มพนักงาน',
+                text: 'คุณต้องเลือกพนักงานก่อนบันทึกข้อมูล',
+            });
+            return;
+        }
 
         // ✅ แสดง Loader ระหว่างรอการตอบกลับจากเซิร์ฟเวอร์
         Swal.fire({
@@ -757,6 +783,8 @@ $(document).ready(function () {
             url: actionUrl,
             data: formData,
             success: function (response) {
+                console.log("✅ บันทึกข้อมูลสำเร็จ:", response);
+
                 Swal.fire({
                     icon: 'success',
                     title: 'บันทึกข้อมูลแล้ว',
@@ -773,17 +801,32 @@ $(document).ready(function () {
 
                 setTimeout(() => location.reload(), 1600); // ✅ รีโหลดหลังจาก 1.6 วินาที
             },
-            error: function () {
+            error: function (xhr) {
+                console.log("❌ เกิดข้อผิดพลาดระหว่างบันทึกข้อมูล", xhr);
+
+                let errorMessage = "เกิดข้อผิดพลาด โปรดตรวจสอบข้อมูล!";
+                if (xhr.responseJSON) {
+                    console.log("❌ Error Response:", xhr.responseJSON);
+                    errorMessage = xhr.responseJSON.error || "เกิดข้อผิดพลาดไม่ทราบสาเหตุ";
+                    
+                    if (xhr.responseJSON.missing_fields) {
+                        errorMessage += "<br>❌ ขาดค่าต่อไปนี้: " + xhr.responseJSON.missing_fields.join(", ");
+                    }
+                } else if (xhr.responseText) {
+                    errorMessage = xhr.responseText;
+                }
+
                 Swal.fire({
                     icon: 'error',
                     title: 'บันทึกข้อมูลไม่สำเร็จ',
-                    html: '<small style="color:red;">โปรดตรวจสอบและลองใหม่อีกครั้ง</small>',
+                    html: `<small style="color:red;">${errorMessage}</small>`,
                     showConfirmButton: true,
                 });
             }
         });
     });
 });
+
     </script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -1344,35 +1387,36 @@ $(document).ready(function () {
 });
 </script>
 
-<script>
+<!-- <script>
 $(document).ready(function () {
-    $('#brd_brandlist_id').change(function () {
-        var selectedOption = $(this).find(":selected");
-        var brandId = selectedOption.val(); // ดึงค่า bl_id
-        var brandName = selectedOption.text().trim(); // ดึงชื่อแบรนด์
-        
-        // ตรวจสอบว่าเลือกแบรนด์หรือไม่
-        if (brandId !== "0") {
-            // เรียก AJAX ไปที่ Route
-            $.ajax({
-                url: '/get-brand-status/' + brandId,
-                type: 'GET',
-                dataType: 'json',
-                success: function (response) {
-                    console.log("Brand ID: " + brandId);
-                    console.log("Brand Name: " + brandName);
-                    console.log("BL Status: " + response.bl_status);
-                },
-                error: function () {
-                    console.log("ไม่สามารถดึงข้อมูล BL Status ได้");
-                }
+    $.ajax({
+        url: '/get-brands', // ตรวจสอบว่า Route นี้ถูกต้อง
+        type: 'GET',
+        dataType: 'json',
+        success: function (response) {
+            console.log("✅ ได้รับข้อมูลแบรนด์:", response);
+
+            // เคลียร์ค่าเริ่มต้น
+            $('#brd_brandlist_id').empty();
+
+            // เพิ่มตัวเลือกแรก
+            $('#brd_brandlist_id').append('<option value="0">เลือกแบรนด์</option>');
+
+            // วนลูปเพิ่มตัวเลือกแบรนด์ลงไป
+            $.each(response, function (index, brand) {
+                $('#brd_brandlist_id').append('<option value="' + brand.id + '">' + brand.name + '</option>');
             });
-        } else {
-            console.log("กรุณาเลือกแบรนด์");
+
+            // รีเฟรช selectpicker (ถ้าใช้ Bootstrap selectpicker)
+            $('#brd_brandlist_id').selectpicker('refresh');
+        },
+        error: function () {
+            console.log("❌ ไม่สามารถโหลดข้อมูลแบรนด์");
         }
     });
 });
-</script>
+
+</script> -->
 
 
 <script>
@@ -1399,6 +1443,98 @@ $(document).ready(function () {
         }
     });
 });
+</script>
+
+
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        // ✅ โหลดแบรนด์ใหม่เมื่อเปิด Modal #notieditbrand
+        $('#notieditbrand').on('shown.bs.modal', function () {
+            $.ajax({
+                url: '/get-brands', // ตรวจสอบว่า Route '/get-brands' มีอยู่จริง
+                type: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    console.log("✅ ได้รับข้อมูลแบรนด์สำหรับแก้ไข:", response);
+
+                    // ล้างค่าเก่าก่อนเพิ่มค่าใหม่
+                    $('#brd_brandlist_id_03').empty().append('<option value="0">เลือกแบรนด์</option>');
+
+                    // วนลูปเพิ่มรายการแบรนด์ลงไป
+                    $.each(response, function (index, brand) {
+                        $('#brd_brandlist_id_03').append('<option value="' + brand.bl_id + '">' + brand.bl_name + '</option>');
+                    });
+
+                    // ✅ รีเฟรช selectpicker ให้ Bootstrap Select ทำงาน
+                    $('#brd_brandlist_id_03').selectpicker('refresh');
+                },
+                error: function () {
+                    console.log("❌ ไม่สามารถโหลดข้อมูลแบรนด์สำหรับแก้ไข");
+                }
+            });
+        });
+
+        // ✅ โหลดแบรนด์ใหม่เมื่อเปิด Modal #outfg (ใช้สำหรับการลบ)
+        $('#outfg').on('shown.bs.modal', function () {
+            $.ajax({
+                url: '/get-brands', // ตรวจสอบว่า Route '/get-brands' มีอยู่จริง
+                type: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    console.log("✅ ได้รับข้อมูลแบรนด์สำหรับลบ:", response);
+
+                    // ล้างค่าเก่าก่อนเพิ่มค่าใหม่
+                    $('#brd_brandlist_id').empty().append('<option value="0">เลือกแบรนด์</option>');
+
+                    // วนลูปเพิ่มรายการแบรนด์ลงไป
+                    $.each(response, function (index, brand) {
+                        $('#brd_brandlist_id').append('<option value="' + brand.bl_id + '">' + brand.bl_name + '</option>');
+                    });
+
+                    // ✅ รีเฟรช selectpicker ให้ Bootstrap Select ทำงาน
+                    $('#brd_brandlist_id').selectpicker('refresh');
+                },
+                error: function () {
+                    console.log("❌ ไม่สามารถโหลดข้อมูลแบรนด์สำหรับลบ");
+                }
+            });
+        });
+    });
+</script>
+
+
+
+
+<script>
+    $(document).ready(function () {
+        // ✅ โหลดแบรนด์ที่มี bl_status = 1 เมื่อหน้าเว็บโหลดขึ้นมา
+        $.ajax({
+            url: '/get-active-brands', // ตรวจสอบให้แน่ใจว่า Route นี้มีอยู่
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                let brandSelect = $('#brd_brandlist_id_03'); // ดึง element <select>
+                brandSelect.empty().append('<option value="0">เลือกแบรนด์</option>'); // เคลียร์ค่าทั้งหมดแล้วเพิ่มตัวเลือกเริ่มต้น
+
+                // วนลูปเพิ่ม <option> ลงใน <select>
+                $.each(response, function (index, brand) {
+                    brandSelect.append('<option value="' + brand.bl_id + '">' + brand.bl_name + '</option>');
+                });
+
+                // ✅ รีเฟรช selectpicker เพื่อให้ Bootstrap Select ทำงาน
+                brandSelect.selectpicker('refresh');
+
+                console.log("✅ แบรนด์ทั้งหมดถูกโหลดแล้ว:", response);
+            },
+            error: function () {
+                console.log("❌ ไม่สามารถโหลดรายการแบรนด์ได้");
+            }
+        });
+    });
 </script>
 
 <div class="container-fluid bg-white">
@@ -2541,20 +2677,20 @@ $(document).ready(function () {
         {{ method_field('PUT') }}
         <div class="text-center">
         <select name="bl_id" id="brd_brandlist_id_03"
-                    class="margin-select selectpicker show-tick form-control move-up" 
-                    aria-required="true" 
-                    data-size="9" 
-                    data-dropup-auto="true" 
-                    data-live-search="true" 
-                    data-style="btn-info btn-md text-white" 
-                    data-width="fit" 
-                    data-container="body" 
-                    required>
-                <option value="0">เลือกแบรนด์</option>
-                @foreach ($brandLists as $brand)
-                    <option data-tokens="{{ $brand->bl_name }}" value="{{ $brand->bl_id }}">{{ $brand->bl_name }}</option>
-                @endforeach
-            </select>
+    class="margin-select selectpicker show-tick form-control move-up" 
+    aria-required="true" 
+    data-size="9" 
+    data-dropup-auto="true" 
+    data-live-search="true" 
+    data-style="btn-info btn-md text-white" 
+    data-width="fit" 
+    data-container="body" 
+    required>
+    <option value="0">เลือกแบรนด์</option>
+</select>
+
+
+
         </div>
         <!-- ✅ ใส่ `brd_id` ในฟอร์ม -->
         <input type="hidden" name="id" id="editbrandid">

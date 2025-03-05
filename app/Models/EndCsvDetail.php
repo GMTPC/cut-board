@@ -2,104 +2,133 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use App\Models\Wipbarcode;
+use App\Models\Brand;
+use App\Models\WipHolding;
+use App\Models\WipSummary;
+use App\Models\WipZiptape;
+use App\Models\ProductTypeEmp;
+use App\Models\AmountNg;
+use App\Models\WipWorking;
+use App\Models\WipWorktimes;
+use App\Models\Brandlist;
 
 class EndCsvDetail extends Model
 {
-    use HasFactory;
-
-    // ฟังก์ชันเพื่อดึงข้อมูล WIP และ NG
-    public static function endcsv($work_id)
+    // ✅ ดึงข้อมูล WIP
+    public static function endcsv($line, $workprocess)
     {
-        return Wipbarcode::select(DB::raw('wip_barcode, wip_amount, wip_id, wip_amount, SUM(amg_amount) as ng'))
+        $line = self::normalizeLine($line);
+
+        return Wipbarcode::select([
+                'wip_barcode',
+                'wip_amount',
+                'wip_id',
+                DB::raw('SUM(amg_amount) as ng'),
+                'brands.brd_lot',
+                'brands.brd_brandlist_id'
+            ])
             ->leftJoin('amount_ngs', 'amg_wip_id', '=', 'wip_id')
             ->leftJoin('wip_working', 'ww_id', '=', 'wip_working_id')
-            ->where('wip_working_id', $work_id)
-            ->groupBy('wip_barcode', 'wip_amount', 'wip_id', 'wip_amount')
+            ->leftJoin('brands', 'brands.brd_working_id', '=', 'wip_working.ww_id')
+            ->where('ww_line', $line)
+            ->whereIn('wip_working_id', (array) $workprocess)
+            ->groupBy('wip_barcode', 'wip_amount', 'wip_id', 'brands.brd_lot', 'brands.brd_brandlist_id')
             ->get();
     }
 
-    // ฟังก์ชันเพื่อดึงข้อมูล Finished Goods (FG)
-    public static function csvfg($work_id)
+    // ✅ ดึงข้อมูล FG
+    public static function csvfg($line, $workprocess) 
+    {
+        $line = self::normalizeLine($line);
+
+        return Brand::whereIn('brd_working_id', (array) $workprocess)
+                    ->pluck('brd_brandlist_id');
+    }
+
+    // ✅ ดึงข้อมูล HD
+    public static function csvhd($line, $workprocess)
+    {
+        $line = self::normalizeLine($line);
+
+        return WipHolding::leftJoin('wip_working', 'ww_id', '=', 'wh_working_id')
+            ->leftJoin('wip_summary', 'ws_working_id', '=', 'wh_working_id')
+            ->where('ww_line', $line)
+            ->whereIn('wh_working_id', (array) $workprocess)
+            ->get();
+    }
+
+    // ✅ ดึงข้อมูล NG
+    public static function csvng($line, $workprocess)
+    {
+        $line = self::normalizeLine($line);
+
+        return WipSummary::leftJoin('wip_working', 'ww_id', '=', 'ws_working_id')
+            ->leftJoin('product_type_emps', 'pe_working_id', '=', 'ww_id')
+            ->where('ww_line', $line)
+            ->whereIn('ws_working_id', (array) $workprocess)
+            ->get();
+    }
+
+    // ✅ ดึงข้อมูล WIP ตาม Line และ Work Process
+    public static function endtimecsv($line, $workprocess)
+    {
+        return Wipbarcode::select(DB::raw('wip_barcode, wip_amount, wip_id, SUM(amg_amount) as ng'))
+            ->leftJoin('amount_ngs', 'amg_wip_id', '=', 'wip_id')
+            ->leftJoin('wip_working', 'ww_id', '=', 'wip_working_id')
+            ->where('ww_line', $line)
+            ->whereIn('wip_working_id', (array) $workprocess)
+            ->groupBy('wip_barcode', 'wip_amount', 'wip_id')
+            ->get();
+    }
+
+    // ✅ ดึงข้อมูล FG ตาม Line และ Work Process
+    public static function csvtimefg($line, $workprocess)
     {
         return Brand::leftJoin('brandlist', 'bl_id', '=', 'brd_brandlist_id')
             ->leftJoin('wip_working', 'ww_id', '=', 'brd_working_id')
             ->leftJoin('product_type_emps', 'pe_working_id', '=', 'ww_id')
-            ->where('ww_id', $work_id)
-            ->get();
-    }
-
-    // ฟังก์ชันเพื่อดึงข้อมูล Hold Down (HD)
-    public static function csvhd($work_id)
-    {
-        return WipHolding::leftJoin('wip_working', 'ww_id', '=', 'wh_working_id')
-            ->leftJoin('wip_summary', 'ws_working_id', '=', 'wh_working_id')
-            ->where('wh_working_id', $work_id)
-            ->get();
-    }
-
-    // ฟังก์ชันเพื่อดึงข้อมูล NG
-    public static function csvng($work_id)
-    {
-        return WipSummary::leftJoin('wip_working', 'ww_id', '=', 'ws_working_id')
-            ->leftJoin('product_type_emps', 'pe_working_id', '=', 'ww_id')
-            ->where('ws_working_id', $work_id)
-            ->get();
-    }
-
-    // ฟังก์ชันเพื่อดึงข้อมูล WIP ตาม Line และ Index
-    public static function endtimecsv($line, $index)
-    {
-        return Wipbarcode::select(DB::raw('wip_barcode, wip_amount, wip_id, wip_amount, SUM(amg_amount) as ng'))
-            ->leftJoin('amount_ngs', 'amg_wip_id', '=', 'wip_id')
-            ->leftJoin('wip_working', 'ww_id', '=', 'wip_working_id')
             ->where('ww_line', $line)
-            ->where('ww_wwt_index', $index)
-            ->groupBy('wip_barcode', 'wip_amount', 'wip_id', 'wip_amount')
+            ->whereIn('ww_id', (array) $workprocess)
             ->get();
     }
 
-    // ฟังก์ชันเพื่อดึงข้อมูล Finished Goods (FG) ตาม Line และ Index
-    public static function csvtimefg($line, $index)
-    {
-        return Brand::leftJoin('brandlist', 'bl_id', '=', 'brd_brandlist_id')
-            ->leftJoin('wip_working', 'ww_id', '=', 'brd_working_id')
-            ->leftJoin('product_type_emps', 'pe_working_id', '=', 'ww_id')
-            ->where('ww_line', $line)
-            ->where('ww_wwt_index', $index)
-            ->get();
-    }
-
-    // ฟังก์ชันเพื่อดึงข้อมูล Hold Down (HD) ตาม Line และ Index
-    public static function csvtimehd($line, $index)
+    // ✅ ดึงข้อมูล HD ตาม Line และ Work Process
+    public static function csvtimehd($line, $workprocess)
     {
         return WipHolding::leftJoin('wip_working', 'ww_id', '=', 'wh_working_id')
             ->leftJoin('wip_summary', 'ws_working_id', '=', 'wh_working_id')
             ->where('ww_line', $line)
-            ->where('ww_wwt_index', $index)
+            ->whereIn('wh_working_id', (array) $workprocess)
             ->get();
     }
 
-    // ฟังก์ชันเพื่อดึงข้อมูล NG ตาม Line และ Index
-    public static function csvtimeng($line, $index)
+    // ✅ ดึงข้อมูล NG ตาม Line และ Work Process
+    public static function csvtimeng($line, $workprocess)
     {
         return WipSummary::leftJoin('wip_working', 'ww_id', '=', 'ws_working_id')
             ->leftJoin('product_type_emps', 'pe_working_id', '=', 'ww_id')
-            ->leftJoin('wip_worktimes', 'wwt_index', '=', 'ww_wwt_index')
+            ->leftJoin('wip_worktimes', 'wwt_workprocess', '=', 'ww_wwt_index')
             ->where('ww_line', $line)
             ->where('wwt_line', $line)
-            ->where('ww_wwt_index', $index)
+            ->whereIn('ww_wwt_index', (array) $workprocess)
             ->get();
     }
 
-    // ฟังก์ชันเพื่อดึงข้อมูล Ziptape ตาม Line และ Index
-    public static function csvtimeziptape($line, $index)
+    // ✅ ดึงข้อมูล Ziptape ตาม Line และ Work Process
+    public static function csvtimeziptape($line, $workprocess)
     {
-        return WipZiptape::leftJoin('wip_worktimes', 'wz_worktime_id', 'wwt_id')
+        return WipZiptape::leftJoin('wip_worktimes', 'wz_worktime_id', '=', 'wwt_id')
             ->where('wz_line', $line)
-            ->where('wwt_index', $index)
+            ->whereIn('wwt_index', (array) $workprocess)
             ->get();
+    }
+
+    // ✅ ฟังก์ชันช่วยในการจัดรูปแบบ Line ให้เริ่มต้นด้วย "L"
+    private static function normalizeLine($line)
+    {
+        return str_starts_with($line, 'L') ? $line : 'L' . $line;
     }
 }
