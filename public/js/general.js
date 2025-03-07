@@ -2237,19 +2237,6 @@ $(document).ready(function(){
     });
 });
 
-$(document).ready(function(){
-    $.get({url:path+'/csvdetailrealtime/',
-    beforeSend: function(){
-        $('#csvdetailrealtime').html('<h3>กำลังโหลดข้อมูล...</h3>');
-    },
-    success:function( data ) {
-
-        $('#csvdetailrealtime').html(data);
-    },
-    complete:function(data){
-    },
-});
-});
 
 setInterval(function(){
     $.get(path+"/csvdetailrealtime/", function(data) {

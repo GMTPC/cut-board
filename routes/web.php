@@ -181,5 +181,11 @@ Route::post('/send-weightbaby', [WeightBabyController::class, 'sendWeightBabyDat
 Route::get('/weightbaby', function () {
     return view('weightbaby');
 });
+Route::post('/insertcheckcsvindex', [WipController::class, 'insertcheckcsvindex'])->name('insertcheckcsvindex');
+Route::get('/outcheckcsvwh/{indexno}', [WipController::class, 'outcheckcsvwh'])->name('outcheckcsvwh');
+Route::get('/csvwhsaved/{indexno}',  [WipController::class, 'csvwhsaved'])->name('csvwhsaved');
+Route::get('/csvdetailrealtime', [WipController::class, 'csvdetailrealtime'])->name('csvdetailrealtime');
+Route::post('/insertcheckcsv', [WipController::class, 'insertcheckcsv'])->name('insertcheckcsv');
+Route::delete('/deleteccw/{ccw_id}', [WipController::class, 'deleteccw'])->name('deleteccw');
 
 require __DIR__.'/auth.php';

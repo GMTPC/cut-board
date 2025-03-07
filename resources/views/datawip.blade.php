@@ -518,6 +518,29 @@ $(document).ready(function () {
 
         const formData = $(this).serializeArray();
         const barcode = $('#wip_barcode').val();
+        const empGroupId = $('#wip_empgroup_id_2').val(); // ✅ ดึงค่า Drop-down ของผู้คัด
+
+        // ✅ ตรวจสอบว่าผู้ใช้เลือกผู้คัดหรือไม่
+        if (!empGroupId || empGroupId === "0") {
+            Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาเลือกผู้คัด',
+                text: 'โปรดเลือกผู้คัดก่อนทำการบันทึก',
+                showConfirmButton: true,
+            });
+            return; // ⛔ หยุดการส่งฟอร์ม
+        }
+
+        // ✅ ตรวจสอบว่าผู้ใช้กรอกบาร์โค้ดหรือไม่
+        if (!barcode || barcode.trim() === '') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'กรุณากรอกบาร์โค้ด',
+                text: 'โปรดสแกนหรือกรอกบาร์โค้ดก่อนบันทึก',
+                showConfirmButton: true,
+            });
+            return; // ⛔ หยุดการส่งฟอร์ม
+        }
 
         // ✅ เช็คว่า "ตัวที่สอง" ของบาร์โค้ดตรงกับ line หรือไม่
         const barcodeLine = barcode.charAt(1); // ตัวอักษรที่สองของบาร์โค้ด
@@ -657,6 +680,7 @@ $(document).ready(function () {
         });
     }
 });
+
 </script>
 
 
@@ -1815,14 +1839,14 @@ $(document).ready(function () {
 
     <!-- Input -->
     <div class="form-group mr-2">
-        <input id="wip_barcode" 
-               name="wip_barcode" 
-               type="text" 
-               class="form-control text-center" 
-               placeholder="สแกนบาร์โค้ดยิงรับเข้า WIP" 
-               minlength="24" 
-               required 
-               autofocus>
+    <input id="wip_barcode" 
+       name="wip_barcode" 
+       type="text" 
+       class="form-control text-center" 
+       placeholder="สแกนบาร์โค้ดยิงรับเข้า WIP" 
+       minlength="24" 
+       autofocus>
+
     </div>
 
     <!-- Hidden Input -->

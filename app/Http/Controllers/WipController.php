@@ -13,6 +13,7 @@ use App\Models\CheckCsvWhIndex;
 use App\Models\WarehouseReturnToQc;
 use App\Models\WorkprocessTemp;
 use Illuminate\Support\Facades\Http; // ✅ เพิ่มบรรทัดนี้
+use Illuminate\Support\Facades\Response; // ✅ เพิ่มบรรทัดนี้
 
 
 
@@ -89,7 +90,18 @@ class WipController extends Controller
             $peIndex = ProductTypeEmp::max('pe_index') + 1;
     
             // ✅ บันทึกข้อมูลลง Wipbarcode
-            $wipAmount = (int) ltrim(substr($request->wip_barcode, -3), '0');
+           // ✅ ดึงค่า 3 ตัวท้ายของบาร์โค้ด และตัด 0 ข้างหน้า
+$wipAmount = (int) ltrim(substr($request->wip_barcode, -3), '0');
+
+// ✅ เช็คว่าค่าเกิน 100 หรือไม่
+if ($wipAmount > 100) {
+    return response()->json([
+        'status' => 'error',
+        'title' => 'จำนวนเกินกำหนด',
+        'message' => 'จำนวนที่ได้จากบาร์โค้ดเกิน 100 ไม่สามารถบันทึกได้'
+    ], 400);
+}
+
             $insertwip = Wipbarcode::create([
                 'wip_barcode'    => $request->wip_barcode,
                 'wip_amount'     => $wipAmount,
@@ -2160,16 +2172,277 @@ return response()->json(['error' => 'Product type not found'], 404);
         }
     }
     
-public function checkcsvtobplus() {
-    return view('checkcsvtobplus');
+    public function checkcsvtobplus()
+    {
+        // ✅ ใช้ค่าล่าสุดจาก `check_csv_wh`
+        $index = CheckCsvWh::orderBy('ccw_id', 'desc')->value('ccw_index') ?? 0;
+    
+        // ✅ ดึงรายการทั้งหมดจาก `check_csv_wh_index`
+        $savedfiles = CheckCsvWhIndex::all();
+    
+        // ✅ ตรวจสอบว่า `ccw_index` มีอยู่ใน `check_csv_wh_index` หรือไม่
+        $existsInIndex = CheckCsvWhIndex::where('cswi_index', '=', $index)->exists();
+    
+        // ✅ ถ้า `ccw_index` มีใน `check_csv_wh_index` → ไม่ต้องส่ง `$detail`
+        $detail = $existsInIndex ? collect([]) : CheckCsvWh::where('ccw_index', '=', $index)->get();
+    
+        // ✅ ส่งค่าทั้งหมดไปที่ View `checkcsvtobplus`
+        return view('checkcsvtobplus', [
+            'detail'        => $detail, // ถ้าว่าง จะไม่มีข้อมูลไปแสดง
+            'index'         => $index,
+            'savedfiles'    => $savedfiles,
+        ]);
+    }
+    
+
+    
+    public function outcheckcsvwh($indexno)
+    {
+        // ✅ ดึงข้อมูลจาก `check_csv_wh` ที่ `ccw_index` ตรงกับ `$indexno`
+        $csv = CheckCsvWh::where('ccw_index', '=', $indexno)->get();
+        $enddatefm = date('dmYHi');
+        $filename = "PWH{$enddatefm}B.csv";
+
+        // ✅ กำหนด Header สำหรับดาวน์โหลดไฟล์ CSV
+        $headers = [
+            "Content-Type" => "application/csv",
+            "Content-Disposition" => "attachment; filename={$filename}",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0"
+        ];
+
+        // ✅ เปิดไฟล์ CSV ในหน่วยความจำ
+        $handle = fopen('php://output', 'w');
+        $cp = 'cp874//TRANSLIT';
+
+        // ✅ เขียน Header ลง CSV
+        fputcsv($handle, [
+            iconv('utf-8', $cp, "PK01-000008"),
+            iconv('utf-8', $cp, ""),
+            iconv('utf-8', $cp, "0.01"),
+            iconv('utf-8', $cp, "3"),
+            iconv('utf-8', $cp, "QC")
+        ]);
+
+        // ✅ สร้างข้อมูล BX จากบาร์โค้ด
+        $bx = 'BX';
+
+        foreach ($csv as $item) {
+            $barcodePrefix = substr($item->ccw_barcode, 0, 2);
+            $lot = "";
+
+            // ✅ ตรวจสอบ Barcode Prefix
+            if ($barcodePrefix == "B1") {
+                $lot = "L1";
+            } elseif ($barcodePrefix == "B2") {
+                $lot = "L2";
+            } elseif ($barcodePrefix == "B3") {
+                $lot = "L3";
+            } else {
+                $lot = $item->ccw_lot;
+            }
+
+            // ✅ เขียนข้อมูลลง CSV
+            fputcsv($handle, [
+                iconv('utf-8', $cp, $bx . substr($item->ccw_barcode, 2, 2) . substr($item->ccw_barcode, 4, 7)),
+                iconv('utf-8', $cp, $lot),
+                iconv('utf-8', $cp, $item->ccw_amount),
+                iconv('utf-8', $cp, '4'),
+                iconv('utf-8', $cp, '01-01นว')
+            ]);
+        }
+
+        fclose($handle);
+
+        return Response::make('', 200, $headers);
+    }
+
+    /**
+     * 📌 ฟังก์ชันสำหรับเพิ่มดัชนีลงตาราง check_csv_wh_index
+     */
+    public function insertcheckcsvindex(Request $request)
+    {
+        date_default_timezone_set("Asia/Bangkok");
+    
+        if (!$request->filled('cswi_index')) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'ไม่พบค่าของ index กรุณาระบุค่าก่อนทำการบันทึก'
+            ], 400);
+        }
+    
+        // ✅ ตรวจสอบว่ามีข้อมูลใน `check_csv_wh` หรือไม่
+        $checkempty = CheckCsvWh::where('ccw_index', '=', $request->input('cswi_index'))->first();
+        if (!$checkempty) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'ไม่พบข้อมูลที่ตรงกับ index นี้'
+            ], 400);
+        }
+    
+        // ✅ บันทึกข้อมูลลง `check_csv_wh_index`
+        $index = new CheckCsvWhIndex();
+        $index->cswi_index = $request->input('cswi_index');
+        $index->cswi_ziptape = 0.01;
+        $index->save();
+    
+        return response()->json([
+            'status' => 'success',
+            'indexno' => $index->cswi_index,
+            'message' => 'บันทึกข้อมูลสำเร็จ'
+        ], 200);
+    }
+    public function csvwhsaved($indexno)
+    {
+        // ✅ กำหนดค่า `$indexno` เพื่อใช้ใน View
+        $no = $indexno;
+    
+        // ✅ ดึงรายการไฟล์ที่เคยบันทึกทั้งหมดจาก `check_csv_wh_index`
+        $savedfiles = CheckCsvWhIndex::all();
+    
+        // ✅ ดึงข้อมูลจาก `check_csv_wh` ที่มี `ccw_index` ตรงกับ `$indexno`
+        $detailall = CheckCsvWh::where('ccw_index', $indexno)->get();
+    
+        // ✅ ตรวจสอบว่ามีข้อมูลหรือไม่
+        if ($detailall->isEmpty()) {
+            return redirect()->back()->with('error', 'ไม่พบข้อมูลสำหรับ Index นี้');
+        }
+    
+        // ✅ ส่งข้อมูลไปยัง View `csvwhsaved.blade.php`
+        return view('csvwhsaved', [
+            'no'         => $no,          // ส่งค่า Index ไปที่ View
+            'detailall'  => $detailall,   // ข้อมูลทั้งหมดจาก `check_csv_wh`
+            'savedfiles' => $savedfiles,  // รายการไฟล์ทั้งหมดจาก `check_csv_wh_index`
+        ]);
+    }
+    
+    public function csvdetailrealtime()
+    {
+        // ดึงค่า index ล่าสุดที่ยังไม่มีใน `check_csv_wh_index`
+        $lastIndex = CheckCsvWh::orderBy('ccw_id', 'desc')->value('ccw_index') ?? 0;
+        $existsInIndex = CheckCsvWhIndex::where('cswi_index', '=', $lastIndex)->exists();
+    
+        if ($existsInIndex) {
+            return "<h4 class='text-center'>ไม่มีข้อมูลใหม่</h4>";
+        }
+    
+        // ดึงข้อมูลจาก `CheckCsvWh` ที่มี `ccw_index` เท่ากับค่าที่หาได้
+        $detail = CheckCsvWh::where('ccw_index', '=', $lastIndex)->get();
+    
+        if ($detail->isEmpty()) {
+            return "<h4 class='text-center'>ไม่มีข้อมูลใหม่</h4>";
+        }
+    
+        // แสดงข้อมูลโดยใช้ echo
+        foreach ($detail as $details) {
+            echo "
+            <div class='col-md-5 col-xs-5'>
+                <h4 class='text-center'>$details->ccw_barcode</h4>
+            </div>
+            <div class='col-md-3 col-xs-3'>
+                <h4 class='text-center'>$details->ccw_lot</h4>
+            </div>
+            <div class='col-md-2 col-xs-2'>
+                <h4 class='text-center'>$details->ccw_amount</h4>
+            </div>
+            <div class='col-md-1 col-xs-1'>
+                <h4 class='text-center'>
+                    <a href='#' data-target='#deleteccwbarcode' data-toggle='modal' 
+                       data-ccw_id='$details->ccw_id' data-ccw_barcode='$details->ccw_barcode' 
+                       class='deleteccwbarcode'>
+                        <i style='color:red;' class='fa fa-trash'></i>
+                    </a>
+                </h4>
+            </div>";
+        }
+    
+        // เพิ่ม JavaScript สำหรับการลบข้อมูล
+        echo "<script>
+        $('.deleteccwbarcode').on('click', function () {
+            var ccw_id = $(this).data('ccw_id');
+            var ccw_barcode = $(this).data('ccw_barcode');
+            $('#ccwbarcodeheader').text(ccw_barcode);
+            $('#ccw_id_hiden').val(ccw_id);
+        });
+        </script>";
+    }
+    
+    public function insertcheckcsv(Request $request)
+{
+    // ✅ ตรวจสอบบาร์โค้ด
+    if (substr($request->input('ccw_barcode'), 0, 2) == 'BX') {
+        $this->validate($request, [
+            'ccw_barcode' => 'required|min:24|max:24',
+        ]);
+    } else {
+        $this->validate($request, [
+            'ccw_barcode' => 'required|min:24|max:24|unique:check_csv_wh',
+        ]);
+    }
+
+    // ✅ หาค่า `ccw_index` ล่าสุด
+    $lastIndex = CheckCsvWh::max('ccw_index') ?? 0;
+
+    // ✅ แก้ไขให้ใช้ชื่อคอลัมน์ที่ถูกต้อง (เช่น `cswi_index`)
+    while (CheckCsvWhIndex::where('cswi_index', '=', $lastIndex)->exists()) {
+        $lastIndex++;
+    }
+
+    $newIndex = $lastIndex;
+
+    // ✅ แยกค่าบาร์โค้ดเพื่อหาไลน์การผลิต (B1, B2, B3)
+    $CsvLine = substr($request->input('ccw_barcode'), 1, 1);
+
+    // ✅ บันทึกข้อมูลลง `check_csv_wh`
+    $csv = new CheckCsvWh();
+    $csv->ccw_barcode = $request->input('ccw_barcode');
+    $csv->ccw_lot = substr($request->input('ccw_barcode'), 11, 10);
+    $csv->ccw_amount = substr($request->input('ccw_barcode'), 21, 3);
+    $csv->ccw_index = $newIndex; // ✅ ใช้ค่า index ที่อัปเดตแล้ว
+    $csv->save();
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'บันทึกข้อมูลสำเร็จ',
+        'ccw_index' => $newIndex,
+    ], 200);
 }
+
+    
+        
+            public function deleteccw($ccw_id)
+            {
+                // ค้นหาข้อมูลที่ต้องการลบ
+                $delete = CheckCsvWh::find($ccw_id);
+        
+                // ตรวจสอบว่าพบข้อมูลหรือไม่
+                if (!$delete) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'ไม่พบข้อมูลที่ต้องการลบ'
+                    ], 404);
+                }
+        
+                // ทำการลบข้อมูล
+                $delete->delete();
+        
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'ลบข้อมูลสำเร็จ'
+                ], 200);
+            }
+        }
+            
+
+    
+      
+
+
 
 
 
     
     
 
-}
 
 
 
