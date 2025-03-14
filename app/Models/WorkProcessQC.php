@@ -11,6 +11,8 @@ class WorkProcessQC extends Model
     use HasFactory;
 
     protected $table = 'workprocess_qc';
+    protected $primaryKey = 'id';
+
     protected $fillable = ['line', 'group', 'date', 'status', 'status_qc'];
 
     // เชื่อมกับ Wipbarcode

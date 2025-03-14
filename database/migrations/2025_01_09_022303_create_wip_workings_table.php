@@ -12,13 +12,25 @@ class CreateWipWorkingsTable extends Migration
      * @return void
      */
     public function up()
-    {
-        Schema::create('wip_workings', function (Blueprint $table) {
-            $table->id('ww_id'); // Primary Key
-            $table->string('ww_line'); // คอลัมน์สำหรับ line
-            $table->timestamps(); // created_at และ updated_at
-        });
-    }
+{
+    Schema::create('wip_working', function (Blueprint $table) {
+        $table->bigInteger('ww_id')->unsigned()->primary(); // กำหนดเป็น PRIMARY KEY แต่ไม่เป็น IDENTITY
+        $table->string('ww_group')->nullable();
+        $table->string('ww_line');
+        $table->integer('ww_wwt_index')->nullable();
+        $table->string('ww_division')->nullable();
+        $table->string('ww_status')->nullable();
+        $table->text('ww_remark')->nullable();
+        $table->dateTime('ww_start_date')->nullable();
+        $table->dateTime('ww_lot_date')->nullable();
+        $table->dateTime('ww_end_date')->nullable();
+        $table->timestamps();
+    });
+}
+
+    
+
+    
 
     /**
      * Reverse the migrations.

@@ -13,9 +13,13 @@ class CreateWipHoldingsTable extends Migration
      */
     public function up()
     {
-        Schema::create('wip_holdings', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
+        Schema::create('wip_holding', function (Blueprint $table) {
+            $table->bigIncrements('wh_id'); // Primary Key
+            $table->bigInteger('wh_working_id')->unsigned()->nullable(); // Foreign Key
+            $table->integer('wh_index')->default(0);
+            $table->string('wh_barcode')->nullable();
+            $table->string('wh_lot')->nullable();
+            $table->timestamps(); // created_at, updated_at
         });
     }
 

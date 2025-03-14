@@ -494,19 +494,19 @@ $(document).ready(function () {
 
 <script>
 $(document).ready(function () {
-    // ✅ ดึงค่า line และ workId จาก URL
+    // ✅ ดึงค่า ww_line และ ww_id จาก URL
     const urlParts = window.location.pathname.split('/');
-    const line = urlParts[urlParts.length - 2].replace('L', ''); // แปลง L2 เป็น 2
-    const workId = urlParts[urlParts.length - 1]; // ดึง workId เช่น 30053
+    let ww_line = urlParts[urlParts.length - 2].replace('L', ''); // ตัด 'L' ออก
+    const ww_id = urlParts[urlParts.length - 1]; // ดึง workId เช่น 30053
 
-    console.log('Line:', line);
-    console.log('Work ID:', workId);
+    console.log('WW Line:', ww_line);
+    console.log('WW ID:', ww_id);
 
-    if (!line || !workId || isNaN(line) || isNaN(workId)) {
+    if (!ww_line || !ww_id || isNaN(ww_line) || isNaN(ww_id)) {
         Swal.fire({
             icon: 'error',
             title: 'URL ไม่ถูกต้อง',
-            text: 'ไม่สามารถดึง Line หรือ Work ID จาก URL ได้',
+            text: 'ไม่สามารถดึง WW Line หรือ WW ID จาก URL ได้',
             showConfirmButton: true,
         });
         return;
@@ -528,7 +528,7 @@ $(document).ready(function () {
                 text: 'โปรดเลือกผู้คัดก่อนทำการบันทึก',
                 showConfirmButton: true,
             });
-            return; // ⛔ หยุดการส่งฟอร์ม
+            return;
         }
 
         // ✅ ตรวจสอบว่าผู้ใช้กรอกบาร์โค้ดหรือไม่
@@ -539,12 +539,12 @@ $(document).ready(function () {
                 text: 'โปรดสแกนหรือกรอกบาร์โค้ดก่อนบันทึก',
                 showConfirmButton: true,
             });
-            return; // ⛔ หยุดการส่งฟอร์ม
+            return;
         }
 
-        // ✅ เช็คว่า "ตัวที่สอง" ของบาร์โค้ดตรงกับ line หรือไม่
+        // ✅ เช็คว่า "ตัวที่สอง" ของบาร์โค้ดต้องตรงกับ ww_line
         const barcodeLine = barcode.charAt(1); // ตัวอักษรที่สองของบาร์โค้ด
-        if (barcodeLine !== line) {
+        if (barcodeLine !== ww_line) {
             Swal.fire({
                 icon: 'error',
                 title: 'ไลน์ผลิตและบาร์โค้ดไม่ตรงกัน',
@@ -587,7 +587,7 @@ $(document).ready(function () {
                     }
 
                     // ✅ ถ้าไม่ซ้ำ ให้ส่งฟอร์มต่อไป
-                    sendDataToServer(formData, line, workId);
+                    sendDataToServer(formData, ww_line, ww_id);
                 });
             },
             error: function () {
@@ -621,9 +621,9 @@ $(document).ready(function () {
     }
 
     // ✅ ฟังก์ชันส่งข้อมูลไปยังเซิร์ฟเวอร์
-    function sendDataToServer(formData, line, workId) {
-        formData.push({ name: 'line', value: line });
-        formData.push({ name: 'work_id', value: workId });
+    function sendDataToServer(formData, ww_line, ww_id) {
+        formData.push({ name: 'ww_line', value: ww_line });
+        formData.push({ name: 'ww_id', value: ww_id });
 
         Swal.fire({
             title: 'กำลังบันทึกข้อมูล...',
@@ -636,12 +636,12 @@ $(document).ready(function () {
 
         $.ajax({
             type: 'POST',
-            url: `/insert-barcode/L/${line}/${workId}`,
+            url: `/insert-barcode/L/${ww_line}/${ww_id}`,
             data: formData,
-            dataType: "json", // ✅ บังคับให้ AJAX คาดหวัง JSON
+            dataType: "json",
             success: function (response) {
                 Swal.close();
-                console.log("✅ Response จาก Server:", response); // ✅ Debug ค่าที่ได้รับ
+                console.log("✅ Response จาก Server:", response);
                 if (response.status === 'success') {
                     Swal.fire({
                         icon: 'success',
@@ -651,7 +651,7 @@ $(document).ready(function () {
                         showConfirmButton: false,
                     });
                     setTimeout(() => location.reload(), 1500);
-                } else if (response.status === 'duplicate') { // ✅ เช็คสถานะซ้ำ
+                } else if (response.status === 'duplicate') {
                     Swal.fire({
                         icon: 'warning',
                         title: response.title,
@@ -669,7 +669,7 @@ $(document).ready(function () {
             },
             error: function (xhr, textStatus, errorThrown) {
                 Swal.close();
-                console.error("AJAX Error:", textStatus, errorThrown, xhr.responseText); // ✅ Debug Error
+                console.error("AJAX Error:", textStatus, errorThrown, xhr.responseText);
                 Swal.fire({
                     icon: 'error',
                     title: 'บันทึกข้อมูลไม่สำเร็จ',
@@ -680,8 +680,8 @@ $(document).ready(function () {
         });
     }
 });
-
 </script>
+
 
 
 
@@ -931,79 +931,122 @@ $(document).ready(function () {
 </script>
 
 <script>
-    $(document).ready(function () {
-        $("#forminputend").submit(function (e) {
-    e.preventDefault();
+$(document).ready(function () {
+    $("#forminputend").submit(function (e) {
+        e.preventDefault();
 
-    var form = $(this);
-    var url = form.attr("action");
-    var formData = new FormData(this);
+        var form = $(this);
+        var url = form.attr("action");
+        var formData = new FormData(this);
 
-    let requiredFields = ["ws_input_amount", "ws_output_amount", "ws_holding_amount", "ws_ng_amount", "ws_working_id", "wh_working_id", "wh_lot"];
-    let isValid = true;
-    let missingFields = [];
+        // ✅ ดึงค่า work_id จากฟอร์ม
+        let work_id = formData.get("ws_working_id");
+        console.log("🆔 work_id ที่ส่งไป:", work_id); // ✅ แสดง work_id ใน Console
 
-    console.log("📌 ตรวจสอบค่าก่อนส่ง:");
+        let requiredFields = ["ws_input_amount", "ws_output_amount", "ws_holding_amount", "ws_ng_amount", "ws_working_id", "wh_working_id", "wh_lot"];
+        let isValid = true;
+        let missingFields = [];
 
-    requiredFields.forEach(field => {
-        let value = formData.get(field);
-        console.log(`✅ ${field}:`, value);
+        console.log("📌 ตรวจสอบค่าก่อนส่ง:");
 
-        // ✅ ปรับเงื่อนไขให้ค่า 0 สามารถบันทึกได้
-        if (value === null || value.trim() === "" || value === "null") { 
-            isValid = false;
-            missingFields.push(field);
-        }
-    });
+        requiredFields.forEach(field => {
+            let value = formData.get(field);
+            console.log(`✅ ${field}:`, value);
 
-    if (!isValid) {
-        console.error("❌ ข้อมูลที่ขาด:", missingFields);
-        Swal.fire({
-            title: "ข้อมูลไม่ครบถ้วน!",
-            text: "กรุณากรอกข้อมูลให้ครบทุกช่องก่อนบันทึก",
-            icon: "warning",
-            confirmButtonText: "ตกลง"
-        });
-        return;
-    }
-
-    // ✅ ส่ง AJAX
-    $.ajax({
-        type: "POST",
-        url: url,
-        data: formData,
-        contentType: false,
-        processData: false,
-        success: function (response) {
-            Swal.fire({
-                title: "บันทึกสำเร็จ!",
-                text: response.message || "ข้อมูลถูกบันทึกเรียบร้อย",
-                icon: "success",
-                confirmButtonText: "ตกลง"
-            }).then(() => {
-                if (response.redirect_url) {
-                    window.open(response.redirect_url, "_blank", "width=800,height=600");
-                }
-                location.reload();
-            });
-        },
-        error: function (xhr) {
-            let errorMessage = "ไม่สามารถบันทึกข้อมูลได้";
-            if (xhr.responseJSON) {
-                errorMessage = xhr.responseJSON.message || errorMessage;
-                console.error("❌ เกิดข้อผิดพลาด:", xhr.responseJSON);
+            if (value === null || value.trim() === "" || value === "null") { 
+                isValid = false;
+                missingFields.push(field);
             }
-            
+        });
+
+        if (!isValid) {
+            console.error("❌ ข้อมูลที่ขาด:", missingFields);
             Swal.fire({
-                title: "เกิดข้อผิดพลาด!",
-                text: errorMessage,
-                icon: "error",
+                title: "ข้อมูลไม่ครบถ้วน!",
+                text: "กรุณากรอกข้อมูลให้ครบทุกช่องก่อนบันทึก",
+                icon: "warning",
                 confirmButtonText: "ตกลง"
             });
+            return;
         }
+
+        // ✅ ส่ง AJAX เพื่อบันทึกข้อมูล
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function (response) {
+                console.log("✅ การตอบกลับจากเซิร์ฟเวอร์:", response);
+
+                // ✅ เช็คว่า response มีค่า redirect_url หรือไม่
+                if (!response || !response.redirect_url) {
+                    console.error("❌ ไม่มี redirect_url ใน response");
+                    Swal.fire({
+                        title: "เกิดข้อผิดพลาด!",
+                        text: "ไม่มีข้อมูล redirect URL ใน response",
+                        icon: "error",
+                        confirmButtonText: "ตกลง"
+                    });
+                    return;
+                }
+
+                // ✅ อัปเดต ww_status เป็น "E" ผ่าน AJAX
+                $.ajax({
+                    type: "POST",
+                    url: "/update-ww-status",
+                    data: {
+                        work_id: work_id,
+                        status: "E",
+                        _token: $('meta[name="csrf-token"]').attr("content")
+                    },
+                    success: function (updateResponse) {
+                        console.log("✅ ww_status อัปเดตสำเร็จ:", updateResponse);
+
+                        Swal.fire({
+                            title: "บันทึกสำเร็จ!",
+                            text: response.message || "ข้อมูลถูกบันทึกเรียบร้อย",
+                            icon: "success",
+                            confirmButtonText: "ตกลง"
+                        }).then(() => {
+                            // ✅ เปิด Popup หน้าต่อไป
+                            window.open(response.redirect_url, "_blank", "width=800,height=600");
+
+                            // ✅ โหลดหน้าใหม่เพื่อแสดงผลอัปเดต
+                            location.reload();
+                        });
+                    },
+                    error: function (updateError) {
+                        console.error("❌ อัปเดต ww_status ไม่สำเร็จ:", updateError);
+                        Swal.fire({
+                            title: "เกิดข้อผิดพลาด!",
+                            text: "การอัปเดตสถานะล้มเหลว",
+                            icon: "error",
+                            confirmButtonText: "ตกลง"
+                        });
+                    }
+                });
+
+            },
+            error: function (xhr) {
+                let errorMessage = "ไม่สามารถบันทึกข้อมูลได้";
+                if (xhr.responseJSON) {
+                    errorMessage = xhr.responseJSON.message || errorMessage;
+                    console.error("❌ เกิดข้อผิดพลาดจาก API:", xhr.responseJSON);
+                }
+                
+                Swal.fire({
+                    title: "เกิดข้อผิดพลาด!",
+                    text: errorMessage,
+                    icon: "error",
+                    confirmButtonText: "ตกลง"
+                });
+            }
+        });
     });
 });
-});
+
 
 </script>
 <script>
@@ -1293,7 +1336,7 @@ $(document).ready(function() {
 
     let requests = []; // ใช้เก็บ AJAX request ทั้งหมด
 
-    // ตรวจสอบว่ามีข้อมูลใน barcodeValue หรือไม่
+    // ✅ ตรวจสอบว่ามีข้อมูลใน barcodeValue หรือไม่
     $("td.barcodeValue").each(function() {
         let barcodeText = $(this).text().trim(); // ดึงค่าข้อความและตัดช่องว่าง
         if (barcodeText !== "") {
@@ -1301,6 +1344,7 @@ $(document).ready(function() {
         }
     });
 
+    // ✅ ตรวจสอบค่า brd_lot และเรียก API
     $("td.brd-lot").each(function() {
         let $td = $(this);
         let brd_lot = $td.data("lot");
@@ -1314,7 +1358,7 @@ $(document).ready(function() {
             url: "/get-brd-status/" + brd_lot,
             method: "GET",
             success: function(response) {
-                console.log("✅ ดึง brd_status สำเร็จ:", response);
+                console.log(`✅ ดึง brd_status สำเร็จ: brd_lot=${response.brd_lot}, brd_status=${response.brd_status}`);
 
                 if (response.brd_status !== null && response.brd_status == 2) {
                     $td.find(".status-icon").html("✅ "); // แสดงเครื่องหมายถูก
@@ -1325,20 +1369,20 @@ $(document).ready(function() {
             },
             error: function(xhr) {
                 console.error("❌ เกิดข้อผิดพลาดในการดึงข้อมูล", xhr);
-                allValidStatus = false; // กันกรณี API ล้มเหลว
+                allValidStatus = false; // ป้องกันกรณี API ล้มเหลว
             }
         });
 
         requests.push(request);
     });
 
-    // รอให้ทุก AJAX รันเสร็จ แล้วค่อยเช็คเงื่อนไข
+    // ✅ รอให้ทุก AJAX เสร็จ แล้วค่อยตรวจสอบเงื่อนไข
     $.when.apply($, requests).done(function() {
         console.log("🔄 ตรวจสอบเงื่อนไขการแสดงปุ่ม");
-        console.log("มีข้อมูล? ", hasData);
-        console.log("จำนวนแถวที่มี brd_status = 2: ", totalChecked);
-        console.log("จำนวนแถวทั้งหมด: ", rowCount);
-        console.log("มี barcode หรือไม่? ", hasBarcodeData);
+        console.log(`📊 มีข้อมูล? ${hasData}`);
+        console.log(`📊 จำนวนแถวที่มี brd_status = 2: ${totalChecked}`);
+        console.log(`📊 จำนวนแถวทั้งหมด: ${rowCount}`);
+        console.log(`📊 มี barcode หรือไม่? ${hasBarcodeData}`);
 
         // ✅ เงื่อนไขการแสดงปุ่ม:
         // 1. ถ้ามีข้อมูลใน barcodeValue (hasBarcodeData = true)
@@ -1350,15 +1394,12 @@ $(document).ready(function() {
         }
     });
 
-    // ถ้าไม่มี barcodeValue เลย → ซ่อนปุ่ม
+    // ❌ ถ้าไม่มี barcodeValue → ซ่อนปุ่ม
     if (!hasBarcodeData) {
         $("#btn-end-process").hide();
     }
 });
-
-
 </script>
-
 <script>
 $(document).ready(function () {
     $(document).on("click", ".open-noti-amount", function () {
@@ -1590,25 +1631,27 @@ $(document).ready(function () {
 
 
             <div class="container-fluid">
-            <h4><b>กลุ่มที่คัด :</b> <b>{{ $workprocess->line ?? 'ไม่มีข้อมูล' }}{{ $workprocess->group ?? 'ไม่มีข้อมูล' }}</b></h4>
-<h4><b>วันที่เริ่ม :</b> <b>{{ $workprocess->date ? \Carbon\Carbon::parse($workprocess->date)->format('d-m-Y') : 'ไม่มีข้อมูล' }}</b></h4>
-@if (isset($workprocess->status) && trim($workprocess->status) === 'จบการทำงาน' && !empty($wwEndDate))
-    <h4><b>วันที่จบการทำงาน : {{ date("d-m-Y H:i", strtotime($wwEndDate)) }}</b></h4>
+            <h4><b>กลุ่มที่คัด :</b> <b>{{ $workprocess->ww_group ?? 'ไม่มีข้อมูล' }}</b></h4>
+            <h4><b>วันที่เริ่ม :</b> <b>{{ $workprocess->ww_start_date ? \Carbon\Carbon::parse($workprocess->ww_start_date)->format('d-m-Y') : 'ไม่มีข้อมูล' }}</b></h4>
+            @if (isset($workprocess->ww_status) && trim($workprocess->ww_status) === 'E')
+            <h4><b>วันที่จบการทำงาน : {{ date("d-m-Y H:i", strtotime($wwEndDate)) }}</b></h4>
 @endif
 
 <h4><b>สถานะ :</b> 
-    <b style="color: {{ trim($workprocess->status ?? '') == 'จบการทำงาน' ? 'red' : 'green' }};">
-        {{ trim($workprocess->status ?? 'ไม่มีข้อมูล') }}
+    <b style="color: {{ $workprocess->ww_status == 'E' ? 'red' : 'green' }};">
+        {{ $workprocess->ww_status == 'W' ? 'กำลังคัด' : ($workprocess->ww_status == 'E' ? 'จบการทำงาน' : 'ไม่มีข้อมูล') }}
     </b>
 </h4>
+
+
 @if ($wipBarcodes->count() > 0 && $productTypes->count() > 0)
 <h4><b>ชนิดสินค้า :</b> <b>{{ $peTypeName ?? 'ไม่พบข้อมูล' }}</b></h4>
 @endif
 
 
             </div>
-            @if (isset($workprocess->status) && trim($workprocess->status) === 'กำลังคัด')
-    <h3>
+            @if (isset($workprocess->ww_status) && trim($workprocess->ww_status) === 'W')
+            <h3>
         <p class="text-danger">
             ต้องรอการตรวจสอบรับเข้าคลังสินค้าให้หมด จึงจะสามารถจบทำงานได้
         </p>
@@ -1616,7 +1659,7 @@ $(document).ready(function () {
     <br>
 @endif
 
-    @if (isset($workprocess->status) && trim($workprocess->status) === 'จบการทำงาน')
+@if (isset($workprocess->ww_status) && trim($workprocess->ww_status) === 'E')
     <h4><b>สรุปข้อมูล</b></h4>
     <div class="table-responsive">
         <table class="table">
@@ -1759,7 +1802,7 @@ $(document).ready(function () {
 @endif
 
 
-            @if (isset($workprocess->status) && $workprocess->status == 'กำลังคัด')
+@if (isset($workprocess->ww_status) && trim($workprocess->ww_status) === 'W')
 
             <div class="tab-content">
                 <div id="barcode" class="tab-pane fade in active">

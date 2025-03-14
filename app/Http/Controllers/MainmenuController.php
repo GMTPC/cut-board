@@ -18,185 +18,179 @@ use App\Models\WipWorking;
 use App\Models\Brand;
 use App\Models\WipHolding;
 use App\Models\WipSummary;
+use App\Models\WorkprocessTemp;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\App; // ✅ เพิ่มบรรทัดนี้เพื่อแก้ปัญหา
+use Illuminate\Support\Facades\Schema; // เพิ่มการ import ที่นี่
 
 
 
 class MainmenuController extends Controller
 {
-    public function mainmenu() {
+    public function mainmenu()
+    {
+        if (!auth()->check()) {
+            return redirect('/'); 
+        }
+
         return view('mainmenu');
     }
     
     public function manufacture($line = null)
     {
-        // ดึงข้อมูลพนักงานเฉพาะไลน์ หรือทั้งหมดถ้า $line เป็น null
-        $employees = Employee::when($line, function ($query, $line) {
-            return $query->where('line', $line);
-        })->get();
+
+        if (!auth()->check()) {
+            return redirect('/'); 
+        }
+        // ✅ กำหนดค่าเริ่มต้นให้ `$line`
+        $line = $line ?? 1; // ถ้าไม่มีค่า Default เป็น 1
     
-        // ดึงข้อมูล GroupQC
-        $groups = GroupQC::when($line, function ($query, $line) {
-            return $query->where('line', $line);
-        })->pluck('group'); // ดึงเฉพาะชื่อกลุ่ม
-    
-        // ตั้งชื่อหัวข้อ
+        // ✅ ดึงข้อมูลจากฐานข้อมูล
+        $employees = Employee::when($line, fn($query) => $query->where('line', $line))->get();
+        $groups = GroupQC::when($line, fn($query) => $query->where('line', $line))->pluck('group');
+        $groupemps = GroupEmp::when($line, fn($query) => $query->where('line', $line))->get();
+        
         $lineheader = $line ? 'Line ' . $line : 'All Lines';
-    
-        // ดึงข้อมูล GroupEmp เฉพาะไลน์ที่ระบุ
-        $groupemps = GroupEmp::when($line, function ($query, $line) {
-            return $query->where('line', $line);
-        })->get();
-    
-        // เติม 'L' หน้า $line เพื่อให้ตรงกับค่าในตาราง wip_working (เช่น L1, L2, L3)
         $prefixedLine = 'L' . $line;
     
-        // ✅ ดึงข้อมูลจาก WipWorktime โดยใช้ `$prefixedLine`
-        $worked = WipWorktime::select('wwt_id', 'wwt_status', 'wwt_date')
-        ->where('wwt_line', '=', $line)
-        ->get();
+        // ✅ เช็คว่าตาราง `wip_worktimes` มีอยู่ก่อน Query
+        $worked = Schema::hasTable('wip_worktimes') 
+            ? WipWorktime::select('wwt_id', 'wwt_status', 'wwt_date')
+                ->where('wwt_line', $line)
+                ->get()
+            : collect();
     
+        // ✅ เช็คตาราง `wip_working` และ `wipbarcodes` ก่อน Query
+        $workProcessIDs = (Schema::hasTable('wip_working') && Schema::hasTable('wipbarcodes'))
+            ? WorkProcessQC::join('wipbarcodes', 'workprocess_qc.id', '=', 'wipbarcodes.wip_working_id')
+                ->join('wip_working', 'wip_working.ww_id', '=', 'wipbarcodes.wip_working_id')
+                ->where('workprocess_qc.line', $line)
+                ->where('wip_working.ww_line', $prefixedLine)
+                ->distinct()
+                ->pluck('workprocess_qc.id')
+            : collect();
     
+        // ✅ เช็คว่ามีค่าใน `$workProcessIDs` ก่อน Query
+        $totalWipAmount = $workProcessIDs->isNotEmpty()
+            ? Wipbarcode::whereIn('wip_working_id', $workProcessIDs)->sum('wip_amount')
+            : 0;
     
-        // ✅ 1. ดึง id ของ WorkProcessQC ที่มีค่า line เท่ากับ $line
-        //    พร้อมตรวจสอบว่าในตาราง wip_working ที่เกี่ยวข้องมี ww_line ตรงกับ $prefixedLine
-        $workProcessIDs = WorkProcessQC::join('wipbarcodes', 'workprocess_qc.id', '=', 'wipbarcodes.wip_working_id')
-            ->join('wip_working', 'wip_working.ww_id', '=', 'wipbarcodes.wip_working_id')
-            ->where('workprocess_qc.line', $line)
-            ->where('wip_working.ww_line', $prefixedLine)
-            ->distinct()
-            ->pluck('workprocess_qc.id');
-    
-        // ✅ 2. ค้นหา wip_working_id ใน wipbarcodes โดยใช้ id ที่ได้จาก workprocess_qc
-        $totalWipAmount = Wipbarcode::whereIn('wip_working_id', $workProcessIDs)->sum('wip_amount');
-    
-        // ✅ 3. ดึงข้อมูล WorkProcessQC พร้อมเชื่อม product_type_emps
-        // เพิ่มเงื่อนไข where เพื่อกรอง record ที่ status_qc ไม่เท่ากับ "จบกะทำงาน"
-        $workProcessQC = WorkProcessQC::where('line', $line)
-            ->where('status_qc', '<>', 'จบกะทำงาน')
-            ->leftJoin('product_type_emps', 'workprocess_qc.id', '=', 'product_type_emps.pe_working_id')
+        // ✅ ดึงข้อมูล WorkProcessQC
+        $excludedWwIds = WorkprocessTemp::pluck('workprocess_id')->toArray();
+
+        // ✅ ดึงข้อมูล WorkProcessQC (ไม่รวม `ww_id` ที่อยู่ใน `workprocess_temps`)
+        $workProcessQC = Schema::hasTable('wip_working')
+        ? WipWorking::where('ww_line', $line)
+            ->whereNotIn('ww_id', $excludedWwIds)
+            ->leftJoin('product_type_emps', 'wip_working.ww_id', '=', 'product_type_emps.pe_working_id')
             ->select(
-                'workprocess_qc.id',
-                'workprocess_qc.line',
-                'workprocess_qc.group',
-                'workprocess_qc.status',
-                'workprocess_qc.date',
-                'product_type_emps.pe_type_name',
-                \DB::raw("$totalWipAmount as total_wip_amount")
+                'wip_working.ww_id AS id',  
+                'wip_working.ww_group AS group',  
+                'wip_working.ww_line AS line',  
+                'wip_working.ww_status AS status',
+                'wip_working.ww_start_date AS start_date', // ✅ ดึง `ww_start_date`
+                'wip_working.ww_end_date AS end_date', // ✅ ดึง `ww_end_date`
+                \DB::raw("MAX(product_type_emps.pe_type_name) AS pe_type_name"),
+                \DB::raw("CASE 
+                    WHEN wip_working.ww_status = 'W' THEN 'กำลังคัด'
+                    WHEN wip_working.ww_status = 'E' THEN 'จบการทำงาน'
+                    ELSE 'ไม่ทราบสถานะ'
+                END AS status_display")
             )
             ->groupBy(
-                'workprocess_qc.id',
-                'workprocess_qc.line',
-                'workprocess_qc.group',
-                'workprocess_qc.status',
-                'workprocess_qc.date',
-                'product_type_emps.pe_type_name'
+                'wip_working.ww_id',
+                'wip_working.ww_group',
+                'wip_working.ww_line',
+                'wip_working.ww_status',
+                'wip_working.ww_start_date', // ✅ เพิ่ม `ww_start_date`
+                'wip_working.ww_end_date' // ✅ เพิ่ม `ww_end_date`
             )
-            ->get();
+            ->get()
+        : collect();
     
-        // ✅ 4. ดึงข้อมูล WorkProcessQC และรวม total_wip_amount ตามวันที่
-        $groupedData = WorkProcessQC::where('line', $line)
-            ->leftJoin('wipbarcodes', 'workprocess_qc.id', '=', 'wipbarcodes.wip_working_id')
-            ->select(
-                'workprocess_qc.date',
-                \DB::raw('SUM(wipbarcodes.wip_amount) as total_wip_amount')
-            )
-            ->groupBy('workprocess_qc.date')
-            ->orderBy('workprocess_qc.date', 'asc')
-            ->get();
     
-        // ตรวจสอบว่ามีข้อมูลหรือไม่
-        if ($groupemps->isEmpty() && $groups->isEmpty() && $employees->isEmpty() && $workProcessQC->isEmpty() && $groupedData->isEmpty()) {
-            $message = 'ไม่พบข้อมูลสำหรับ ' . ($line ? 'Line ' . $line : 'ทุก Line');
-        } else {
-            $message = null;
-        }
-    
-        // **** คำนวณยอดต่าง ๆ สำหรับแต่ละ record ใน WorkProcessQC และรวมยอดทั้งหมด ****
-        // ประกาศตัวแปรสะสม
-        $totalWip = 0;
-        $totalFg  = 0;
-        $totalNg  = 0;
-        $totalHd  = 0;
-    
+        // ✅ คำนวณยอดรวม
+        $totalWip = $totalFg = $totalNg = $totalHd = 0;
+
         foreach ($workProcessQC as $wpqc) {
-            // คำนวณยอด WIP สำหรับ record ที่มี id ตรงกับ $wpqc->id
-            $wpqc->sumwipendtime = Wipbarcode::select(DB::raw('SUM(wip_amount) as wip_amount'))
-                ->join('wip_working', 'wip_working.ww_id', '=', 'wipbarcodes.wip_working_id')
-                ->where('wip_working.ww_line', $prefixedLine)
-                ->where('wip_working.ww_id', $wpqc->id)
-                ->value('wip_amount');
+            // ✅ ใช้ ww_id ในการคำนวณแทน workprocess_qc.id
+            $wpqc->sumwipendtime = Schema::hasTable('wip_working') && Schema::hasTable('wipbarcodes')
+                ? Wipbarcode::where('wip_working_id', $wpqc->id)->sum('wip_amount')
+                : 0;
     
-            // คำนวณยอด Finished Goods (FG)
-            $wpqc->sumfgendtime = Brand::select(DB::raw('SUM(brd_amount) as brd_amount'))
-                ->join('wip_working', 'wip_working.ww_id', '=', 'brands.brd_working_id')
-                ->where('wip_working.ww_line', $prefixedLine)
-                ->where('wip_working.ww_id', $wpqc->id)
-                ->value('brd_amount');
+            $wpqc->sumfgendtime = Schema::hasTable('brands')
+                ? Brand::where('brd_working_id', $wpqc->id)->sum('brd_amount')
+                : 0;
     
-            // คำนวณยอด Not Good (NG)
-            $wpqc->sumngendtime = AmountNg::select(DB::raw('SUM(amg_amount) as amg_amount'))
-                ->join('wipbarcodes', 'wipbarcodes.wip_id', '=', 'amount_ngs.amg_wip_id')
-                ->join('wip_working', 'wip_working.ww_id', '=', 'wipbarcodes.wip_working_id')
-                ->where('wip_working.ww_line', $prefixedLine)
-                ->where('wip_working.ww_id', $wpqc->id)
-                ->value('amg_amount');
+            $wpqc->sumngendtime = Schema::hasTable('amount_ngs')
+                ? AmountNg::join('wipbarcodes', 'wipbarcodes.wip_id', '=', 'amount_ngs.amg_wip_id')
+                    ->where('wipbarcodes.wip_working_id', $wpqc->id)
+                    ->sum('amg_amount')
+                : 0;
     
-            // คำนวณยอด Hold Down (HD)
             $wpqc->sumhdendtime = $wpqc->sumwipendtime - $wpqc->sumfgendtime - $wpqc->sumngendtime;
     
-            // รวมค่าจากแต่ละ record
+            // ✅ รวมค่าจากแต่ละ record
             $totalWip += $wpqc->sumwipendtime;
-            $totalFg  += $wpqc->sumfgendtime;
-            $totalNg  += $wpqc->sumngendtime;
-            $totalHd  += $wpqc->sumhdendtime;
+            $totalFg += $wpqc->sumfgendtime;
+            $totalNg += $wpqc->sumngendtime;
+            $totalHd += $wpqc->sumhdendtime;
         }
+        $wwIds = WipWorking::where('ww_line', $line)->pluck('ww_id')->toArray();
+
+        // ✅ ถ้ามี `ww_id` นำไปดึง `wip_amount` รวมตามวันที่ (`created_at`)
+        $groupedData = [];
+        if (!empty($wwIds)) {
+            $groupedData = Wipbarcode::whereIn('wip_working_id', $wwIds)
+                ->selectRaw('CONVERT(DATE, created_at) as date, SUM(wip_amount) as total_wip_amount')
+                ->groupByRaw('CONVERT(DATE, created_at)')
+                ->orderByRaw('CONVERT(DATE, created_at) asc')
+                ->get();
+        }
+        
     
+    
+        // ✅ **สร้าง View `model` ล่วงหน้า**
+        $modelView = view('model', compact(
+            'groups',
+            'groupemps',
+            'lineheader',
+            'employees',
+            'line',
+            'workProcessQC',
+            'totalWip',
+            'totalFg',
+            'totalNg',
+            'totalHd',
+            'worked',
+            'groupedData' // ✅ ส่งข้อมูลไปที่ Blade
+
+        ))->render();
+    
+        // ✅ ส่ง `modelView` ไปที่ View `manufacture`
         return view('manufacture', compact(
             'groups',
             'groupemps',
             'lineheader',
             'employees',
             'line',
-            'message',
             'workProcessQC',
-            'groupedData',
             'totalWip',
             'totalFg',
             'totalNg',
             'totalHd',
-            'worked' // ✅ ต้องมีตัวแปรนี้
-        ))->with('model', view('model', compact(
-            'groups',
-            'groupemps',
-            'lineheader',
-            'employees',
-            'line',
-            'message',
-            'workProcessQC',
-            'groupedData',
-            'totalWip',
-            'totalFg',
-            'totalNg',
-            'totalHd',
-            'worked' // ✅ ต้องมีตัวแปรนี้
-        ))->render());
-        
-        
-        
-        
-        
+            'worked',
+            'modelView',
+            'groupedData' // ✅ ส่งข้อมูลไปที่ Blade
+            // ✅ ส่งตัวแปรนี้ไปที่ View
+        ));
     }
-    
-    
-    
     
     public function workgroup(Request $request)
     {
         try {
             // ✅ ตั้งค่าภาษาไทยให้ Carbon
-            App::setLocale('th'); // ✅ ตอนนี้ใช้งานได้แน่นอน
+            App::setLocale('th');
             Carbon::setLocale('th');
     
             // ตรวจสอบค่าจาก Request
@@ -215,9 +209,8 @@ class MainmenuController extends Controller
     
             // ✅ ตรวจสอบ Group และปรับวันที่ตามเงื่อนไข
             if ($group === 'B' && ($currentDate->hour < 20 || ($currentDate->hour == 20 && $currentDate->minute == 0))) {
-                $currentDate->subDay(); // ลบ 1 วัน ถ้า Group เป็น B และเวลายังไม่ถึง 19:59 น.
+                $currentDate->subDay(); // ลบ 1 วัน ถ้า Group เป็น B และเวลายังไม่ถึง 20:00 น.
             }
-            
     
             // ✅ ใช้วันที่และเวลาปัจจุบัน หรือปรับตามเงื่อนไข
             $dateForWork = $currentDate->format('Y-m-d H:i:s'); // วันที่พร้อมเวลา
@@ -226,49 +219,70 @@ class MainmenuController extends Controller
             // ✅ แปลงวันที่เป็น "1 พฤศจิกายน 2568 14:30 น."
             $thaiDate = $currentDate->translatedFormat('j F Y H:i') . ' น.';
     
-            // ✅ บันทึกข้อมูลลงใน work_process_qc
-            $workprocess = WorkProcessQC::create([
-                'line' => $request->input('ww_line'),
-                'group' => $group,
-                'date' => $dateForWork,
-                'status' => 'กำลังคัด',
-                'status_qc' => 'เริ่มกะทำงาน'
-            ]);
-    
-            $line = $request->input('ww_line'); // Line
-            $id = $workprocess->id; // ID จาก work_process_qc
+            // ✅ ใช้ค่า line และ group
+            $line = $request->input('ww_line');
             $wwGroupFormatted = $line . $group;
     
-            // ✅ บันทึกข้อมูลลงใน wip_working (เว้น `ww_wwt_index` ไว้)
-            DB::table('wip_working')->insert([
-                'ww_id' => $id,
-                'ww_line' => 'L' . $line,
-                'ww_group' => $wwGroupFormatted,
-                'ww_division' => 'QC',
-                'ww_start_date' => $dateForWork,
-                'ww_lot_date' => $lotDate,
-                'ww_status' => 'W',
-                'ww_wwt_index' => 0, // ใช้ค่าเริ่มต้นเป็น 0
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-    
-            // ✅ คำนวณค่าของ ww_wwt_index และอัปเดตทีหลัง
-            $wwWwtIndex = DB::table('wip_working')->max('ww_wwt_index') + 1;
-           // ✅ ตั้งค่า ww_wwt_index เป็น 0 สำหรับรายการที่มี ww_id ตรงกับ $id
-DB::table('wip_working')
-->where('ww_id', $id)
-->update(['ww_wwt_index' => 0]);
+            // ✅ บันทึกข้อมูลลงใน wip_working
+          // ✅ ดึงค่า ww_id ล่าสุด ถ้ามีให้ +1 ถ้าไม่มีให้ใช้ค่า 1
+$lastId = DB::table('wip_working')->max('ww_id');
+$newId = $lastId ? $lastId + 1 : 1; // ถ้าไม่มีค่า ให้ใช้ 1 เป็นค่าแรก
 
+// ✅ บันทึกข้อมูลลงใน wip_working โดยกำหนด ww_id เอง
+DB::table('wip_working')->insert([
+    'ww_id' => $newId, // ✅ กำหนดค่า ID ใหม่เอง
+    'ww_line' => $line,
+    'ww_group' => $wwGroupFormatted,
+    'ww_division' => 'QC',
+    'ww_start_date' => $dateForWork,
+    'ww_lot_date' => $lotDate,
+    'ww_status' => 'W',
+    'ww_wwt_index' => 0,
+    'created_at' => now(),
+    'updated_at' => now(),
+]);
+
+$id = $newId; // ✅ กำหนดค่าให้ตัวแปร $id เพื่อใช้ใน redirect_url
+
+            // ✅ ตรวจสอบว่าการบันทึกสำเร็จหรือไม่
+            if (!$id) {
+                Log::error("Error: Failed to insert into wip_working. ID is null.", [
+                    'line' => $line,
+                    'group' => $group,
+                ]);
+    
+                // ✅ ลองดึงข้อมูลล่าสุด
+                $lastInserted = DB::table('wip_working')
+                    ->where('ww_line', $line)
+                    ->where('ww_group', $wwGroupFormatted)
+                    ->orderBy('ww_id', 'desc')
+                    ->first();
+    
+                if ($lastInserted) {
+                    $id = $lastInserted->ww_id;
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Error: Could not retrieve ID from wip_working.'
+                    ], 500);
+                }
+            }
+    
+            // ✅ อัปเดตค่า ww_wwt_index เป็น 0 สำหรับ ww_id ที่เพิ่งสร้าง
+            DB::table('wip_working')
+                ->where('ww_id', $id)
+                ->update(['ww_wwt_index' => 0]);
     
             // ✅ เพิ่ม Log
-            Log::info("Data for line $line and group $group has been saved successfully.");
+            Log::info("WIP Working data for line $line and group $group has been saved successfully.", [
+                'ww_id' => $id
+            ]);
     
             // ✅ ส่ง JSON Response กลับไปให้ AJAX พร้อม URL สำหรับ redirect
             return response()->json([
                 'success' => true,
-                'date' => $thaiDate, // ส่งวันที่ไทยกลับไปแสดงใน SweetAlert
-                'redirect_url' => route('datawip', ['line' => $line, 'id' => $id]) // ส่ง URL กลับไปให้ AJAX redirect
+                'date' => $thaiDate,
+                'redirect_url' => route('datawip', ['line' => $line, 'id' => $id])
             ]);
     
         } catch (\Exception $e) {
@@ -277,168 +291,192 @@ DB::table('wip_working')
     }
     
     
+
+    
+    
     
 
 
-public function datawip($line, $id, $brd_id = null)
-{
-    // ✅ ค้นหา WorkProcess ตาม id และ line
-    $workprocess = WorkProcessQC::where('id', $id)
-                                ->where('line', $line)
-                                ->firstOrFail();
-
-    // ✅ ดึงข้อมูล wip_working ที่เกี่ยวข้อง
-    $workdetail = WipWorking::findOrFail($id);
-    $workpgroup = $workdetail->ww_group;
-    $workstatus = $workdetail->ww_status;
-    $workdate = $workdetail->ww_lot_date;
-    $workline = $workdetail->ww_line;
-
-    // ✅ ดึงค่า ww_end_date จาก WipWorking โดยใช้ ww_id
-    $wipWorking = WipWorking::where('ww_id', $id)->pluck('ww_end_date');
-  // ✅ ดึงค่า ww_end_date ที่ใหม่ที่สุดของ ww_id ที่ตรงกับ $id
-$wwEndDate = WipWorking::where('ww_id', $id)
-->orderBy('ww_end_date', 'desc')
-->value('ww_end_date');
-
-
-    // ✅ ดึงข้อมูลจาก WipHolding โดยใช้ wh_working_id
-    $wipHoldings = WipHolding::where('wh_working_id', $id)
-                              ->select('wh_barcode', 'wh_lot')
-                              ->get();
-
-    // ✅ คำนวณจำนวน lot check
-    $lotcheck = Brand::leftJoin('brandlist', 'brands.brd_brandlist_id', '=', 'brandlist.bl_id')
-        ->leftJoin('wip_working', 'brands.brd_working_id', '=', 'wip_working.ww_id')
-        ->where('wip_working.ww_group', $workpgroup)
-        ->where('wip_working.ww_line', $workline)
-        ->where('wip_working.ww_division', 'QC')
-        ->whereDate('wip_working.ww_lot_date', $workdate)
-        ->count();
-
-    // ✅ สร้าง Lot Generator และ LotHD Generator
-    $lotgenerator = date('ymd', strtotime($workdate)) . substr($workpgroup, 1, 1) . str_pad($lotcheck + 1, 3, '0', STR_PAD_LEFT);
-    $lothdgenerator = date('ymd', strtotime($workdate)) . substr($workpgroup,1,1) . substr($workpgroup,1,1) . str_pad($lotcheck + 1, 2, '0', STR_PAD_LEFT);
-
-    // ✅ ดึงค่า holding ที่เกี่ยวข้อง
-    $holding = WipHolding::where('wh_working_id', $id)->sum('wh_index'); 
-
-    // ✅ สร้าง Barcode ตามเงื่อนไข
-    if ($holding < 100 && $holding > 10) {
-        $hdbarcode = 'B'.substr($line,1,1).'99-'.$lothdgenerator.'0'.$holding;
-    } elseif ($holding < 10) {
-        $hdbarcode = 'B'.substr($line,1,1).'99-'.$lothdgenerator.'00'.$holding;
-    } else {
-        $hdbarcode = 'B'.substr($line,1,1).'99-'.$lothdgenerator.$holding;
-    }
-
-    // ✅ ดึงข้อมูลพนักงานในกลุ่มที่ line และ status = 1
-    $empGroups = GroupEmp::where('line', $line)
-                         ->where('status', 1)
-                         ->get();
-
-    // ✅ ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้องกับ workprocess
-    $wipBarcodes = $workprocess->wipBarcodes()->with('groupEmp')->get();
-    $totalWipAmount = $workprocess->wipBarcodes()->sum('wip_amount');
-
-    // ✅ ดึงข้อมูล listngall ที่ lng_status = 1
-    $listNgAll = Listngall::where('lng_status', 1)->get();
-
-    // ✅ ดึงข้อมูล ProductTypeEmp ตาม pe_working_id
-    $productTypes = ProductTypeEmp::where('pe_working_id', $workprocess->id)->get();
-    $peTypeName = $productTypes->isNotEmpty() ? $productTypes->first()->pe_type_name : null;
-    $peTypeCode = $productTypes->isNotEmpty() ? $productTypes->first()->pe_type_code : null;
-
-    // ✅ ดึงผลรวม amg_amount จาก AmountNg
-    $totalNgAmount = AmountNg::whereIn('amg_wip_id', $wipBarcodes->pluck('wip_id'))->sum('amg_amount');
-
-    // ✅ ดึงข้อมูลแบรนด์จาก brandlist
-    $brandLists = BrandList::select('bl_id', 'bl_name')->get();
-
-    // ✅ ดึงชื่อ SKU จาก wip_barcode
-    $wipSkuNames = Wipbarcode::where('wip_working_id', $id)->pluck('wip_sku_name');
-
-    // ✅ ดึง lot ที่เกี่ยวข้องกับ brands
-    $brandsLots = Brand::where('brd_working_id', $id)
-                        ->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date', 'brd_brandlist_id')
-                        ->get();
-
-    // ✅ ตรวจสอบ $brd_id
-    $lot = $brd_id 
-        ? Brand::where('brd_id', $brd_id)->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date', 'brd_brandlist_id')->first()
-        : $brandsLots->first();
-
-    $brd_lot = $lot ? $lot->brd_lot : null;
-    $brd_brandlist_id = $lot ? $lot->brd_brandlist_id : null;
-
-    // ✅ ดึงข้อมูล bl_code ตาม brd_id
-    $brand = $lot 
-        ? Brand::where('brd_id', $lot->brd_id)->first()
-        : Brand::where('brd_working_id', $id)->first();
-
-    $brandList = $brand 
-        ? BrandList::where('bl_id', $brand->brd_brandlist_id)->first()
-        : null;
-
-    // ✅ ดึงผลรวมของ brd_amount
-    $totalBrdAmount = Brand::where('brd_working_id', $id)->sum('brd_amount');
-
-    // ✅ ค้นหาข้อมูลจาก WipSummary โดยใช้ ws_working_id เท่ากับ id ของ workprocess
-    $wipSummary = WipSummary::where('ws_working_id', $workprocess->id)
-                            ->select('ws_output_amount', 'ws_input_amount', 'ws_holding_amount', 'ws_ng_amount')
-                            ->first();
-
-    // ✅ ส่งข้อมูลไปยัง View
-    return view('datawip', [
-        'workprocess'       => $workprocess,
-        'line'              => $line,
-        'empGroups'         => $empGroups,
-        'work_id'           => $id,
-        'wipBarcodes'       => $wipBarcodes,
-        'totalWipAmount'    => $totalWipAmount,
-        'listNgAll'         => $listNgAll,
-        'productTypes'      => $productTypes, 
-        'peTypeCode'        => $peTypeCode,   
-        'peTypeName'        => $peTypeName,  
-        'totalNgAmount'     => $totalNgAmount,
-        'brandLists'        => $brandLists,
-        'wipSkuNames'       => $wipSkuNames,
-        'lotgenerator'      => $lotgenerator,
-        'lothdgenerator'    => $lothdgenerator,
-        'hdbarcode'         => $hdbarcode,
-        'brandsLots'        => $brandsLots,
-        'workdetail'        => $workdetail,
-        'brandList'         => $brandList,
-        'brdAmount'         => $totalBrdAmount, 
-        'lot'               => $lot,
-        'brd_lot'           => $brd_lot,
-        'brd_brandlist_id'  => $brd_brandlist_id,
-        'wipHoldings'       => $wipHoldings,
-        'wipSummary'        => $wipSummary, // ✅ เพิ่มข้อมูล WipSummary
-        'wwEndDate'         => $wwEndDate,  // ✅ เพิ่มค่า ww_end_date ที่ดึงมา
-    ]);
-} 
-
-public function deleteWorkProcess(Request $request, $id)
-{
-    try {
-        DB::beginTransaction();
-
-        $workProcess = WorkProcessQC::find($id);
-        if (!$workProcess) {
-            return response()->json(['message' => 'ไม่พบข้อมูล WorkProcessQC'], 404, [], JSON_UNESCAPED_UNICODE);
+    public function datawip($line, $id, $brd_id = null)
+    {
+        if (!auth()->check()) {
+            return redirect('/'); 
         }
-
-        Wipbarcode::where('wip_working_id', $id)->delete();
-        $workProcess->delete();
-
-        DB::commit();
-        return response()->json(['message' => 'ลบข้อมูลสำเร็จ'], 200, [], JSON_UNESCAPED_UNICODE);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json(['message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()], 500, [], JSON_UNESCAPED_UNICODE);
-    }
+        // ✅ ตรวจสอบว่า $line มี 'L' นำหน้าหรือไม่ ถ้ามีให้ตัดออก
+        if (str_starts_with($line, 'L')) {
+            $line = substr($line, 1);
+        }
+    
+        // ✅ ค้นหา WipWorking ตาม ww_id และ ww_line
+        $workprocess = WipWorking::where('ww_id', $id)
+                                ->where('ww_line', $line)
+                                ->firstOrFail();
+    
+        // ✅ ดึงข้อมูล wip_working ที่เกี่ยวข้อง
+        $workdetail = $workprocess;
+        $workpgroup = $workdetail->ww_group;
+        $workstatus = $workdetail->ww_status;
+        $workdate = $workdetail->ww_lot_date;
+        $workline = $workdetail->ww_line;
+    
+        // ✅ ดึงค่า ww_end_date ที่ใหม่ที่สุดของ ww_id ที่ตรงกับ $id
+        $wwEndDate = WipWorking::where('ww_id', $id)
+                               ->orderBy('ww_end_date', 'desc')
+                               ->value('ww_end_date');
+    
+        // ✅ ดึงข้อมูลจาก WipHolding โดยใช้ wh_working_id
+        $wipHoldings = WipHolding::where('wh_working_id', $id)
+                                  ->select('wh_barcode', 'wh_lot')
+                                  ->get();
+    
+        // ✅ คำนวณจำนวน lot check
+        $lotcheck = Brand::leftJoin('brandlist', 'brands.brd_brandlist_id', '=', 'brandlist.bl_id')
+            ->leftJoin('wip_working', 'brands.brd_working_id', '=', 'wip_working.ww_id')
+            ->where('wip_working.ww_group', $workpgroup)
+            ->where('wip_working.ww_line', $workline)
+            ->where('wip_working.ww_division', 'QC')
+            ->whereDate('wip_working.ww_lot_date', $workdate)
+            ->count();
+    
+        // ✅ สร้าง Lot Generator และ LotHD Generator
+        $lotgenerator = date('ymd', strtotime($workdate)) . substr($workpgroup, 1, 1) . str_pad($lotcheck + 1, 3, '0', STR_PAD_LEFT);
+        $lothdgenerator = date('ymd', strtotime($workdate)) . $workpgroup . str_pad($lotcheck + 1, 2, '0', STR_PAD_LEFT);
+    
+        // ✅ ดึงค่า holding ที่เกี่ยวข้อง
+        $holding = WipHolding::where('wh_working_id', $id)->sum('wh_index'); 
+    
+        // ✅ สร้าง Barcode ตามเงื่อนไข
+       // ✅ ใช้ค่า $line ทั้งหมด ไม่ต้องดึงเฉพาะตัวที่ 2
+if ($holding < 100 && $holding > 10) {
+    $hdbarcode = 'B'.$line.'99-'.$lothdgenerator.'0'.$holding;
+} elseif ($holding < 10) {
+    $hdbarcode = 'B'.$line.'99-'.$lothdgenerator.'00'.$holding;
+} else {
+    $hdbarcode = 'B'.$line.'99-'.$lothdgenerator.$holding;
 }
+
+
+    
+        // ✅ ดึงข้อมูลพนักงานในกลุ่มที่ line และ status = 1
+        $empGroups = GroupEmp::where('line', $line)
+                             ->where('status', 1)
+                             ->get();
+    
+        // ✅ ดึงข้อมูลบาร์โค้ดที่เกี่ยวข้องกับ WipWorking
+        $wipBarcodes = Wipbarcode::where('wip_working_id', $id)->with('groupEmp')->get();
+        $totalWipAmount = Wipbarcode::where('wip_working_id', $id)->sum('wip_amount');
+    
+        // ✅ ดึงข้อมูล listngall ที่ lng_status = 1
+        $listNgAll = Listngall::where('lng_status', 1)->get();
+    
+        // ✅ ดึงข้อมูล ProductTypeEmp ตาม pe_working_id
+        $productTypes = ProductTypeEmp::where('pe_working_id', $workprocess->ww_id)->get();
+        $peTypeName = $productTypes->isNotEmpty() ? $productTypes->first()->pe_type_name : null;
+        $peTypeCode = $productTypes->isNotEmpty() ? $productTypes->first()->pe_type_code : null;
+    
+        // ✅ ดึงผลรวม amg_amount จาก AmountNg
+        $totalNgAmount = AmountNg::whereIn('amg_wip_id', $wipBarcodes->pluck('wip_id'))->sum('amg_amount');
+    
+        // ✅ ดึงข้อมูลแบรนด์จาก brandlist
+        $brandLists = BrandList::select('bl_id', 'bl_name')->get();
+    
+        // ✅ ดึงชื่อ SKU จาก wip_barcode
+        $wipSkuNames = Wipbarcode::where('wip_working_id', $id)->pluck('wip_sku_name');
+    
+        // ✅ ดึง lot ที่เกี่ยวข้องกับ brands
+        $brandsLots = Brand::where('brd_working_id', $id)
+                            ->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date', 'brd_brandlist_id')
+                            ->get();
+    
+        // ✅ ตรวจสอบ $brd_id
+        $lot = $brd_id 
+            ? Brand::where('brd_id', $brd_id)->select('brd_id', 'brd_lot', 'brd_amount', 'brd_outfg_date', 'brd_brandlist_id')->first()
+            : $brandsLots->first();
+    
+        $brd_lot = $lot ? $lot->brd_lot : null;
+        $brd_brandlist_id = $lot ? $lot->brd_brandlist_id : null;
+    
+        // ✅ ดึงข้อมูล bl_code ตาม brd_id
+        $brand = $lot 
+            ? Brand::where('brd_id', $lot->brd_id)->first()
+            : Brand::where('brd_working_id', $id)->first();
+    
+        $brandList = $brand 
+            ? BrandList::where('bl_id', $brand->brd_brandlist_id)->first()
+            : null;
+    
+        // ✅ ดึงผลรวมของ brd_amount
+        $totalBrdAmount = Brand::where('brd_working_id', $id)->sum('brd_amount');
+    
+        // ✅ ค้นหาข้อมูลจาก WipSummary โดยใช้ ws_working_id เท่ากับ ww_id
+        $wipSummary = WipSummary::where('ws_working_id', $workprocess->ww_id)
+                                ->select('ws_output_amount', 'ws_input_amount', 'ws_holding_amount', 'ws_ng_amount')
+                                ->first();
+    
+        // ✅ ส่งข้อมูลไปยัง View
+        return view('datawip', [
+            'workprocess'       => $workprocess,
+            'line'              => $line,
+            'empGroups'         => $empGroups,
+            'work_id'           => $id,
+            'wipBarcodes'       => $wipBarcodes,
+            'totalWipAmount'    => $totalWipAmount,
+            'listNgAll'         => $listNgAll,
+            'productTypes'      => $productTypes, 
+            'peTypeCode'        => $peTypeCode,   
+            'peTypeName'        => $peTypeName,  
+            'totalNgAmount'     => $totalNgAmount,
+            'brandLists'        => $brandLists,
+            'wipSkuNames'       => $wipSkuNames,
+            'lotgenerator'      => $lotgenerator,
+            'lothdgenerator'    => $lothdgenerator,
+            'hdbarcode'         => $hdbarcode,
+            'brandsLots'        => $brandsLots,
+            'workdetail'        => $workdetail,
+            'brandList'         => $brandList,
+            'brdAmount'         => $totalBrdAmount, 
+            'lot'               => $lot,
+            'brd_lot'           => $brd_lot,
+            'brd_brandlist_id'  => $brd_brandlist_id,
+            'wipHoldings'       => $wipHoldings,
+            'wipSummary'        => $wipSummary, 
+            'wwEndDate'         => $wwEndDate,
+        ]);
+    }
+    
+    public function deleteWorkProcess(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+    
+            // ✅ 1. ตรวจสอบว่ามีข้อมูลใน `wip_working` หรือไม่
+            $workProcess = WipWorking::find($id);
+            if (!$workProcess) {
+                return response()->json(['message' => 'ไม่พบข้อมูล WipWorking'], 404, [], JSON_UNESCAPED_UNICODE);
+            }
+    
+            // ✅ 2. ลบข้อมูลใน `emp_in_outs` ที่อ้างอิง `ww_id`
+            DB::table('emp_in_outs')->where('eio_working_id', $id)->delete();
+    
+            // ✅ 3. ลบข้อมูลที่เกี่ยวข้องในตารางอื่น ๆ
+            Wipbarcode::where('wip_working_id', $id)->delete(); // ลบ `wipbarcodes`
+            AmountNg::where('amg_wip_id', $id)->delete(); // ลบ `amount_ngs`
+            Brand::where('brd_working_id', $id)->delete(); // ลบ `brands`
+            
+            // ✅ 4. ลบ `wip_working`
+            $workProcess->delete();
+    
+            DB::commit();
+            return response()->json(['message' => 'ลบข้อมูลสำเร็จ'], 200, [], JSON_UNESCAPED_UNICODE);
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()], 500, [], JSON_UNESCAPED_UNICODE);
+        }
+    }
+    
+    
+    
 public function getLine(Request $request)
 {
     // ✅ ดึงค่า line จาก session หรือจาก request
@@ -453,7 +491,24 @@ public function getLine(Request $request)
 public function warehousenk() {
     return view('warehouseNK');
 }
+public function getWipData($line)
+{
+    // ✅ ดึง `ww_id` ทั้งหมดที่ `ww_line` ตรงกับค่า `$line`
+    $wwIds = WipWorking::where('ww_line', $line)->pluck('ww_id')->toArray();
 
+    // ✅ ถ้ามี `ww_id` นำไปหา `wip_working_id` ใน `Wipbarcode`
+    if (!empty($wwIds)) {
+        $wipAmountsByDate = Wipbarcode::whereIn('wip_working_id', $wwIds)
+            ->selectRaw('DATE(created_at) as date, SUM(wip_amount) as total_wip_amount')
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        return response()->json($wipAmountsByDate);
+    }
+
+    return response()->json([]);
+}
     }
     
     

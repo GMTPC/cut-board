@@ -4,23 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\WipWorking;
 
 class WorkprocessTemp extends Model
 {
     use HasFactory;
 
-    protected $table = 'workprocess_temps'; // ชื่อตารางที่ถูกต้อง
+    protected $table = 'workprocess_temps';
 
-    protected $fillable = [
-        'workprocess_id',
-        'line',
-        'wwt_id',
-    ];
+    protected $fillable = ['workprocess_id', 'line', 'wwt_id'];
 
-    // 🔹 ความสัมพันธ์กับ WorkProcessQC
-    public function workprocess()
+    public function wipWorking()
     {
-        return $this->belongsTo(WorkProcessQC::class, 'workprocess_id', 'id');
+        return $this->belongsTo(WipWorking::class, 'workprocess_id', 'ww_id');
     }
 }
-

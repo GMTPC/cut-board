@@ -89,7 +89,7 @@
                             padding-top: 0px;
                             padding-left: 0px;
                             ">
-                      @php
+                    @php
     $totalWIP = 0;
     $totalFG  = 0;
     $totalNG  = 0;
@@ -122,13 +122,16 @@
 
 
 
+
                         </div>
                     </div>
                 </div>
             </div>
-            <form id="endworktimeform" class="md-form" method="POST" action="{{ route('endworktime', ['line' => 'L1']) }}">
+            <form id="endworktimeform" class="md-form" method="POST" action="{{ route('endworktime', ['line' => $line]) }}">
     @csrf  <!-- 🔹 ต้องมี CSRF Token -->
     <input type="hidden" id="line" name="line" value="{{ $line }}">
+    <input type="hidden" id="ww_ids_input" name="ww_ids">
+
     <div class="text-center">
         <h4><b><u>ใส่จำนวน END TAPE</u></b></h4>
         <input style="width:30%;font-size:25px;" class="text-center" id="endtape" step="0.0001" type="number" name="wz_amount" placeholder="ใส่จำนวน END TAPE" min="1" required>
@@ -165,18 +168,20 @@
         </tr>
     </thead>
     <tbody>
-        <tr>
-            
-        @isset($groupedData)
- 
-        @foreach($groupedData as $data)
-        <tr>
-            <td class="text-center">{{ \Carbon\Carbon::parse($data->date)->format('d-m-Y') }}</td> {{-- ✅ แสดงวันที่ --}}
-            <td class="text-center">{{ $data->total_wip_amount ?? 0 }}</td> {{-- ✅ แสดงผลรวม wip_amount --}}
-        </tr>
+    @if(isset($groupedData) && !empty($groupedData))
+    @foreach($groupedData as $data)
+            <tr>
+                <td class="text-center">{{ \Carbon\Carbon::parse($data->date)->format('d-m-Y') }}</td>
+                <td class="text-center">{{ number_format($data->total_wip_amount, 2) }}</td>
+            </tr>
         @endforeach
-        @endisset
-    </tbody>
+    @else
+        <tr>
+            <td colspan="2" class="text-center">ไม่มีข้อมูล WIP</td>
+        </tr>
+    @endif
+</tbody>
+
 </table>  
         </tr>
     </tbody>

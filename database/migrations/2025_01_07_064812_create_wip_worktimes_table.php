@@ -14,8 +14,11 @@ class CreateWipWorktimesTable extends Migration
     public function up()
 {
     Schema::create('wip_worktimes', function (Blueprint $table) {
-        $table->id('wwt_id');
+        $table->id('wwt_id'); // Primary Key
+        $table->string('wwt_index')->unique(); // เพิ่มให้ตรงกับ Model
+        $table->string('wwt_status')->nullable();
         $table->string('wwt_line', 10);
+        $table->date('wwt_date')->nullable();
         $table->timestamps();
     });
 }

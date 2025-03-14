@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\WorkProcessQC;
+use App\Models\WipWorking;
 use App\Models\Wipbarcode;
 
 class EmpInOut extends Model
@@ -37,8 +37,9 @@ class EmpInOut extends Model
     }
 
     // ความสัมพันธ์ระหว่าง EmpInOut กับ WorkProcessQC
-    public function workProcessQC()
-    {
-        return $this->belongsTo(WorkProcessQC::class, 'eio_working_id', 'id');
-    }
+    public function wipWorking()
+{
+    return $this->belongsTo(WipWorking::class, 'eio_working_id', 'ww_id'); // ✅ เชื่อมกับ wip_working.ww_id
+}
+
 }

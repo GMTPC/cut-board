@@ -564,70 +564,64 @@ document.addEventListener('DOMContentLoaded', function () {
 
     </script>
 <script>
-    $(document).ready(function() {
-        console.log("jQuery Loaded:", typeof $ !== "undefined");
-        console.log("SweetAlert Loaded:", typeof Swal !== "undefined");
+  $(document).ready(function() {
+    $(".delete-work").click(function() {
+        var workId = $(this).data("id"); // ✅ ใช้ ww_id
+        var line = $(this).data("line");
 
-        $(".delete-work").click(function() {
-            var workId = $(this).data("id");
-            var line = $(this).data("line");
+        console.log("Clicked delete for ID:", workId);
 
-            console.log("Clicked delete for ID:", workId);
+        // อัปเดตค่าใน input hidden
+        $("#delete_id").val(workId);
 
-            // อัปเดตค่าใน input hidden
-            $("#delete_id").val(workId);
+        // อัปเดต action ของ form (แต่ใช้ AJAX แทน)
+        $("#deleteForm").attr("action", "/delete-workprocess/" + workId);
+    });
 
-            // อัปเดต action ของ form (แต่ใช้ AJAX แทน)
-            $("#deleteForm").attr("action", "/delete-workprocess/" + workId);
-        });
+    $("#deleteForm").submit(function(event) {
+        event.preventDefault(); 
 
-        // เมื่อกดปุ่ม Submit ใน Modal
-        $("#deleteForm").submit(function(event) {
-            event.preventDefault(); // ป้องกัน Form เปิดหน้าใหม่
+        var form = $(this);
+        var actionUrl = form.attr("action");
 
-            var form = $(this);
-            var actionUrl = form.attr("action");
+        console.log("Submitting form to:", actionUrl);
 
-            console.log("Submitting form to:", actionUrl);
-
-            $.ajax({
-                url: actionUrl,
-                type: 'POST', // ใช้ POST
-                data: form.serialize(),
-                success: function(response) {
-                    console.log("Success Response:", response);
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'ลบข้อมูลสำเร็จ',
-                        html: '<small style="color:green;">' + (response.message || "ข้อมูลถูกลบแล้ว") + '</small>',
-                        showConfirmButton: false,
-                        timer: 1500
-                    }).then(() => {
-                        location.reload();
-                    });
-                },
-                error: function(xhr) {
-                    console.log("Error Response:", xhr);
-
-                    let errorMessage = "เกิดข้อผิดพลาดในการลบข้อมูล";
-                    try {
-                        let response = JSON.parse(xhr.responseText);
-                        errorMessage = response.message || errorMessage;
-                    } catch (e) {
-                        console.error("JSON parse error:", e);
-                    }
-
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'ลบข้อมูลไม่สำเร็จ',
-                        html: '<small style="color:red;">' + errorMessage + '</small>',
-                        showConfirmButton: true
-                    });
+        $.ajax({
+            url: actionUrl,
+            type: 'POST',
+            data: form.serialize(),
+            success: function(response) {
+                console.log("Success Response:", response);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ลบข้อมูลสำเร็จ',
+                    html: '<small style="color:green;">' + (response.message || "ข้อมูลถูกลบแล้ว") + '</small>',
+                    showConfirmButton: false,
+                    timer: 1500
+                }).then(() => {
+                    location.reload();
+                });
+            },
+            error: function(xhr) {
+                console.log("Error Response:", xhr);
+                let errorMessage = "เกิดข้อผิดพลาดในการลบข้อมูล";
+                try {
+                    let response = JSON.parse(xhr.responseText);
+                    errorMessage = response.message || errorMessage;
+                } catch (e) {
+                    console.error("JSON parse error:", e);
                 }
-            });
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ลบข้อมูลไม่สำเร็จ',
+                    html: '<small style="color:red;">' + errorMessage + '</small>',
+                    showConfirmButton: true
+                });
+            }
         });
     });
+});
 
 </script>
 
@@ -702,8 +696,8 @@ $(document).ready(function() {
                 cancelButtonColor: '#d33',
                 confirmButtonText: 'ใช่, เริ่มงานใหม่!',
                 cancelButtonText: 'ยกเลิก',
-                allowOutsideClick: false, // ป้องกันการคลิกข้างนอกแล้วปิด
-                allowEscapeKey: false, // ป้องกันการกด ESC แล้วปิด
+                allowOutsideClick: false, 
+                allowEscapeKey: false, 
                 preConfirm: () => {
                     return new Promise((resolve) => {
                         let formData = $('#formworking').serialize(); // ดึงข้อมูลจากฟอร์ม
@@ -714,6 +708,8 @@ $(document).ready(function() {
                             data: formData,
                             dataType: 'json',
                             success: function (response) {
+                                console.log("AJAX Response:", response); // ✅ Debug ค่า Response
+
                                 if (response.success) {
                                     Swal.fire({
                                         icon: 'success',
@@ -725,17 +721,19 @@ $(document).ready(function() {
 
                                     // ✅ Redirect ไปยัง datawip หลังจาก SweetAlert หายไป
                                     setTimeout(function () {
+                                        console.log("Redirecting to:", response.redirect_url); // ✅ Debug URL
                                         window.location.href = response.redirect_url;
                                     }, 3000);
 
                                     resolve();
                                 } else {
-                                    Swal.showValidationMessage(response.message);
+                                    Swal.showValidationMessage("❌ เกิดข้อผิดพลาด: " + response.message);
                                     resolve();
                                 }
                             },
                             error: function (xhr) {
-                                Swal.showValidationMessage('เกิดข้อผิดพลาด: ' + xhr.responseJSON.message);
+                                console.error("AJAX Error:", xhr); // ✅ Debug Error
+                                Swal.showValidationMessage('❌ AJAX Error: ' + xhr.responseJSON.message);
                                 resolve();
                             }
                         });
@@ -746,16 +744,23 @@ $(document).ready(function() {
     });
 </script>
 
+
 <script>
 $(document).ready(function () {
     $('#endworktimeform').on('submit', function (e) {
         e.preventDefault();
 
-        let formData = $(this).serialize();
         let line = $("#line").val();
-        let ww_id = $("#ww_id").val() || null;
+        let ww_ids = [];
 
-        // ✅ ตรวจสอบว่า line มีค่าหรือไม่
+        // ✅ ดึงค่า WW_ID จาก `.enter-work`
+        $('.enter-work').each(function () {
+            let ww_id = $(this).data('id');
+            if (ww_id) ww_ids.push(ww_id);
+        });
+
+        console.log("✅ WW_IDs ที่ดึงจาก <tbody>: ", ww_ids);
+
         if (!line) {
             Swal.fire({
                 icon: 'error',
@@ -766,15 +771,14 @@ $(document).ready(function () {
             return;
         }
 
-        // ✅ เปิด popup ล่วงหน้าเพื่อป้องกันการบล็อกของเบราว์เซอร์
+        // ✅ เปิด popup ล่วงหน้า
         let popupEndtime = window.open('', 'endtimeWindow', 'width=800,height=600');
-        let popupCSV = ww_id ? window.open('', 'csvDownloadWindow', 'width=600,height=400') : null;
 
         if (!popupEndtime) {
             Swal.fire({
                 icon: 'warning',
-                title: 'เบราว์เซอร์บล็อก popup!',
-                text: 'กรุณาอนุญาตให้เว็บไซต์เปิดหน้าต่าง popup',
+                title: 'การเปิดหน้าต่างถูกบล็อค',
+                text: "กรุณาอนุญาตให้เว็บไซต์เปิด popup",
                 showConfirmButton: true
             });
             return;
@@ -783,7 +787,14 @@ $(document).ready(function () {
         $.ajax({
             type: "POST",
             url: "/endworktime/" + line,
-            data: formData,
+            data: {
+                _token: $('meta[name="csrf-token"]').attr('content'),
+                wwt_status: $("input[name='wwt_status']").val(),
+                wz_amount: $("input[name='wz_amount']").val(),
+                wwd_amount: $("input[name='wwd_amount']").val(),
+                line: line,
+                ww_ids: JSON.stringify(ww_ids) // ✅ ส่งเป็น JSON
+            },
             headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
             success: function (result) {
                 console.log("✅ Response Data:", result);
@@ -797,30 +808,52 @@ $(document).ready(function () {
                         timer: 1500
                     });
 
-                    if (result.wwt_index && result.workprocess_ids && result.workprocess_ids.length > 0) {
-                        let workprocessParam = result.workprocess_ids.join(',');
-                        let urlEndtime = `/endtimeinterface/${line}/${result.wwt_index}/${workprocessParam}`;
+                    if (result.wwt_index && ww_ids.length > 0) {
+                        let workParam = ww_ids.join(',');
+                        let urlEndtime = `/endtimeinterface/${line}/${result.wwt_index}/${workParam}`;
+                        
+                        console.log("✅ เปิด Popup URL:", urlEndtime);
 
-                        console.log("✅ เปิดหน้าต่าง endtimeinterface:", urlEndtime);
-                        popupEndtime.location.href = urlEndtime;
-                        popupEndtime.focus();
+                        // ✅ ใช้ setTimeout ให้ popup โหลดได้แน่นอน
+                        setTimeout(() => {
+                            popupEndtime.location.href = urlEndtime;
+                            popupEndtime.focus();
+                        }, 100);
 
-                        if (ww_id && popupCSV) {
-                            let urlCSV = `/csvendtime/${line}/${result.wwt_index}/${workprocessParam}`;
-                            console.log("✅ เปิดหน้าต่าง CSV:", urlCSV);
-                            popupCSV.location.href = urlCSV;
-                            popupCSV.focus();
-                        }
                     } else {
                         Swal.fire({
                             icon: 'error',
                             title: 'เกิดข้อผิดพลาด',
-                            text: "ไม่พบ wwt_index หรือ Workprocess IDs กรุณาตรวจสอบระบบ",
+                            text: "ไม่พบ wwt_index หรือ WW_IDs กรุณาตรวจสอบระบบ",
                             showConfirmButton: true
                         });
                         popupEndtime.close();
-                        if (popupCSV) popupCSV.close();
                     }
+
+                    // ✅ AJAX: บันทึก WorkprocessTemp
+                    $.ajax({
+                        type: "POST",
+                        url: "/store-workprocess-temp",
+                        data: JSON.stringify({
+                            wwt_id: result.wwt_id,
+                            line: line,
+                            ww_ids: ww_ids
+                        }),
+                        contentType: "application/json",
+                        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                        success: function (workprocessResult) {
+                            console.log("✅ WorkprocessTemp Saved:", workprocessResult);
+                        },
+                        error: function (xhr) {
+                            console.error("❌ Error saving WorkprocessTemp:", xhr.responseText);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'เกิดข้อผิดพลาด',
+                                text: xhr.responseJSON ? xhr.responseJSON.message : "บันทึก WorkprocessTemp ไม่สำเร็จ",
+                                showConfirmButton: true
+                            });
+                        }
+                    });
 
                     setTimeout(() => { location.reload(); }, 2000);
                 } else {
@@ -831,7 +864,6 @@ $(document).ready(function () {
                         showConfirmButton: true
                     });
                     popupEndtime.close();
-                    if (popupCSV) popupCSV.close();
                 }
             },
             error: function (xhr) {
@@ -843,7 +875,6 @@ $(document).ready(function () {
                     showConfirmButton: true
                 });
                 popupEndtime.close();
-                if (popupCSV) popupCSV.close();
             }
         });
     });
@@ -851,9 +882,81 @@ $(document).ready(function () {
 
 
 </script>
+<script>
+$(document).ready(function() {
+    function loadWipData(line) {
+        $.ajax({
+            url: `/get-wip-data/${line}`,
+            type: "GET",
+            success: function(response) {
+                let rows = "";
+                if (response.length > 0) {
+                    response.forEach(function(wip) {
+                        rows += `<tr>
+                            <td class="text-center">${formatDate(wip.date)}</td>
+                            <td class="text-center">${parseFloat(wip.total_wip_amount).toLocaleString()}</td>
+                        </tr>`;
+                    });
+                } else {
+                    rows = `<tr><td colspan="2" class="text-center">ไม่มีข้อมูล WIP</td></tr>`;
+                }
+                $("#wipData").html(rows);
+            },
+            error: function() {
+                $("#wipData").html(`<tr><td colspan="2" class="text-center text-danger">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`);
+            }
+        });
+    }
 
+    function formatDate(dateStr) {
+        let date = new Date(dateStr);
+        return date.toLocaleDateString("th-TH", { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
 
+    // ✅ ดึงค่า `line` จาก URL (ถ้า URL เป็น /manufacture/3 จะได้ line = 3)
+    let line = window.location.pathname.split('/').pop();
+    
+    // ✅ โหลดข้อมูล WIP ตาม `line`
+    loadWipData(line);
+});
+</script>
+<script>
+$(document).ready(function () {
+    // ✅ เมื่อโมเดล `endworktimenoti` ถูกเปิด
+    $('#endworktimenoti').on('shown.bs.modal', function () {
+        let ww_ids = [];
 
+        // ✅ ดึงค่า WW_ID จาก <tbody> โดยใช้ class .enter-work
+        $('.enter-work').each(function() {
+            let ww_id = $(this).data('id');
+            if (ww_id) ww_ids.push(ww_id);
+        });
+
+        // ✅ ตรวจสอบว่ามี WW_ID หรือไม่
+        if (ww_ids.length > 0) {
+            console.log("✅ WW_IDs ที่ดึงจาก <tbody>: ", ww_ids);
+
+            // ✅ แสดงค่าแต่ละ WW_ID แยกบรรทัดใน Console
+            console.log("✅ รายการ WW_ID:");
+            ww_ids.forEach((id, index) => {
+                console.log(`🔹 WW_ID ${index + 1}: ${id}`);
+            });
+
+            // ✅ อัพเดตค่า WW_ID ลงใน hidden input (ใช้ส่งไปกับ Form)
+            $('#ww_ids_input').val(JSON.stringify(ww_ids));
+
+        } else {
+            // ✅ แจ้งเตือนผ่าน SweetAlert2 แทน console.warn()
+            Swal.fire({
+                icon: 'error',
+                title: 'เกิดข้อผิดพลาด',
+                text: 'ไม่พบ WW_ID ใน <tbody>, โปรดตรวจสอบข้อมูล',
+                showConfirmButton: true
+            });
+        }
+    });
+});
+</script>
 
 
 
@@ -881,24 +984,24 @@ $(document).ready(function () {
         </tr>
     </thead>
     <tbody>
-        @if($workProcessQC->isEmpty())
-            <tr>
-                <td colspan="7" class="text-center">No data available in table</td>
-            </tr>
-        @else
-            @foreach($workProcessQC as $index => $wpqc)
-            <tr>
-                <td class="text-center">{{ $index + 1 }}</td> {{-- ลำดับที่ (loop index) --}}
-                <td class="text-center">{{ $wpqc->line }}{{ $wpqc->group }}</td> {{-- ดึง line --}}
-                <td class="text-center">{{ $wpqc->pe_type_name ?? '-' }}</td>
-                <td class="text-center"> 
-    @if ($wpqc->status == 'กำลังคัด')
-        <span class="text-success"><b>{{ $wpqc->status }}</b></span>
+    @if($workProcessQC->isEmpty())
+        <tr>
+            <td colspan="7" class="text-center">No data available in table</td>
+        </tr>
     @else
-        <span class="text-danger"><b>{{ $wpqc->status }}</b></span>
-    @endif
+        @foreach($workProcessQC->unique('id') as $index => $wpqc)
+        <tr>
+            <td class="text-center">{{ $index + 1 }}</td> {{-- ลำดับที่ --}}
+            <td class="text-center">{{ $wpqc->group }}</td> {{-- ดึง ww_group --}}
+            <td class="text-center">{{ $wpqc->pe_type_name ?? '-' }}</td> {{-- ประเภทงาน --}}
+            <td class="text-center"> 
+                <span class="{{ $wpqc->status === 'W' ? 'text-success' : 'text-danger' }}">
+                    <b>{{ $wpqc->status === 'W' ? 'กำลังคัด' : ($wpqc->status === 'E' ? 'จบการทำงาน' : 'ไม่ทราบสถานะ') }}</b>
+                </span>
+            </td>
+            <td class="text-center">
+    {{ !empty($wpqc->start_date) ? date('d-m-Y', strtotime($wpqc->start_date)) : '-' }}
 </td>
-<td class="text-center">{{ date('d-m-Y', strtotime($wpqc->date)) }}</td>
 
                 <td class="text-center">
                 <a href="#" class="btn btn-success btn-sm fas fa-file-import enter-work" 
@@ -908,7 +1011,7 @@ $(document).ready(function () {
    data-id="{{ $wpqc->id }}" 
    data-line="{{ $wpqc->line }}">
 </a>
-@if ($wpqc->status === 'กำลังคัด')
+@if ($wpqc->status === 'W')
     <a href="#" class="btn btn-danger btn-sm fa fa-trash delete-work"
        data-toggle="modal"
        data-target="#notideletework"

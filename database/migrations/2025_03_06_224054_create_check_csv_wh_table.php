@@ -13,16 +13,21 @@ class CreateCheckCsvWhTable extends Migration
      */
     public function up() {
         Schema::create('check_csv_wh', function (Blueprint $table) {
-            $table->id('ccw_id');
-            $table->foreignId('ccw_index')->nullable()->constrained('check_csv_wh_index');
+            $table->id('ccw_id');  // Primary Key
+            $table->unsignedBigInteger('ccw_index')->nullable(); // ไม่เชื่อมโยง foreign key
             $table->string('ccw_barcode')->nullable();
             $table->string('ccw_lot')->nullable();
             $table->integer('ccw_amount')->nullable();
-            $table->timestamps();
+            $table->timestamps();  // created_at, updated_at
         });
     }
 
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
     public function down() {
         Schema::dropIfExists('check_csv_wh');
     }
-};
+}

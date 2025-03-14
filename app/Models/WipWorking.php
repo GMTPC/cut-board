@@ -21,6 +21,8 @@ class WipWorking extends Model
         'ww_id',
         'ww_line',
         'ww_end_date',
+        'ww_status',
+
     ];
 
     /**

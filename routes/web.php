@@ -5,10 +5,7 @@ use  App\Http\Controllers\MainmenuController;
 use App\Http\Controllers\UserSettingsController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\WipController;
-use App\Models\AmountNg;
-use App\Models\Wipbarcode;
-use App\Models\Brand;
-use App\Models\BrandList;
+
 use App\Http\Controllers\WeightBabyController;
 
 
@@ -28,8 +25,12 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
+    if (!auth()->check()) {
+        return redirect('/'); 
+    }
     return view('dashboard');
-})->middleware(['auth'])->name('dashboard');
+})->name('dashboard');
+
 Route::get('/mainmenu', [MainmenuController::class, 'mainmenu'])->name('mainmenu');
 Route::middleware('auth')->group(function () {
     Route::get('/settings', [UserSettingsController::class, 'edit'])->name('settings.edit');
@@ -98,49 +99,26 @@ Route::post('/wip/deletebrand/{brd_id}', [WipController::class, 'deletebrand'])-
 Route::get('/production/taghd/{line}/{work_id}', [WipController::class, 'taghd'])->name('taghd');
 Route::post('/endprocess/{line}/{work_id}', [WipController::class, 'endprocess'])->name('endprocess');
 Route::get('/check-sku/{skuCode}', [WipController::class, 'checkSku']);
+Route::post('/update-ww-status', [WipController::class, 'updateWwStatus']);
 
 
 
-Route::get('/get-wip-barcode/{wip_id}', function ($wip_id) {
-    Log::info("📌 กำลังดึงข้อมูล WIP Barcode สำหรับ WIP ID: " . $wip_id);
-
-    // ✅ แก้ไขให้ใช้ `wip_id` แทน `wip_working_id`
-    $barcode = Wipbarcode::where('wip_id', $wip_id)->pluck('wip_barcode')->first();
-
-    if (!$barcode) {
-        Log::info("🚨 ไม่พบข้อมูล WIP Barcode สำหรับ WIP ID: " . $wip_id);
-        return response()->json(['error' => 'ไม่พบข้อมูลบาร์โค้ด'], 404);
-    }
-
-    Log::info("✅ พบ WIP Barcode: " . $barcode);
-    return response()->json(['barcode' => $barcode]);
-});
+Route::get('/get-wip-barcode/{wip_id}', [WipController::class, 'getWipBarcode']);
 
 
 
-Route::get('/get-amount-ng/{wip_id}', function ($wip_id) {
-    Log::info("📌 กำลังดึงข้อมูล amg_amount สำหรับ WIP ID: " . $wip_id);
 
-    $totalAmount = AmountNg::where('amg_wip_id', $wip_id)->sum('amg_amount');
+Route::get('/get-amount-ng/{wip_id}', [WipController::class, 'getAmountNg']);
 
-    if ($totalAmount === 0) {
-        Log::info("🚨 ไม่พบข้อมูล amg_amount สำหรับ WIP ID: " . $wip_id);
-        return Response::json(['status' => 'error', 'error' => 'Not Found'], 404);
-    }
-
-    Log::info("✅ พบข้อมูล amg_amount รวม: " . $totalAmount);
-    return Response::json(['status' => 'success', 'amg_amount' => $totalAmount]);
-});
 
 Route::get('/qrcodeinterface/{qrcode}', [WipController::class, 'qrcodeinterface'])->name('qrcodeinterface');
 Route::post('/insertcheckcsvqrcode', [WipController::class, 'insertcheckcsvqrcode'])->name('insertcheckcsvqrcode');
 Route::post('/insertcheckcsvqrcodewithdefect', [WipController::class, 'insertcheckcsvqrcodewithdefect'])->name('insertcheckcsvqrcodewithdefect');
 
 
-Route::get('/get-brd-status/{brd_lot}', function ($brd_lot) {
-    $status = Brand::where('brd_lot', $brd_lot)->value('brd_status');
-    return response()->json(['brd_lot' => $brd_lot, 'brd_status' => $status]);
-});
+
+Route::get('/get-brd-status/{brd_lot}', [WipController::class, 'getBrdStatus']);
+
 
 Route::get('/check-duplicate-barcode/{barcode}', [WipController::class, 'checkDuplicateBarcode']);
 Route::post('/endworktime/{line}', [WipController::class, 'endworktime'])->name('endworktime');
@@ -156,6 +134,7 @@ Route::get('/dowloadcsvendtime/{line}/{wwt_id}', [WipController::class, 'dowload
 
 Route::get('/workedprevious/{line}/{wwt_id}', [WipController::class, 'workedprevious'])->name('workedprevious');
 Route::get('/get-wip-id', [WipController::class, 'getWipId']);
+Route::get('/get-wip-data/{line}', [MainmenuController::class, 'getWipData']);
 
 Route::get('/get-line', [MainmenuController::class, 'getLine'])->name('getLine');
 Route::get('/tagc/{line}/{wwt_id}', [WipController::class, 'tagc'])->name('tagc');
@@ -164,18 +143,11 @@ Route::get('/addbrandslist',[WipController::class, 'addbrandslist'])->name('addb
 Route::post('/inputbrandslist', [WipController::class, 'inputbrandslist'])->name('inputbrandslist');
 Route::get('/blstatus', [WipController::class, 'updateBrandStatus'])->name('updateBrandStatus');
 
-Route::get('/get-brand-status/{id}', function ($id) {
-    $brand = BrandList::where('bl_id', $id)->first();
-    return response()->json([
-        'bl_status' => $brand ? $brand->bl_status : null
-    ]);
-});
+Route::get('/get-brand-status/{id}', [WipController::class, 'getBrandStatus']);
 
 
-Route::get('/get-active-brands', function () {
-    $brands = BrandList::where('bl_status', 1)->select('bl_id', 'bl_name')->get();
-    return response()->json($brands);
-});
+
+Route::get('/get-active-brands', [WipController::class, 'getActiveBrands']);
 
 Route::post('/send-weightbaby', [WeightBabyController::class, 'sendWeightBabyData'])->name('send.weightbaby');
 Route::get('/weightbaby', function () {
@@ -187,5 +159,9 @@ Route::get('/csvwhsaved/{indexno}',  [WipController::class, 'csvwhsaved'])->name
 Route::get('/csvdetailrealtime', [WipController::class, 'csvdetailrealtime'])->name('csvdetailrealtime');
 Route::post('/insertcheckcsv', [WipController::class, 'insertcheckcsv'])->name('insertcheckcsv');
 Route::delete('/deleteccw/{ccw_id}', [WipController::class, 'deleteccw'])->name('deleteccw');
+Route::post('/store-workprocess-temp', [WipController::class, 'storeWorkprocessTemp']);
+Route::get('/addlistng', [WipController::class, 'addlistng'])->name('addlistng');
+Route::post('/inputlistng', [WipController::class, 'inputlistng'])->name('inputlistng');
+Route::post('/lngstatus', [WipController::class, 'lngstatus'])->name('lngstatus');
 
 require __DIR__.'/auth.php';

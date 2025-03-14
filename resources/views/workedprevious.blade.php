@@ -106,36 +106,35 @@ function openPopup(url) {
         </tr>
     </thead>
     <tbody>
-        @if($workProcessQC->isEmpty())
+    @if($wipWorkingData->isEmpty())
+        <tr>
+            <td colspan="6" class="text-center">No data available</td>
+        </tr>
+    @else
+        @foreach($wipWorkingData as $index => $wip)
             <tr>
-                <td colspan="6" class="text-center">No data available</td>
-            </tr>
-        @else
-            @foreach($workProcessQC as $index => $wpqc)
-                <tr>
-                    <td class="text-center">{{ $index + 1 }}</td>
-                    <td class="text-center"> {{ $wpqc->line }}{{ $wpqc->group }}</td>
-                    <td class="text-center">{{ $wpqc->pe_type_name ?? '-' }}</td>
-                    <td class="text-center">
-                        <b style="color: {{ $wpqc->status == 'กำลังคัด' ? 'green' : 'red' }};">
-                            {{ $wpqc->status == 'กำลังคัด' ? 'กำลังคัด' : 'จบการทำงาน' }}
-                        </b>
-                    </td>
-                    <td class="text-center">{{ date('d-m-Y', strtotime($wpqc->date)) }}</td>
-                    <td class="text-center">
+                <td class="text-center">{{ $index + 1 }}</td>
+                <td class="text-center">{{ $wip->ww_group }}</td>
+                <td class="text-center">{{ $wip->pe_type_name ?? '-' }}</td>
+                <td class="text-center">
+                    <b style="color: {{ $wip->ww_status == 'กำลังคัด' ? 'green' : 'red' }};">
+                        {{ $wip->ww_status == 'กำลังคัด' ? 'กำลังคัด' : 'จบการทำงาน' }}
+                    </b>
+                </td>
+                <td class="text-center">{{ date('d-m-Y', strtotime($wip->ww_end_date)) }}</td>
+                <td class="text-center">
                     <a href="#" 
-   class="btn btn-success btn-sm fas fa-file-import btn-navigate-datawip"
-   data-id="{{ $wpqc->id }}"
-   data-line="{{ $line }}"
-   data-toggle="tooltip" title="เข้าสู่งาน">
-</a>
+                        class="btn btn-success btn-sm fas fa-file-import btn-navigate-datawip"
+                        data-id="{{ $wip->ww_id }}"
+                        data-line="{{ $line }}"
+                        data-toggle="tooltip" title="เข้าสู่งาน">
+                    </a>
+                </td>
+            </tr>
+        @endforeach
+    @endif
+</tbody>
 
-
-                    </td>
-                </tr>
-            @endforeach
-        @endif
-    </tbody>
 </table>
 
 

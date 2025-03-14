@@ -26,28 +26,22 @@ class AuthenticatedSessionController extends Controller
      * @param  \App\Http\Requests\Auth\LoginRequest  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function CreateLogin(Request $request)
-    {
-        // ตรวจสอบข้อมูลที่ผู้ใช้กรอก
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
-    
-        // ตรวจสอบการล็อกอิน
-        if (Auth::attempt($credentials)) {
-            // สร้างเซสชันใหม่
-            $request->session()->regenerate();
-    
-            // นำทางไปหน้าเมนูหลัก
-            return redirect()->intended('mainmenu');
-        }
-    
-        // ล็อกอินไม่สำเร็จ
-        return back()->withErrors([
-            'email' => 'อีเมลหรือรหัสผ่านไม่ถูกต้อง.',
-        ])->onlyInput('email');
-    }
+   
+     public function login(Request $request)
+     {
+         $credentials = $request->validate([
+             'name' => 'required|string', // ใช้ name แทน username
+             'password' => 'required|string',
+         ]);
+     
+         if (Auth::attempt(['name' => $credentials['name'], 'password' => $credentials['password']])) {
+             $request->session()->regenerate();
+             return redirect()->intended('/dashboard');
+         }
+     
+         return back()->withErrors(['name' => 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง']);
+     }
+     
     
     
 

@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateSkumasterTable extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      *
@@ -13,10 +12,11 @@ class CreateSkumasterTable extends Migration
      */
     public function up()
     {
-        Schema::create('skumaster', function (Blueprint $table) {
-            $table->id(); // Primary Key
-            $table->string('SKU_CODE', 50)->unique();
-            $table->string('SKU_NAME', 255);
+        Schema::create('wipziptape1', function (Blueprint $table) {
+            $table->id('wz_id');
+            $table->string('wz_line');
+            $table->unsignedBigInteger('wz_worktime_id');
+            $table->decimal('wz_amount', 10, 3);
             $table->timestamps();
         });
     }
@@ -28,6 +28,7 @@ class CreateSkumasterTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('skumaster');
+        Schema::dropIfExists('wipziptape1');
     }
-}
+};
+

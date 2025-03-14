@@ -3,6 +3,7 @@
 @section('content')
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 <script>
 $(document).ready(function () {
@@ -226,11 +227,12 @@ $(document).ready(function(){
                 </div>
                 <h2><b>ระบบตรวจสอบข้อมูลสินค้าเข้าสู่ระบบ</b></h2>
                 <div class="container-fluid">
-                <form id="checkcsvform" class="form-inline md-form form-sm mt-0 text-center" method="post">
+                <form id="checkcsvform" class="form-inline md-form form-sm mt-0 text-center" method="post" action="{{ route('insertcheckcsv') }}">
     @csrf
-    <input id="ccw_barcode" style="width:30%;" class="text-center" type="text" name="ccw_barcode" placeholder="สแกนบาร์โค้ด" value="">
+    <input id="ccw_barcode" style="width:30%;" class="text-center" type="text" name="ccw_barcode" placeholder="สแกนบาร์โค้ด">
     <button type="submit" name="button"><i style="font-size:25px;" class="fa fa-barcode"></i></button>
 </form>
+
                     <div class="row">
                         <div class="col-md-6">
                            

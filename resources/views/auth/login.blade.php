@@ -1,6 +1,9 @@
 @extends('layouts.login_layout')
 
 @section('content')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
+<script src="{{ asset('Login_v1/vendor/tilt/tilt.jquery.min.js') }}"></script>
 
 <div class="limiter">
     <div class="container-login100">
@@ -15,7 +18,7 @@
                     <b>เข้าสู่ระบบเพื่อใช้งาน</b>
                 </span>
 
-                @error('username')
+                @error('name')
                 <div class="col-md-12">
                     <span class="text-danger" role="alert">
                         <strong>{{ 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง' }}</strong>
@@ -23,10 +26,10 @@
                 </div>
                 @enderror
 
-                <div class="wrap-input100 validate-input" data-validate="Username is required">
-                    <input id="username" class="input100 @error('username') is-invalid @enderror" 
-                        type="text" name="username" value="{{ old('username') }}" 
-                        placeholder="Username" required autocomplete="username" autofocus>
+                <div class="wrap-input100 validate-input" data-validate="Name is required">
+                <input id="name" class="input100 @error('name') is-invalid @enderror" 
+    type="text" name="name" value="{{ old('name') }}" 
+    placeholder="Enter your name" required autocomplete="username" autofocus>
                     <span class="focus-input100"></span>
                     <span class="symbol-input100">
                         <i class="fa fa-user" aria-hidden="true"></i>
@@ -68,23 +71,22 @@
                     <a class="txt2" href="#"></a>
                 </div>
             </form>
-       
-                    </div>
-                    <div class="col-lg-6 text-center">
-                        <div class="container">
-                            <small class="m-l-5 " aria-hidden="true">Copyrights © 2019 All Rights Reserved by GYPMAN TECH COMPANY LIMITED.</small>
-                        </div>
-                    </div>
-                </div>
+        
+        </div>
+        <div class="col-lg-6 text-center">
+            <div class="container">
+                <small class="m-l-5 " aria-hidden="true">Copyrights © 2019 All Rights Reserved by GYPMAN TECH COMPANY LIMITED.</small>
             </div>
+        </div>
+    </div>
+</div>
 
+<script>
+$(document).ready(function() {
+    $('#login-btn').click(function(){
+        $('#overlay').fadeIn().delay(2000).fadeOut();
+    });
+});
+</script>
 
-            <script>
-            $(document).ready(function() {
-                $('#login-btn').click(function(){
-                    $('#overlay').fadeIn().delay(2000).fadeOut();
-                });
-            });
-            </script>
-
-        @endsection
+@endsection

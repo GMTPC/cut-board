@@ -96,7 +96,7 @@ $(document).ready(function(){
                 </div>
                 <div class="container-fluid">
                     <h2><b>รายการแบรนด์</b></h2>
-                    @if (Auth::user()->name == 'Manager' || Auth::user()->name == 'arnut' || Auth::user()->name == 'r'|| Auth::user()->name == 'durf22311')
+                    @if (Auth::user()->name == 'Manager' || Auth::user()->name == 'arnut' || Auth::user()->name == 'r'|| Auth::user()->name == 'durf22311'|| Auth::user()->name == 'durf123456')
                         <a class="btn btn-success btn-md fa fa-plus" data-target="#notiaddbrandlist" data-toggle="modal">   เพิ่มรายการ</a>
                         <table id="brnadslisttable" class="table table-striped table-bordered">
                             <thead class="thead-dark">
